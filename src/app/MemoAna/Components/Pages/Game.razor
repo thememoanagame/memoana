@@ -282,7 +282,7 @@ else
 
     private async Task StartSelectedGameAsync()
     {
-        if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level))
+        if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level) || Mode == "2")
             return;
 
         IsBusy = true;
@@ -302,12 +302,14 @@ else
 
             AttachGameEvents();
 
-            await game.StartGameAsync(level, Theme);
+            await game.StartGameAsync(level, Theme, Mode);
 
             foreach (KeyValuePair<int, MemoryCard> card in game.CurrentCards)
                 Cards.Add(card);
 
-            GameTime = TimeSpan.FromSeconds(GetInitialTime(level)).ToString("mm\\:ss");
+            GameTime = game.CurrentMode == GameMode.TimeAttack
+                ? TimeSpan.FromSeconds(GetInitialTime(level)).ToString("mm\\:ss")
+                : "--:--";
             CurrentScore = game.CurrentScore.ToString("D3");
             MovesCount = game.TotalMoves.ToString();
             IsGameActive = true;
@@ -362,7 +364,7 @@ else
 
     private async Task FlipCard(int position, MemoryCard card)
     {
-        if (!IsGameActive || card.IsFaceUp || card.IsMatched)
+        if (!IsGameActive || game.IsHumanInteractionBlocked || card.IsFaceUp || card.IsMatched)
             return;
 
         try
@@ -430,6 +432,7 @@ else
 
     private void RestartGame()
     {
+        game.ForceStopTimer();
         IsSelecting = true;
         IsGameActive = false;
         IsGameFinished = false;

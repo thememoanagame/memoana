@@ -6,20 +6,28 @@ using MemoAna.Game.Dtos;
 using MemoAna.Game.Entities;
 using MemoAna.Game.Enums;
 using MemoAna.Game.EventArgs;
+using MemoAna.Game.Models;
 
 namespace MemoAna.Game.Services;
 
-public sealed class GameService : IGameService
+public sealed class GameService : IGameService, IAsyncDisposable
 {
     private readonly IThemeService themeService;
     private readonly IRepository<GameSettingsEntity> settingsRepository;
     private readonly IRepository<GameStatisticsEntity> statisticsRepository;
     private readonly IDispatcherTimer _gameTimer;
+    private readonly IAIService aiService;
+    private CancellationTokenSource? _gameCancellation;
     private MemoryCard? _firstSelectedCard;
     private MemoryCard? _secondSelectedCard;
+    private int _firstPosition;
+    private int _secondPosition;
     private bool _isProcessingTurn;
     private string _currentTheme = string.Empty;
     private GameDifficulty _currentDifficulty;
+    public GameMode CurrentMode { get; private set; } = GameMode.TimeAttack;
+    public bool IsHumanInteractionBlocked => CurrentMode == GameMode.IA && _isAiTurn;
+    private bool _isAiTurn;
     private GameSettingsDto gameSettings = default!;
     private int _totalMoves;
     private int _successfulMoves;
@@ -36,21 +44,23 @@ public sealed class GameService : IGameService
     public event EventHandler<GameCardFlippedEventArgs>? CardFlipped;
     public GameService(IThemeService themeService,
         IRepository<GameSettingsEntity> settingsRepository, 
-        IRepository<GameStatisticsEntity> statisticsRepository, 
-        IDispatcher dispatcher)
+        IRepository<GameStatisticsEntity> statisticsRepository,
+        IDispatcher dispatcher,
+        IAIService aiService)
     {
         this.themeService = themeService;
         this.settingsRepository = settingsRepository;
         this.statisticsRepository = statisticsRepository;
+        this.aiService = aiService;
 
         _gameTimer = dispatcher.CreateTimer();
         _gameTimer.Interval = TimeSpan.FromSeconds(1);
         _gameTimer.Tick += OnTimerTick;
     }
 
-    public async Task StartGameAsync(int difficulty, string theme)
+    public async Task StartGameAsync(int difficulty, string theme, string mode = "1")
     {
-       (int pairCount, int totalSeconds)  = PresetGame(difficulty, theme);
+       (int pairCount, int totalSeconds)  = PresetGame(difficulty, theme, mode);
 
         gameSettings = GameSettingsDto.FromEntity((await settingsRepository.ListTrackedAsync(x => x != null, null!, CancellationToken.None))
                    .Single() ?? new());
@@ -81,19 +91,31 @@ public sealed class GameService : IGameService
         int i = 0;
         foreach (MemoryCard? card in shuffledCards)
             CurrentCards.Add(new KeyValuePair<int, MemoryCard>(i+=1, card));
+        if (CurrentMode == GameMode.PVP)
+            return;
+
         IsGameActive = true;
         RemainingTime = TimeSpan.FromSeconds(totalSeconds);
-        _gameTimer.Start();
+        if (CurrentMode == GameMode.IA)
+            aiService.StartGame(_currentDifficulty, CurrentCards);
+        else
+            _gameTimer.Start();
     }
 
-    private (int pairCount, int totalSeconds) PresetGame(int difficulty, string theme)
+    private (int pairCount, int totalSeconds) PresetGame(int difficulty, string theme, string mode)
     {
+        _gameCancellation?.Cancel();
+        _gameCancellation?.Dispose();
+        _gameCancellation = new CancellationTokenSource();
+        aiService.Clear();
         _gameTimer.Stop();
         _firstSelectedCard = null;
         _secondSelectedCard = null;
         _isProcessingTurn = false;
+        _isAiTurn = false;
         _currentTheme = theme;
         _currentDifficulty = (GameDifficulty)difficulty;
+        CurrentMode = Enum.TryParse<GameMode>(mode, out var parsedMode) ? parsedMode : GameMode.TimeAttack;
         _totalMoves = 0;
         _successfulMoves = 0;
         _mistakes = 0;
@@ -113,7 +135,8 @@ public sealed class GameService : IGameService
 
     public async Task FlipCardAsync(int position, MemoryCard selectedCard)
     {
-        if (!IsGameActive || _isProcessingTurn || selectedCard.IsFaceUp || selectedCard.IsMatched)
+        if (!IsGameActive || _isProcessingTurn || IsHumanInteractionBlocked ||
+            selectedCard.IsFaceUp || selectedCard.IsMatched)
             return;
 
         selectedCard.IsFaceUp = true;
@@ -121,12 +144,16 @@ public sealed class GameService : IGameService
         if (_firstSelectedCard == null)
         {
             CardFlipped?.Invoke(this, new((position, selectedCard.CardImage)!));
+            aiService.ObserveCard(position, selectedCard);
             _firstSelectedCard = selectedCard;
+            _firstPosition = position;
             return;
         }
 
         CardFlipped?.Invoke(this, new((position, selectedCard.CardImage)!));
+        aiService.ObserveCard(position, selectedCard);
         _secondSelectedCard = selectedCard;
+        _secondPosition = position;
         _isProcessingTurn = true;
         _totalMoves++;
 
@@ -134,6 +161,8 @@ public sealed class GameService : IGameService
         {
             _firstSelectedCard.IsMatched = true;
             _secondSelectedCard.IsMatched = true;
+            aiService.ObserveCard(_firstPosition, _firstSelectedCard);
+            aiService.ObserveCard(_secondPosition, _secondSelectedCard);
 
             _successfulMoves++;
             _currentStreak++;
@@ -148,31 +177,37 @@ public sealed class GameService : IGameService
             _mistakes++;
             _currentStreak = 0;
 
-            await Task.Delay(gameSettings.Options.CardFlipDelayMs);
-
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                _firstSelectedCard?.IsFaceUp = false;
-                _secondSelectedCard?.IsFaceUp = false;
-                ResetTurn();
-            });
+            await Task.Delay(gameSettings.Options.CardFlipDelayMs, _gameCancellation?.Token ?? CancellationToken.None);
+            _firstSelectedCard?.IsFaceUp = false;
+            _secondSelectedCard?.IsFaceUp = false;
+            ResetTurn();
         }
+
+        // Turns alternate consistently: every completed human turn gives the AI
+        // one turn, regardless of whether the human found a pair.
+        if (!_isAiTurn && CurrentMode == GameMode.IA && IsGameActive)
+            await RunAiTurnAsync(_gameCancellation?.Token ?? CancellationToken.None);
     }
     private void ResetTurn()
     {
         _firstSelectedCard = null;
         _secondSelectedCard = null;
+        _firstPosition = 0;
+        _secondPosition = 0;
         _isProcessingTurn = false;
     }
      
     private void CheckWinCondition()
     {
         if (CurrentCards.All(c => c.Value.IsMatched))
-            EndGame(won: true);
+            _ = EndGameAsync(won: true);
     }
     
     public void ForceStopTimer()
     {
+        _gameCancellation?.Cancel();
+        aiService.CancelPendingTurn();
+        _isAiTurn = false;
         IsGameActive = false;
         _gameTimer?.Stop();
     }
@@ -187,19 +222,51 @@ public sealed class GameService : IGameService
 
         if (RemainingTime.TotalSeconds <= 0)
         {
-            EndGame(won: false);
+            _ = EndGameAsync(won: false);
         }
     }
 
-    private async void EndGame(bool won)
+    private async Task RunAiTurnAsync(CancellationToken cancellationToken)
     {
+        if (_isAiTurn || !IsGameActive)
+            return;
+
+        _isAiTurn = true;
+        try
+        {
+            AITurn? turn = await aiService.GetNextTurnAsync(cancellationToken);
+            if (turn is null || !IsGameActive)
+                return;
+
+            MemoryCard first = CurrentCards.Single(c => c.Key == turn.FirstPosition).Value;
+            await FlipCardAsync(turn.FirstPosition, first);
+            await Task.Delay(250, cancellationToken);
+            MemoryCard second = CurrentCards.Single(c => c.Key == turn.SecondPosition).Value;
+            await FlipCardAsync(turn.SecondPosition, second);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _isAiTurn = false;
+        }
+    }
+
+    private async Task EndGameAsync(bool won)
+    {
+        _gameCancellation?.Cancel();
+        aiService.CancelPendingTurn();
+        _isAiTurn = false;
         _gameTimer.Stop();
         IsGameActive = false;
 
         int finalScoreCalculated = _accumulatedScore;
-        int remainingSeconds = (int)RemainingTime.TotalSeconds;
+        int remainingSeconds = CurrentMode == GameMode.TimeAttack
+            ? (int)RemainingTime.TotalSeconds
+            : 0;
 
-        if (won)
+        if (won && CurrentMode == GameMode.TimeAttack)
         {
             finalScoreCalculated += remainingSeconds * 25;
         }
@@ -236,6 +303,14 @@ public sealed class GameService : IGameService
         {
             GameFinished?.Invoke(this, stats.ToEventArgs());
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        ForceStopTimer();
+        _gameTimer.Tick -= OnTimerTick;
+        _gameCancellation?.Dispose();
+        await Task.CompletedTask;
     }
 }
 #pragma warning restore CA1416
