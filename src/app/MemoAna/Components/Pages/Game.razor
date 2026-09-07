@@ -24,18 +24,21 @@
                             Color="Color.Surface">
                 <MudToggleItem T="string"
                                Class="selection-button"
+                               data-testid="difficulty-easy"
                                SelectedIcon="@Icons.Material.TwoTone.Check"
                                Value="@("0")">
                     @Localizer["Starter"]
                 </MudToggleItem>
                 <MudToggleItem T="string"
                                Class="selection-button"
+                               data-testid="difficulty-medium"
                                SelectedIcon="@Icons.Material.TwoTone.Check"
                                Value="@("1")">
                     @Localizer["Medium"]
                 </MudToggleItem>
                 <MudToggleItem T="string"
                                Class="selection-button"
+                               data-testid="difficulty-hard"
                                SelectedIcon="@Icons.Material.TwoTone.Check"
                                Value="@("2")">
                     @Localizer["Hard"]
@@ -55,6 +58,7 @@
                             Color="Color.Surface">
                 <MudToggleItem T="string"
                                Class="selection-button"
+                               data-testid="mode-ai"
                                SelectedIcon="@Icons.Material.Filled.Computer"
                                UnselectedIcon="@Icons.Material.TwoTone.Computer"
                                Value="@("0")">
@@ -64,6 +68,7 @@
                 </MudToggleItem>
                 <MudToggleItem T="string"
                                Class="selection-button"
+                               data-testid="mode-time-attack"
                                SelectedIcon="@Icons.Material.Filled.Timer"
                                UnselectedIcon="@Icons.Material.TwoTone.Timer"
                                Value="@("1")">
@@ -73,6 +78,7 @@
                 </MudToggleItem>
                 <MudToggleItem T="string"
                                Class="selection-button"
+                               data-testid="mode-pvp"
                                SelectedIcon="@Icons.Material.Filled.PersonAdd"
                                UnselectedIcon="@Icons.Material.TwoTone.PersonAdd"
                                Value="@("2")">
@@ -112,7 +118,7 @@
                             <div class="theme-card-header">
                                 <MudText Class="theme-name">@theme.ThemeName</MudText>
                             </div>
-                            <MudButton Class=@("theme-select-button "+(IsSelected(theme) ? "theme-preview-selected" : string.Empty)) OnClick="@(async () => await SelectThemeAsync(theme))">
+                            <MudButton Class=@("theme-select-button "+(IsSelected(theme) ? "theme-preview-selected" : string.Empty)) data-testid="theme-select-button" OnClick="@(async () => await SelectThemeAsync(theme))">
                                 <MudImage Src="@GetThemeImage(theme)" Class="theme-image" Alt="@theme.ThemeName" />
                             </MudButton>
                         </div>
@@ -140,19 +146,22 @@ else
         {
             @if (game.CurrentMode == GameMode.IA)
             {
-                <MudText Class="game-turn-indicator">@(game.CurrentTurn == GameTurn.AI ? "TURNO DA IA" : "SEU TURNO")</MudText>
+                <MudText Class="game-turn-indicator" data-testid="turn-indicator">@(game.CurrentTurn == GameTurn.AI ? "TURNO DA IA" : "SEU TURNO")</MudText>
             }
 
             <div class="game-header">
                 <MudText Class="game-header-score">@CurrentScore</MudText>
                 <MudText Class="game-header-moves">@MovesCount</MudText>
-                <MudText Class="game-header-time">@GameTime</MudText>
+                @if (game.CurrentMode == GameMode.TimeAttack)
+                {
+                    <MudText Class="game-header-time" data-testid="game-time">@GameTime</MudText>
+                }
             </div>
 
             <div class="game-board" style="--columns: @Columns">
                 @foreach (KeyValuePair<int, MemoryCard> card in Cards)
                 {
-                    <div class="memory-card" @onclick="() => FlipCard(card.Key, card.Value)">
+                    <div class="memory-card" data-testid=@($"card-{card.Key}") @onclick="() => FlipCard(card.Key, card.Value)">
                         @if (!card.Value.IsFaceUp)
                         {
                             <img src="images/back.png" class="card-image card-back" alt="" />
@@ -170,7 +179,7 @@ else
             <div class="statistics-container">
                 @if (game.CurrentMode == GameMode.IA)
                 {
-                    <MudText Class="victory-text ia-result-title">@(Statistics.IsVictory ? "VOCÊ VENCEU!" : "VOCÊ PERDEU")</MudText>
+                    <MudText Class="victory-text ia-result-title" data-testid="ia-result-title">@(Statistics.IsVictory ? "VOCÊ VENCEU!" : "VOCÊ PERDEU!")</MudText>
                     <MudText Class="ia-result-subtitle">@(Statistics.IsVictory ? "Você derrotou a IA." : "A IA venceu esta partida.")</MudText>
                 }
                 else

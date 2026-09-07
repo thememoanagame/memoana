@@ -15,7 +15,7 @@ public sealed class AIServiceTests
         var cards = Cards(8);
         ai.StartGame(GameDifficulty.Easy, cards);
         foreach (var card in cards.Take(4))
-            ai.ObserveCard(card.Key, card.Value);
+            Observe(ai, card);
 
         await ai.GetNextTurnAsync();
 
@@ -29,7 +29,7 @@ public sealed class AIServiceTests
         var cards = Cards(12);
         ai.StartGame(GameDifficulty.Medium, cards);
         foreach (var card in cards)
-            ai.ObserveCard(card.Key, card.Value);
+            Observe(ai, card);
 
         await ai.GetNextTurnAsync();
 
@@ -42,8 +42,8 @@ public sealed class AIServiceTests
         var ai = new AIService(new FixedRandomSource());
         var cards = Cards(6);
         ai.StartGame(GameDifficulty.Hard, cards);
-        ai.ObserveCard(1, cards[0].Value);
-        ai.ObserveCard(2, cards[1].Value);
+        Observe(ai, cards[0]);
+        Observe(ai, cards[1]);
 
         AITurn? turn = await ai.GetNextTurnAsync();
 
@@ -57,7 +57,7 @@ public sealed class AIServiceTests
         var cards = Cards(8);
         ai.StartGame(GameDifficulty.Hard, cards);
         foreach (var card in cards)
-            ai.ObserveCard(card.Key, card.Value);
+            Observe(ai, card);
 
         await ai.GetNextTurnAsync();
 
@@ -70,8 +70,8 @@ public sealed class AIServiceTests
         var ai = new AIService(new FixedRandomSource());
         var cards = Cards(4);
         ai.StartGame(GameDifficulty.Hard, cards);
-        ai.ObserveCard(1, cards[0].Value);
-        ai.ObserveCard(2, cards[1].Value);
+        Observe(ai, cards[0]);
+        Observe(ai, cards[1]);
         ai.StartGame(GameDifficulty.Hard, cards);
 
         await ai.GetNextTurnAsync();
@@ -113,11 +113,28 @@ public sealed class AIServiceTests
         var cards = Cards(4);
         ai.StartGame(GameDifficulty.Hard, cards);
 
-        ai.ObserveCard(1, cards[0].Value);
+        Observe(ai, cards[0]);
         Assert.Equal(1, ai.RememberedCardCount);
 
         cards[0].Value.IsMatched = true;
         ai.ObserveCard(1, cards[0].Value);
+
+        Assert.Equal(0, ai.RememberedCardCount);
+    }
+
+    [Fact]
+    public void HiddenCardIsNotObservedAndPreviousGenerationCannotContaminateMemory()
+    {
+        var ai = new AIService(new FixedRandomSource());
+        var previousCards = Cards(4);
+        ai.StartGame(GameDifficulty.Hard, previousCards);
+        previousCards[0].Value.IsFaceUp = true;
+        ai.ObserveCard(1, previousCards[0].Value);
+
+        var currentCards = Cards(4);
+        ai.StartGame(GameDifficulty.Hard, currentCards);
+        ai.ObserveCard(1, previousCards[0].Value);
+        ai.ObserveCard(2, currentCards[1].Value);
 
         Assert.Equal(0, ai.RememberedCardCount);
     }
@@ -129,7 +146,7 @@ public sealed class AIServiceTests
         var cards = Cards(6);
         ai.StartGame(GameDifficulty.Hard, cards);
 
-        ai.ObserveCard(3, cards[2].Value);
+        Observe(ai, cards[2]);
         AITurn? turn = await ai.GetNextTurnAsync();
 
         Assert.NotEqual(new AITurn(3, 4), turn);
@@ -141,7 +158,7 @@ public sealed class AIServiceTests
         var ai = new AIService(new FixedRandomSource());
         var cards = Cards(6);
         ai.StartGame(GameDifficulty.Easy, cards);
-        ai.ObserveCard(1, cards[0].Value);
+        Observe(ai, cards[0]);
 
         for (int i = 0; i < 4; i++)
             await ai.GetNextTurnAsync();
@@ -171,8 +188,8 @@ public sealed class AIServiceTests
         var ai = new AIService(new DeliberateErrorRandomSource());
         var cards = Cards(6);
         ai.StartGame(GameDifficulty.Easy, cards);
-        ai.ObserveCard(1, cards[0].Value);
-        ai.ObserveCard(2, cards[1].Value);
+        Observe(ai, cards[0]);
+        Observe(ai, cards[1]);
 
         AITurn? turn = await ai.GetNextTurnAsync();
 
@@ -184,6 +201,13 @@ public sealed class AIServiceTests
             .Select(i => new KeyValuePair<int, MemoryCard>(i,
                 new MemoryCard { Id = i, PairId = $"pair-{(i - 1) / 2}" }))
             .ToList();
+
+    private static void Observe(AIService ai, KeyValuePair<int, MemoryCard> card)
+    {
+        card.Value.IsFaceUp = true;
+        ai.ObserveCard(card.Key, card.Value);
+        card.Value.IsFaceUp = false;
+    }
 
     private sealed class FixedRandomSource : IRandomSource
     {

@@ -17,7 +17,14 @@ public sealed class AIService(IRandomSource random) : IAIService
 
     public bool IsPlaying => Volatile.Read(ref playing) == 1;
     public int RememberedCardCount => memory.Count;
+    public int VisualRevealDelayMs => options.VisualRevealDelayMs;
 
+    /// <summary>
+    /// Starts a new generation, cancels older thinking, resets observed
+    /// knowledge, and stores only the current board's legal-state view.
+    /// </summary>
+    /// <param name="difficulty">Difficulty policy for memory and decisions.</param>
+    /// <param name="cards">Current cards used for availability validation.</param>
     public void StartGame(GameDifficulty difficulty, IReadOnlyCollection<KeyValuePair<int, MemoryCard>> cards)
     {
         CancelPendingTurn();
@@ -28,8 +35,23 @@ public sealed class AIService(IRandomSource random) : IAIService
         options = AIDifficultyOptionsFactory.For(difficulty, cards.Count);
     }
 
+    /// <summary>
+    /// Records only a card that the game has already exposed through its
+    /// card-flipped notification. The board collection is deliberately not
+    /// consulted here for hidden card content.
+    /// </summary>
+    /// <param name="position">The position exposed to the player.</param>
+    /// <param name="card">The card instance whose face was exposed.</param>
     public void ObserveCard(int position, MemoryCard card)
     {
+        // Position numbers can be reused after restart. Reference identity is
+        // therefore part of the generation boundary and prevents a delayed
+        // callback from an older board from contaminating this memory.
+        KeyValuePair<int, MemoryCard> current = cards.FirstOrDefault(c => c.Key == position);
+        if (current.Value is null || !ReferenceEquals(current.Value, card) ||
+            (!card.IsFaceUp && !card.IsMatched))
+            return;
+
         if (card.IsMatched)
         {
             memory.Remove(position);
@@ -40,6 +62,12 @@ public sealed class AIService(IRandomSource random) : IAIService
         TrimMemory();
     }
 
+    /// <summary>
+    /// Waits for AI thinking, expires invalid observations, and returns a turn
+    /// selected from available positions without reading unknown card content.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation for restart, end, or disposal.</param>
+    /// <returns>A legal turn, or <see langword="null"/> when no turn can continue.</returns>
     public async Task<AITurn?> GetNextTurnAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.CompareExchange(ref playing, 1, 0) != 0)
@@ -90,12 +118,14 @@ public sealed class AIService(IRandomSource random) : IAIService
         }
     }
 
+    /// <summary>Invalidates the active generation and cancels pending thinking.</summary>
     public void CancelPendingTurn()
     {
         generation++;
         thinkingCancellation?.Cancel();
     }
 
+    /// <summary>Clears memory and board references after cancelling pending work.</summary>
     public void Clear()
     {
         CancelPendingTurn();
@@ -104,9 +134,17 @@ public sealed class AIService(IRandomSource random) : IAIService
         turn = 0;
     }
 
+    /// <summary>Selects one legal candidate through the injected random source.</summary>
+    /// <param name="candidates">Candidates already filtered by game state.</param>
+    /// <returns>The selected candidate.</returns>
     private KeyValuePair<int, MemoryCard> Pick(List<KeyValuePair<int, MemoryCard>> candidates) =>
         candidates[random.Next(candidates.Count)];
 
+    /// <summary>
+    /// Finds two currently available positions that share a pair identifier
+    /// already present twice in the AI's observed-memory dictionary.
+    /// </summary>
+    /// <returns>A known pair, or <see langword="null"/> when no valid known pair exists.</returns>
     private AITurn? FindKnownPair()
     {
         if (random.NextDouble() > options.KnownPairPriority)
@@ -123,6 +161,11 @@ public sealed class AIService(IRandomSource random) : IAIService
         return null;
     }
 
+    /// <summary>
+    /// Purges memory entries that are no longer legal knowledge for this turn:
+    /// unavailable cards, expired observations, and positions absent from the
+    /// current generation are removed before a choice is made.
+    /// </summary>
     private void RemoveUnavailableCards()
     {
         foreach (int position in memory.Keys.ToList())
@@ -135,6 +178,7 @@ public sealed class AIService(IRandomSource random) : IAIService
         TrimMemory();
     }
 
+    /// <summary>Applies the difficulty memory capacity, retaining newest observations.</summary>
     private void TrimMemory()
     {
         foreach (int position in memory.OrderBy(x => x.Value.ObservedTurn)
