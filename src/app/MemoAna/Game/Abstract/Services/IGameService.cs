@@ -11,12 +11,14 @@ public interface IGameService
     bool IsGameActive { get; }
     bool IsHumanInteractionBlocked { get; }
     GameMode CurrentMode { get; }
+    GameTurn CurrentTurn { get; }
     int CurrentScore { get; }
     int TotalMoves { get; }
 
     event EventHandler<GameStatisticsEventArgs>? GameFinished; 
     event EventHandler<GameTickEventArgs>? TimerTick;
     event EventHandler<GameCardFlippedEventArgs>? CardFlipped;
+    event EventHandler<GameTurnChangedEventArgs>? TurnChanged;
     
     Task FlipCardAsync(int position, MemoryCard selectedCard); 
     Task StartGameAsync(int difficulty, string themeName, string mode = "1");

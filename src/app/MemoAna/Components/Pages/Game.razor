@@ -138,6 +138,11 @@ else
         }
         else if (IsGameActive)
         {
+            @if (game.CurrentMode == GameMode.IA)
+            {
+                <MudText Class="game-turn-indicator">@(game.CurrentTurn == GameTurn.AI ? "TURNO DA IA" : "SEU TURNO")</MudText>
+            }
+
             <div class="game-header">
                 <MudText Class="game-header-score">@CurrentScore</MudText>
                 <MudText Class="game-header-moves">@MovesCount</MudText>
@@ -357,6 +362,7 @@ else
         game.GameFinished += OnGameFinished;
         game.TimerTick += OnTimerTick;
         game.CardFlipped += OnCardFlipped;
+        game.TurnChanged += OnTurnChanged;
         _eventsAttached = true;
     }
 
@@ -415,6 +421,11 @@ else
         _ = InvokeAsync(StateHasChanged);
     }
 
+    private void OnTurnChanged(object? sender, GameTurnChangedEventArgs e)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private void ConfigureGridGeometry(int difficulty)
     {
         (Rows, Columns) = difficulty switch
@@ -446,6 +457,7 @@ else
             game.GameFinished -= OnGameFinished;
             game.TimerTick -= OnTimerTick;
             game.CardFlipped -= OnCardFlipped;
+            game.TurnChanged -= OnTurnChanged;
             _eventsAttached = false;
         }
 
@@ -661,6 +673,18 @@ else
         grid-template-columns: 1fr 1fr 1fr;
         align-items: center;
         z-index: 2;
+    }
+
+    .game-turn-indicator {
+        position: absolute;
+        top: 105px;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        color: lightgoldenrodyellow;
+        font-family: Bangpop;
+        font-size: 30px;
+        text-align: center;
     }
 
     .game-header-score,
