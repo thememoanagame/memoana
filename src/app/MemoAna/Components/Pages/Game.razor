@@ -168,7 +168,15 @@ else
         else if (IsGameFinished)
         {
             <div class="statistics-container">
-                <MudText Class="victory-text">@IsVictory</MudText>
+                @if (game.CurrentMode == GameMode.IA)
+                {
+                    <MudText Class="victory-text ia-result-title">@(Statistics.IsVictory ? "VOCÊ VENCEU!" : "VOCÊ PERDEU")</MudText>
+                    <MudText Class="ia-result-subtitle">@(Statistics.IsVictory ? "Você derrotou a IA." : "A IA venceu esta partida.")</MudText>
+                }
+                else
+                {
+                    <MudText Class="victory-text">@IsVictory</MudText>
+                }
                 <div class="statistics-grid">
                     <MudText Class="statistic-value statistic-left">@Statistics.ThemeName</MudText>
                     <MudText Class="statistic-value statistic-right">@Statistics.Difficulty</MudText>
@@ -177,7 +185,7 @@ else
                     <MudText Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
                     <MudText Class="statistic-label">ERROS</MudText>
                     <MudText Class="statistic-value statistic-right">@Statistics.Mistakes</MudText>
-                    <MudText Class="statistic-label">SOMA</MudText>
+                    <MudText Class="statistic-label">JOGADAS</MudText>
                     <MudText Class="statistic-value statistic-right">@Statistics.TotalMoves</MudText>
                     <MudText Class="statistic-label">PONTOS</MudText>
                     <MudText Class="statistic-value statistic-right">@CurrentScore</MudText>
@@ -220,6 +228,7 @@ else
 
     private GameStatisticsDto Statistics { get; set; } = GameStatisticsDto.Default;
     private bool _eventsAttached;
+    private int _renderScheduled;
 
     protected override async Task OnInitializedAsync()
     {
@@ -371,16 +380,10 @@ else
         if (!IsGameActive || game.IsHumanInteractionBlocked || card.IsFaceUp || card.IsMatched)
             return;
 
-        try
-        {
             await game.FlipCardAsync(position, card);
             MovesCount = game.TotalMoves.ToString();
             CurrentScore = game.CurrentScore.ToString("D3");
-        }
-        finally
-        {
-            await InvokeAsync(StateHasChanged);
-        }
+            RequestRender();
     }
 
     private void OnTimerTick(object? sender, GameTickEventArgs gameTick)
@@ -418,12 +421,24 @@ else
 
     private void OnCardFlipped(object? sender, GameCardFlippedEventArgs e)
     {
-        _ = InvokeAsync(StateHasChanged);
+        RequestRender();
     }
 
     private void OnTurnChanged(object? sender, GameTurnChangedEventArgs e)
     {
-        _ = InvokeAsync(StateHasChanged);
+        RequestRender();
+    }
+
+    private void RequestRender()
+    {
+        if (Interlocked.Exchange(ref _renderScheduled, 1) != 0)
+            return;
+
+        _ = InvokeAsync(() =>
+        {
+            Interlocked.Exchange(ref _renderScheduled, 0);
+            StateHasChanged();
+        });
     }
 
     private void ConfigureGridGeometry(int difficulty)
@@ -748,6 +763,13 @@ else
         font-size: 36px;
         color: saddlebrown;
         text-shadow: 2px 2px 1px lightgoldenrodyellow;
+    }
+
+    .ia-result-subtitle {
+        font-family: Bangpop;
+        color: saddlebrown;
+        font-size: 22px;
+        margin-top: 8px;
     }
 
     .statistics-grid {

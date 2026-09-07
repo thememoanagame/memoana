@@ -2,10 +2,12 @@ using System.Linq.Expressions;
 using MemoAna.Common.Abstract.Repositories;
 using MemoAna.Common.Entities;
 using MemoAna.Game.Abstract.Services;
+using MemoAna.Game.Core;
 using MemoAna.Game.Dtos;
 using MemoAna.Game.Entities;
 using MemoAna.Game.Enums;
 using MemoAna.Game.Services;
+using MemoAna.Game.Models;
 using Microsoft.Maui.Dispatching;
 using Xunit;
 
@@ -46,7 +48,33 @@ public sealed class GameServiceTests
         Assert.False(game.IsHumanInteractionBlocked);
     }
 
-    private static GameService CreateGameService()
+    [Fact]
+    public async Task CardObservationOccursAfterRevealNotification()
+    {
+        var order = new List<string>();
+        await using GameService game = CreateGameService(new RecordingAIService(order));
+        game.CardFlipped += (_, _) => order.Add("render-notification");
+
+        await game.StartGameAsync(0, "theme", "0");
+        MemoryCard card = game.CurrentCards[0].Value;
+        await game.FlipCardAsync(1, card);
+
+        Assert.Equal(["render-notification", "observe"], order);
+    }
+
+    [Fact]
+    public async Task PvpGameIsActiveAndAcceptsFirstCard()
+    {
+        await using GameService game = CreateGameService();
+
+        await game.StartGameAsync(0, "theme", "2");
+
+        Assert.True(game.IsGameActive);
+        await game.FlipCardAsync(1, game.CurrentCards[0].Value);
+        Assert.True(game.CurrentCards[0].Value.IsFaceUp);
+    }
+
+    private static GameService CreateGameService(IAIService? ai = null)
     {
         var settings = new GameSettingsEntity { Options = new() { CardFlipDelayMs = 1 } };
         return new GameService(
@@ -54,7 +82,7 @@ public sealed class GameServiceTests
             new FakeRepository<GameSettingsEntity>(settings),
             new FakeRepository<GameStatisticsEntity>(),
             new FakeDispatcher(),
-            new AIService(new FixedRandomSource()));
+            ai ?? new AIService(new FixedRandomSource()));
     }
 
     private sealed class FakeThemeService : IThemeService
@@ -105,5 +133,16 @@ public sealed class GameServiceTests
     {
         public int Next(int maxExclusive) => 0;
         public double NextDouble() => 1;
+    }
+
+    private sealed class RecordingAIService(List<string> order) : IAIService
+    {
+        public bool IsPlaying => false;
+        public int RememberedCardCount => 0;
+        public void StartGame(GameDifficulty difficulty, IReadOnlyCollection<KeyValuePair<int, MemoryCard>> cards) { }
+        public void ObserveCard(int position, MemoryCard card) => order.Add("observe");
+        public Task<AITurn?> GetNextTurnAsync(CancellationToken cancellationToken = default) => Task.FromResult<AITurn?>(null);
+        public void CancelPendingTurn() { }
+        public void Clear() { }
     }
 }

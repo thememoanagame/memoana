@@ -5,9 +5,8 @@ using MemoAna.Game.Models;
 
 namespace MemoAna.Game.Services;
 
-public sealed class AIService : IAIService
+public sealed class AIService(IRandomSource random) : IAIService
 {
-    private readonly IRandomSource random;
     private readonly Dictionary<int, KnownCard> memory = [];
     private IReadOnlyCollection<KeyValuePair<int, MemoryCard>> cards = [];
     private AIDifficultyOptions options = AIDifficultyOptionsFactory.For(GameDifficulty.Easy, 0);
@@ -19,10 +18,7 @@ public sealed class AIService : IAIService
     public bool IsPlaying => Volatile.Read(ref playing) == 1;
     public int RememberedCardCount => memory.Count;
 
-    public AIService(IRandomSource random) => this.random = random;
-
-    public void StartGame(GameDifficulty difficulty,
-        IReadOnlyCollection<KeyValuePair<int, MemoryCard>> cards)
+    public void StartGame(GameDifficulty difficulty, IReadOnlyCollection<KeyValuePair<int, MemoryCard>> cards)
     {
         CancelPendingTurn();
         memory.Clear();

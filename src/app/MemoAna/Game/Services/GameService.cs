@@ -24,6 +24,9 @@ public sealed class GameService : IGameService, IAsyncDisposable
     private int _secondPosition;
     private bool _isProcessingTurn;
     private int _gameGeneration;
+    private readonly SemaphoreSlim _turnGate = new(1, 1);
+    private readonly object _lifecycleLock = new();
+    private int _endedGeneration = -1;
     private string _currentTheme = string.Empty;
     private GameDifficulty _currentDifficulty;
     public GameMode CurrentMode { get; private set; } = GameMode.TimeAttack;
@@ -99,8 +102,6 @@ public sealed class GameService : IGameService, IAsyncDisposable
         int i = 0;
         foreach (MemoryCard? card in shuffledCards)
             CurrentCards.Add(new KeyValuePair<int, MemoryCard>(i+=1, card));
-        if (CurrentMode == GameMode.PVP)
-            return;
 
         if (cancellationToken.IsCancellationRequested || gameGeneration != _gameGeneration)
             return;
@@ -124,6 +125,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         _secondSelectedCard = null;
         _isProcessingTurn = false;
         _gameGeneration++;
+        _endedGeneration = -1;
         CurrentTurn = GameTurn.Player;
         _currentTheme = theme;
         _currentDifficulty = (GameDifficulty)difficulty;
@@ -151,20 +153,32 @@ public sealed class GameService : IGameService, IAsyncDisposable
             selectedCard.IsFaceUp || selectedCard.IsMatched)
             return;
 
-        int gameGeneration = _gameGeneration;
-        CancellationToken cancellationToken = _gameCancellation?.Token ?? CancellationToken.None;
-        bool turnCompleted = await ExecuteCardFlipAsync(position, selectedCard, false, cancellationToken, gameGeneration);
-        if (turnCompleted && CurrentMode == GameMode.IA &&
-            IsGameActive && gameGeneration == _gameGeneration && !cancellationToken.IsCancellationRequested)
-            await RunAiTurnAsync(cancellationToken, gameGeneration);
+        await _turnGate.WaitAsync();
+        try
+        {
+            if (!IsGameActive || (CurrentMode == GameMode.IA && CurrentTurn != GameTurn.Player) ||
+                _isProcessingTurn || selectedCard.IsFaceUp || selectedCard.IsMatched)
+                return;
+
+            int gameGeneration = _gameGeneration;
+            CancellationToken cancellationToken = _gameCancellation?.Token ?? CancellationToken.None;
+            bool turnCompleted = await ExecuteCardFlipAsync(position, selectedCard, false, gameGeneration, cancellationToken);
+            if (turnCompleted && CurrentMode == GameMode.IA &&
+                IsGameActive && gameGeneration == _gameGeneration && !cancellationToken.IsCancellationRequested)
+                await RunAiTurnAsync(gameGeneration, cancellationToken);
+        }
+        finally
+        {
+            _turnGate.Release();
+        }
     }
 
     private async Task<bool> ExecuteCardFlipAsync(
         int position,
         MemoryCard selectedCard,
         bool isAiTurn,
-        CancellationToken cancellationToken,
-        int gameGeneration)
+        int gameGeneration,
+        CancellationToken cancellationToken)
     {
         if (!IsGameActive || gameGeneration != _gameGeneration || cancellationToken.IsCancellationRequested ||
             (isAiTurn ? CurrentTurn != GameTurn.AI : CurrentTurn != GameTurn.Player) ||
@@ -173,6 +187,12 @@ public sealed class GameService : IGameService, IAsyncDisposable
 
         selectedCard.IsFaceUp = true;
         NotifyCardFlipped(position, selectedCard);
+        // State mutation and visual observability are separate phases. Give
+        // the renderer a scheduling opportunity before AI memory advances.
+        await Task.Yield();
+        if (!IsGameActive || gameGeneration != _gameGeneration || cancellationToken.IsCancellationRequested)
+            return false;
+
         aiService.ObserveCard(position, selectedCard);
 
         if (_firstSelectedCard == null)
@@ -257,7 +277,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         }
     }
 
-    private async Task RunAiTurnAsync(CancellationToken cancellationToken, int gameGeneration)
+    private async Task RunAiTurnAsync(int gameGeneration, CancellationToken cancellationToken)
     {
         if (CurrentMode != GameMode.IA || !IsGameActive || gameGeneration != _gameGeneration ||
             cancellationToken.IsCancellationRequested || CurrentTurn != GameTurn.Player)
@@ -271,10 +291,12 @@ public sealed class GameService : IGameService, IAsyncDisposable
                 return;
 
             MemoryCard first = CurrentCards.Single(c => c.Key == turn.FirstPosition).Value;
-            await ExecuteCardFlipAsync(turn.FirstPosition, first, true, cancellationToken, gameGeneration);
-            await Task.Delay(gameSettings.Options.CardFlipDelayMs, cancellationToken);
+            await ExecuteCardFlipAsync(turn.FirstPosition, first, true, gameGeneration, cancellationToken);
+            // The first reveal is a separate visual phase. Yield to the
+            // renderer; CardFlipDelayMs belongs to the mismatch visible phase.
+            await Task.Yield();
             MemoryCard second = CurrentCards.Single(c => c.Key == turn.SecondPosition).Value;
-            await ExecuteCardFlipAsync(turn.SecondPosition, second, true, cancellationToken, gameGeneration);
+            await ExecuteCardFlipAsync(turn.SecondPosition, second, true, gameGeneration, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -288,6 +310,14 @@ public sealed class GameService : IGameService, IAsyncDisposable
 
     private async Task EndGameAsync(bool won, int gameGeneration)
     {
+        lock (_lifecycleLock)
+        {
+            if (gameGeneration != _gameGeneration || _endedGeneration == gameGeneration)
+                return;
+
+            _endedGeneration = gameGeneration;
+        }
+
         _gameCancellation?.Cancel();
         aiService.CancelPendingTurn();
         SetTurn(GameTurn.Player);
