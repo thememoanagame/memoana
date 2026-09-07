@@ -60,7 +60,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
 
     public async Task StartGameAsync(int difficulty, string theme, string mode = "1")
     {
-       (int pairCount, int totalSeconds)  = PresetGame(difficulty, theme, mode);
+        (int pairCount, int totalSeconds) = PresetGame(difficulty, theme, int.TryParse(mode, out var game_mode) ? game_mode : 1);
 
         gameSettings = GameSettingsDto.FromEntity((await settingsRepository.ListTrackedAsync(x => x != null, null!, CancellationToken.None))
                    .Single() ?? new());
@@ -102,7 +102,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
             _gameTimer.Start();
     }
 
-    private (int pairCount, int totalSeconds) PresetGame(int difficulty, string theme, string mode)
+    private (int pairCount, int totalSeconds) PresetGame(int difficulty, string theme, int mode)
     {
         _gameCancellation?.Cancel();
         _gameCancellation?.Dispose();
@@ -115,7 +115,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         _isAiTurn = false;
         _currentTheme = theme;
         _currentDifficulty = (GameDifficulty)difficulty;
-        CurrentMode = Enum.TryParse<GameMode>(mode, out var parsedMode) ? parsedMode : GameMode.TimeAttack;
+        CurrentMode = (GameMode)mode;
         _totalMoves = 0;
         _successfulMoves = 0;
         _mistakes = 0;

@@ -71,17 +71,16 @@ public sealed class AIService : IAIService
 
             var firstCandidates = pair is null
                 ? available
-                : available.Where(c => c.Key != pair.FirstPosition &&
-                    c.Key != pair.SecondPosition).ToList();
+                : [.. available.Where(c => c.Key != pair.FirstPosition &&
+                    c.Key != pair.SecondPosition)];
             var first = Pick(firstCandidates.Count > 0 ? firstCandidates : available);
             var secondOptions = available.Where(c => c.Key != first.Key).ToList();
             if (pair is not null)
-                secondOptions = secondOptions.Where(c => c.Key != pair.FirstPosition &&
-                    c.Key != pair.SecondPosition).ToList();
+                secondOptions = [.. secondOptions.Where(c => c.Key != pair.FirstPosition &&
+                    c.Key != pair.SecondPosition)];
 
             return new AITurn(first.Key,
-                Pick(secondOptions.Count > 0 ? secondOptions : available
-                    .Where(c => c.Key != first.Key).ToList()).Key);
+                Pick(secondOptions.Count > 0 ? secondOptions : [.. available.Where(c => c.Key != first.Key)]).Key);
         }
         catch (OperationCanceledException)
         {
