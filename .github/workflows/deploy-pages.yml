@@ -28,8 +28,7 @@ jobs:
 
     - name: Setup base path
       run: |
-        sed -i 's/<base href="\/" \/>/<base href="\/MemoAna\/" \/>/g' ${{ github.workspace }}/release/wwwroot/index.html
-        
+        sed -i 's/<base href="\/" \/>/<base href="\/memoana\/" \/>/g' ${{ github.workspace }}/release/wwwroot/index.html
         touch ${{ github.workspace }}/release/wwwroot/.nojekyll
         
     - name: Deploy to GitHub Pages
