@@ -1,4 +1,4 @@
-name: Continuous [Integration | Testing | Deployment]]
+name: Continuous [Integration | Testing | Deployment]
 
 on:
   push:
@@ -23,28 +23,21 @@ jobs:
         dotnet-version: '10.0.x' 
 
     - name: Install ReportGenerator
-      run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
+      run: dotnet tool install --global dotnet-reportgenerator-globaltool 
     
     - name: Build
       run: dotnet build ./MemoAna.Backend.slnx -c Release 
 
     - name: Test
-      run: dotnet test ./tests/web/MemoAna.Backend.UnitTests/MemoAna.Backend.UnitTests.csproj -c Release --no-build 
-
-    - name: Test with Coverlet
       id: test
       shell: pwsh
       continue-on-error: true
       run: |
-        New-Item -ItemType Directory -Force -Path artifacts/test-results | Out-Null
+        New-Item -ItemType Directory -Force -Path ./artifacts/ | Out-Null
         $outputFile = Join-Path $env:GITHUB_WORKSPACE 'artifacts/test-output.txt'
-        & dotnet test $env:GITHUB_WORKSPACE/tests/web/MemoAna.Backend.UnitTests/MemoAna.Backend.UnitTests.csproj `
+        & dotnet test $env:GITHUB_WORKSPACE/tests/web/MemoAna.Backend.UnitTests/MemoAna.Backend.UnitTests.csproj --no-build`
           --configuration Release `
-          --no-restore `
-          --collect:"XPlat Code Coverage" `
-          --settings $env:GITHUB_WORKSPACE/tests/web/MemoAna.Backend.UnitTests/coverlet.runsettings `
-          --results-directory $env:GITHUB_WORKSPACE/artifacts/test-results `
-          --logger "trx;LogFileName=test-results.trx" 2>&1 | Tee-Object -FilePath $outputFile
+          --results-directory $env:GITHUB_WORKSPACE/artifacts 2>&1 | Tee-Object -FilePath $outputFile
         $exitCode = $LASTEXITCODE
         "dotnet test exit code: $exitCode" | Add-Content -Path $outputFile
         "TEST_EXIT_CODE=$exitCode" | Out-File -FilePath artifacts/test-exit-code.txt -Encoding utf8
@@ -54,17 +47,16 @@ jobs:
       if: always()
       with:
         name: 'Continuous Test Results'
-        path: './artifacts/test-results/*.trx'
+        path: './artifacts/*.trx'
         reporter: 'dotnet-trx'
 
     - name: Generate coverage report
       if: always()
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Force -Path artifacts/coverage | Out-Null
-        $coverageFiles = @(Get-ChildItem -Path artifacts/test-results -Filter coverage.cobertura.xml -Recurse -File -ErrorAction SilentlyContinue)
+        $coverageFiles = @(Get-ChildItem -Path "$env:GITHUB_WORKSPACE/artifacts" -Filter 'coverage*.xml' -Recurse -File -ErrorAction SilentlyContinue)
         if ($coverageFiles.Count -gt 0) {
-          reportgenerator -reports:"artifacts/test-results/**/coverage.cobertura.xml" -targetdir:"artifacts/coverage" -reporttypes:"MarkdownSummary;Cobertura"
+          dotnet tool run reportgenerator -reports:"./artifacts/*.xml" -targetdir:"./artifacts" "-reporttypes:Markdown;cobertura" "-assemblyfilters:+MemoAna.Backend*;-FluentValidation*;-Mediator*" "-classfilters:+*;-AspNetCoreGeneratedDocument*;-*Components*;-*.Components.*;-*.Pages.*;-*.Layout.*;-*.Shared.*;-*.Migrations.*" "-filefilters:-**/*.razor;-**/*.razor.cs;-**/obj/**/*.cs;-**/*.g.cs;-**/*LoggerMessageGenerator*/*"
         } else {
           "# Coverage report unavailable`n`nCoverlet did not produce a coverage XML file." | Out-File artifacts/coverage/Summary.md -Encoding utf8
         }
@@ -73,18 +65,13 @@ jobs:
       if: always()
       shell: pwsh
       run: |
-        $coverageFiles = @(Get-ChildItem -Path "$env:GITHUB_WORKSPACE/artifacts/test-results" -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-          Get-ChildItem -Path $_.FullName -Filter coverage.cobertura.xml -File -ErrorAction SilentlyContinue
-        })
-
-        if ($coverageFiles.Count -eq 0) {
-          "## Coverage gate`n`nNo Coverlet XML was found under the test-results GUID subdirectories." | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-          Write-Error "Coverage data was not produced."
+        $coverageFile = Join-Path $env:GITHUB_WORKSPACE 'artifacts/Cobertura.xml'
+        if (-not (Test-Path $coverageFile)) {
+          "## Coverage gate`n`nThe filtered ReportGenerator Cobertura report was not produced." | Out-File $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          Write-Error "Filtered coverage data was not produced."
           return
         }
-
-        $coverageFile = $coverageFiles | Select-Object -First 1
-        [xml]$coverage = Get-Content $coverageFile.FullName
+        [xml]$coverage = Get-Content $coverageFile
         $lineRate = [double]$coverage.coverage.'line-rate' * 100
         $branchRate = [double]$coverage.coverage.'branch-rate' * 100
 
@@ -99,14 +86,17 @@ jobs:
         "LINE_COVERAGE=$([math]::Round($lineRate, 2))" | Out-File artifacts/line-rate.txt -Encoding utf8
         "BRANCH_COVERAGE=$([math]::Round($branchRate, 2))" | Out-File artifacts/branch-rate.txt -Encoding utf8
 
-        if ($lineRate -lt 80 -or $branchRate -lt 80) {
-          Write-Error "Coverage gate failed. Line coverage: $([math]::Round($lineRate, 2))%; Branch coverage: $([math]::Round($branchRate, 2))%; minimum: 80%."
+        if ($lineRate -lt 80) {
+          Write-Error "Line coverage gate failed. `nLine coverage: $([math]::Round($lineRate, 2))%; minimum: 80%."
+        }
+        if ($branchRate -lt 80) {
+          Write-Error "Branch coverage gate failed. `nBranch coverage: $([math]::Round($branchRate, 2))%; minimum: 80%."
         }
 
     - name: Append test execution report
       if: always()
       shell: pwsh
-      run: if (Test-Path artifacts/coverage/Summary.md) { Get-Content artifacts/coverage/Summary.md | Add-Content $env:GITHUB_STEP_SUMMARY } else { Add-Content $env:GITHUB_STEP_SUMMARY 'Coverage report was not generated.' }
+      run: if (Test-Path artifacts/Summary.md) { Get-Content artifacts/Summary.md | Add-Content $env:GITHUB_STEP_SUMMARY } else { Add-Content $env:GITHUB_STEP_SUMMARY 'Coverage report was not generated.' }
 
     - name: Upload test and coverage reports
       if: always()
@@ -124,8 +114,6 @@ jobs:
           $exitCode = [int](Get-Content artifacts/test-exit-code.txt -Raw).Replace('TEST_EXIT_CODE=', '').Trim()
           if ($exitCode -ne 0) { Write-Error "dotnet test failed with exit code $exitCode." }
         }
-
-
     
   mobile-integration-test:
     name: Mobile (${{ matrix.workload }})

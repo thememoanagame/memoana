@@ -23,17 +23,18 @@ jobs:
         dotnet-version: '10.0.x' 
 
     - name: Publish
-      run: dotnet publish ./src/docs/memoana.github.io/memoana.github.io.csproj -c Release -o release /p:BlazorEnableCompression=false
+      working-directory: ${{ github.workspace }}/src/docs/memoana.github.io/
+      run: dotnet publish ./memoana.github.io.csproj -c Release -o ${{ github.workspace }}/release /p:BlazorEnableCompression=false
 
     - name: Setup base path
       run: |
-        sed -i 's/<base href="\/" \/>/<base href="\/MemoAna\/" \/>/g' release/wwwroot/index.html
+        sed -i 's/<base href="\/" \/>/<base href="\/MemoAna\/" \/>/g' ${{ github.workspace }}/release/wwwroot/index.html
         
-        touch release/wwwroot/.nojekyll
+        touch ${{ github.workspace }}/release/wwwroot/.nojekyll
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
-        folder: release/wwwroot 
+        folder: ${{ github.workspace }}/release/wwwroot 
         branch: gh-pages 
         clean: true 

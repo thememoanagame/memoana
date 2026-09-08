@@ -8,6 +8,7 @@ using MemoAna.Common.Repositories;
 using MemoAna.Common.Services;
 using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Services;
+using MemoAna.Game.Models;
 using MemoAna.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,6 +43,8 @@ public static class MauiAppBuilderExtensions
         private MauiAppBuilder AddApplication()
         {
             builder.Services.AddSingleton<IGameService, GameService>();
+            builder.Services.AddSingleton<IAIService, AIService>();
+            builder.Services.AddSingleton<IRandomSource, RandomSource>();
             builder.Services.AddScoped<IImageConverterService, ImageConverterService>();
             builder.Services.AddScoped<MemoryCard>();
             return builder;

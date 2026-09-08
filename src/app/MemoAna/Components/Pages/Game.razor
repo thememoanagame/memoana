@@ -3,41 +3,36 @@
 @implements IAsyncDisposable
 @inject ILogger<Game> logger
 @inject IThemeService themeService
+<div class="game-page">
+    <img src="images/empty.png" class="game-background" alt="" />
 
-@if (IsSelecting)
-{
-    <div class="game-selection-page">
-        <img src="images/empty.png" class="selection-background" alt="" />
+    @if (IsBusy)
+    {
+        <div class="loading-container">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Warning" />
+            <MudText Class="loading-text">Preparando Tabuleiro...</MudText>
+        </div>
+    }
+    else if (IsSelecting)
+    {
 
         <div class="difficulty-section">
             <MudText Class="selection-title">
                 @Localizer["Difficulty"]
             </MudText>
 
-            <MudToggleGroup T="string"
-                            Class="selection-options"
-                            Value="@Difficulty"
-                            ValueChanged="OnDifficultyChanged"
-                            CheckMark="true"
-                            Vertical="false"
-                            Outlined
-                            Color="Color.Surface">
-                <MudToggleItem T="string"
-                               Class="selection-button"
-                               SelectedIcon="@Icons.Material.TwoTone.Check"
-                               Value="@("0")">
+            <MudToggleGroup T="string" Class="selection-options" Value="@Difficulty" ValueChanged="OnDifficultyChanged"
+                            CheckMark="true" Vertical="false" Outlined Color="Color.Surface">
+                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-easy"
+                               SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("0")">
                     @Localizer["Starter"]
                 </MudToggleItem>
-                <MudToggleItem T="string"
-                               Class="selection-button"
-                               SelectedIcon="@Icons.Material.TwoTone.Check"
-                               Value="@("1")">
+                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-medium"
+                               SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("1")">
                     @Localizer["Medium"]
                 </MudToggleItem>
-                <MudToggleItem T="string"
-                               Class="selection-button"
-                               SelectedIcon="@Icons.Material.TwoTone.Check"
-                               Value="@("2")">
+                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-hard"
+                               SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("2")">
                     @Localizer["Hard"]
                 </MudToggleItem>
             </MudToggleGroup>
@@ -46,35 +41,24 @@
                 @Localizer["GameMode"]
             </MudText>
 
-            <MudToggleGroup T="string"
-                            Class="selection-options"
-                            @bind-Value="Mode"
-                            CheckMark="true"
-                            Vertical="false"
-                            Outlined
-                            Color="Color.Surface">
-                <MudToggleItem T="string"
-                               Class="selection-button"
-                               SelectedIcon="@Icons.Material.Filled.Computer"
-                               UnselectedIcon="@Icons.Material.TwoTone.Computer"
+            <MudToggleGroup T="string" Class="selection-options" @bind-Value="Mode" CheckMark="true" Vertical="false"
+                            Outlined Color="Color.Surface">
+                <MudToggleItem T="string" Class="selection-button" data-testid="mode-ai"
+                               SelectedIcon="@Icons.Material.Filled.Computer" UnselectedIcon="@Icons.Material.TwoTone.Computer"
                                Value="@("0")">
                     <MudText Align="Align.Center" Typo="Typo.caption">
                         @Localizer["IA"]
                     </MudText>
                 </MudToggleItem>
-                <MudToggleItem T="string"
-                               Class="selection-button"
-                               SelectedIcon="@Icons.Material.Filled.Timer"
-                               UnselectedIcon="@Icons.Material.TwoTone.Timer"
+                <MudToggleItem T="string" Class="selection-button" data-testid="mode-time-attack"
+                               SelectedIcon="@Icons.Material.Filled.Timer" UnselectedIcon="@Icons.Material.TwoTone.Timer"
                                Value="@("1")">
                     <MudText Align="Align.Center" Typo="Typo.caption">
                         @Localizer["TimeAttack"]
                     </MudText>
                 </MudToggleItem>
-                <MudToggleItem T="string"
-                               Class="selection-button"
-                               SelectedIcon="@Icons.Material.Filled.PersonAdd"
-                               UnselectedIcon="@Icons.Material.TwoTone.PersonAdd"
+                <MudToggleItem T="string" Class="selection-button" data-testid="mode-pvp"
+                               SelectedIcon="@Icons.Material.Filled.PersonAdd" UnselectedIcon="@Icons.Material.TwoTone.PersonAdd"
                                Value="@("2")">
                     <MudText Align="Align.Center" Typo="Typo.caption">
                         @Localizer["PVP"]
@@ -96,23 +80,17 @@
             }
             else
             {
-                <MudCarousel TData="CardThemeManifestDto"
-                             ItemsSource="@Themes"
-                             Class="theme-carousel"
-                             Style="height:70vh;"
-                             @bind-SelectedIndex="selectedIndex"
-                             AutoCycle="false"
-                             EnableSwipeGesture="true"
-                             ShowArrows="true"
-                             ShowBullets="true"                  
-                             BulletsColor="Color.Surface"
-                             ArrowsColor="Color.Surface">
+                <MudCarousel TData="CardThemeManifestDto" ItemsSource="@Themes" Class="theme-carousel" Style="height:70vh;"
+                             @bind-SelectedIndex="selectedIndex" AutoCycle="false" EnableSwipeGesture="true" ShowArrows="true"
+                             ShowBullets="true" BulletsColor="Color.Surface" ArrowsColor="Color.Surface">
                     <ItemTemplate Context="theme">
                         <div class="theme-item">
                             <div class="theme-card-header">
                                 <MudText Class="theme-name">@theme.ThemeName</MudText>
                             </div>
-                            <MudButton Class=@("theme-select-button "+(IsSelected(theme) ? "theme-preview-selected" : string.Empty)) OnClick="@(async () => await SelectThemeAsync(theme))">
+                            <MudButton Class=@("theme-select-button " + (IsSelected(theme) ? "theme-preview-selected" :
+                                                               string.Empty)) data-testid="theme-select-button"
+                                       OnClick="@(async () => await SelectThemeAsync(theme))">
                                 <MudImage Src="@GetThemeImage(theme)" Class="theme-image" Alt="@theme.ThemeName" />
                             </MudButton>
                         </div>
@@ -120,74 +98,75 @@
                 </MudCarousel>
             }
         </div>
-    </div>
-}
-else
-{
-    <div class="game-page">
-        <img src="images/empty.png" class="game-background" alt="" />
-
-        @if (IsBusy)
+    }
+    else if (IsGameActive)
+    {
+        @if (game.CurrentMode == GameMode.IA)
         {
-            <div class="loading-container">
-                <MudProgressCircular Indeterminate="true"
-                                     Size="Size.Large"
-                                     Color="Color.Warning" />
-                <MudText Class="loading-text">Preparando Tabuleiro...</MudText>
-            </div>
+            <MudText Class="game-turn-indicator" data-testid="turn-indicator">@(game.CurrentTurn == GameTurn.AI ? "TURNO DA IA" : "SEU TURNO")</MudText>
         }
-        else if (IsGameActive)
-        {
-            <div class="game-header">
-                <MudText Class="game-header-score">@CurrentScore</MudText>
-                <MudText Class="game-header-moves">@MovesCount</MudText>
-                <MudText Class="game-header-time">@GameTime</MudText>
-            </div>
 
-            <div class="game-board" style="--columns: @Columns">
-                @foreach (KeyValuePair<int, MemoryCard> card in Cards)
-                {
-                    <div class="memory-card" @onclick="() => FlipCard(card.Key, card.Value)">
-                        @if (!card.Value.IsFaceUp)
-                        {
-                            <img src="images/back.png" class="card-image card-back" alt="" />
-                        }
-                        else
-                        {
-                            <img src="@card.Value.CardImage" class="card-image card-face" alt="" />
-                        }
-                    </div>
-                }
-            </div>
-        }
-        else if (IsGameFinished)
-        {
-            <div class="statistics-container">
-                <MudText Class="victory-text">@IsVictory</MudText>
-                <div class="statistics-grid">
-                    <MudText Class="statistic-value statistic-left">@Statistics.ThemeName</MudText>
-                    <MudText Class="statistic-value statistic-right">@Statistics.Difficulty</MudText>
-                    <MudText Class="statistic-value statistic-center">@Statistics.PlayedAt</MudText>
-                    <MudText Class="statistic-label">ACERTOS</MudText>
-                    <MudText Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
-                    <MudText Class="statistic-label">ERROS</MudText>
-                    <MudText Class="statistic-value statistic-right">@Statistics.Mistakes</MudText>
-                    <MudText Class="statistic-label">SOMA</MudText>
-                    <MudText Class="statistic-value statistic-right">@Statistics.TotalMoves</MudText>
-                    <MudText Class="statistic-label">PONTOS</MudText>
-                    <MudText Class="statistic-value statistic-right">@CurrentScore</MudText>
-                    <MudText Class="statistic-label">TOTAL</MudText>
-                    <MudText Class="statistic-value statistic-right">@Statistics.FinalScore</MudText>
+        <div class="game-header">
+            <MudText Class="game-header-score">@CurrentScore</MudText>
+            <MudText Class="game-header-moves">@MovesCount</MudText>
+            @if (game.CurrentMode == GameMode.TimeAttack)
+            {
+                <MudText Class="game-header-time" data-testid="game-time">@GameTime</MudText>
+            }
+        </div>
+
+        <div class="game-board" style="--columns: @Columns">
+            @foreach (KeyValuePair<int, MemoryCard> card in Cards)
+            {
+                <div class="memory-card" data-testid=@($"card-{card.Key}") @onclick="() => FlipCard(card.Key, card.Value)">
+                    @if (!card.Value.IsFaceUp)
+                    {
+                        <img src="images/back.png" class="card-image card-back" alt="" />
+                    }
+                    else
+                    {
+                        <img src="@card.Value.CardImage" class="card-image card-face" alt="" />
+                    }
                 </div>
+            }
+        </div>
+    }
+    else if (IsGameFinished)
+    {
+        <div class="statistics-container">
+            @if (game.CurrentMode == GameMode.IA)
+            {
+                <MudText Class="victory-text ia-result-title" data-testid="ia-result-title">@(Statistics.IsVictory ? "VOCÊ VENCEU!" : "VOCÊ PERDEU!")</MudText>
+                <MudText Class="ia-result-subtitle">@(Statistics.IsVictory ? "Você derrotou a IA." : "A IA venceu esta partida.")</MudText>
+            }
+            else
+            {
+                <MudText Class="victory-text">@IsVictory</MudText>
+            }
+            <div class="statistics-grid">
+                <MudText Class="statistic-value statistic-left">@Statistics.ThemeName</MudText>
+                <MudText Class="statistic-value statistic-right">@Statistics.Difficulty</MudText>
+                <MudText Class="statistic-value statistic-center">@Statistics.PlayedAt</MudText>
+                <MudText Class="statistic-label">ACERTOS</MudText>
+                <MudText Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
+                <MudText Class="statistic-label">ERROS</MudText>
+                <MudText Class="statistic-value statistic-right">@Statistics.Mistakes</MudText>
+                <MudText Class="statistic-label">JOGADAS</MudText>
+                <MudText Class="statistic-value statistic-right">@Statistics.TotalMoves</MudText>
+                <MudText Class="statistic-label">PONTOS</MudText>
+                <MudText Class="statistic-value statistic-right">@CurrentScore</MudText>
+                <MudText Class="statistic-label">TOTAL</MudText>
+                <MudText Class="statistic-value statistic-right">@Statistics.FinalScore</MudText>
             </div>
+        </div>
 
-            <div class="game-actions">
-                <MudButton Class="game-action-button" OnClick="GoToMain">INICIO</MudButton>
-                <MudButton Class="game-action-button game-action-repeat" OnClick="RestartGame">REPETIR</MudButton>
-            </div>
-        }
-    </div>
-}
+        <div class="game-actions">
+            <MudButton Class="game-action-button" OnClick="GoToMain">INICIO</MudButton>
+            <MudButton Class="game-action-button game-action-repeat" OnClick="RestartGame">REPETIR</MudButton>
+        </div>
+    }
+
+</div>
 
 @code {
     private bool IsSelecting { get; set; } = true;
@@ -215,6 +194,7 @@ else
 
     private GameStatisticsDto Statistics { get; set; } = GameStatisticsDto.Default;
     private bool _eventsAttached;
+    private int _renderScheduled;
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,11 +210,10 @@ else
     private async Task SelectThemeAsync(CardThemeManifestDto theme)
     {
         SelectedTheme = theme;
-        await InvokeAsync(StateHasChanged);
 
         if (string.IsNullOrWhiteSpace(Difficulty))
             return;
-
+       
         await StartSelectedGameAsync();
     }
 
@@ -264,6 +243,7 @@ else
             IEnumerable<CardThemeManifestDto> themes = await themeService.GetThemesAsync();
 
             Themes.Clear();
+            await InvokeAsync(StateHasChanged);
             foreach (CardThemeManifestDto theme in themes)
                 Themes.Add(theme);
 
@@ -280,65 +260,82 @@ else
         }
     }
 
-    private async Task StartSelectedGameAsync()
+    private Task StartSelectedGameAsync()
     {
-        if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level))
-            return;
-
-        IsBusy = true;
+        if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level) || Mode == "2")
+            return Task.CompletedTask;
+        
+        logger.LogInformation("Preparing game for start...");
         IsSelecting = false;
-        await InvokeAsync(StateHasChanged);
-
         IsGameActive = false;
         IsGameFinished = false;
         IsVictory = string.Empty;
         Statistics = GameStatisticsDto.Default;
         Cards.Clear();
-
-        try
+        IsBusy = true;
+        // The event handler will complete here, and Blazor will implicitly trigger StateHasChanged()
+        
+        _ = Task.Run(async () =>
         {
-            ConfigureGridGeometry(level);
-            Theme = SelectedTheme.ThemeName;
+            try
+            {
+                ConfigureGridGeometry(level);
+                string themeName = SelectedTheme.ThemeName;
+                
+                // Do the heavy background loading off the UI thread
+                await game.StartGameAsync(level, themeName, Mode);
 
-            AttachGameEvents();
+                await InvokeAsync(() =>
+                {
+                    Theme = themeName;
+                    AttachGameEvents();
+                    foreach (KeyValuePair<int, MemoryCard> card in game.CurrentCards)
+                        Cards.Add(card);
 
-            await game.StartGameAsync(level, Theme);
+                    GameTime = game.CurrentMode == GameMode.TimeAttack
+                                    ? TimeSpan.FromSeconds(GetInitialTime(level)).ToString("mm\\:ss")
+                                    : "--:--";
+                    CurrentScore = game.CurrentScore.ToString("D3");
+                    MovesCount = game.TotalMoves.ToString();
+                });
+                
+                await audio.StopAsync();
+                await audio.PlayMainGameAsync();
+                
+                await InvokeAsync(() =>
+                {
+                    IsGameActive = true;
+                });
+                
+                logger.LogInformation(
+                    "Game initialized. Theme: {Theme}, Difficulty: {Difficulty}, Mode: {Mode}, Cards: {CardCount}",
+                    themeName, level, Mode, Cards.Count);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(
+                    e,
+                    "Error initializing game. Theme: {Theme}, Difficulty: {Difficulty}",
+                    SelectedTheme?.ThemeName, Difficulty);
 
-            foreach (KeyValuePair<int, MemoryCard> card in game.CurrentCards)
-                Cards.Add(card);
+                await InvokeAsync(() =>
+                {
+                    IsSelecting = true;
+                    IsGameActive = false;
+                    IsGameFinished = false;
+                });
+            }
+            finally
+            {
+                await InvokeAsync(() =>
+                {
+                    IsBusy = false;
+                    StateHasChanged();
+                });
+            }
+        });
 
-            GameTime = TimeSpan.FromSeconds(GetInitialTime(level)).ToString("mm\\:ss");
-            CurrentScore = game.CurrentScore.ToString("D3");
-            MovesCount = game.TotalMoves.ToString();
-            IsGameActive = true;
-
-            await audio.StopAsync();
-            await audio.PlayMainGameAsync();
-
-            logger.LogInformation(
-                "Game initialized. Theme: {Theme}, Difficulty: {Difficulty}, Mode: {Mode}, Cards: {CardCount}",
-                Theme,
-                level,
-                Mode,
-                Cards.Count);
-        }
-        catch (Exception e)
-        {
-            logger.LogError(
-                e,
-                "Error initializing game. Theme: {Theme}, Difficulty: {Difficulty}",
-                Theme,
-                Difficulty);
-
-            IsSelecting = true;
-            IsGameActive = false;
-            IsGameFinished = false;
-        }
-        finally
-        {
-            IsBusy = false;
-            await InvokeAsync(StateHasChanged);
-        }
+        return Task.CompletedTask;
     }
 
     private static int GetInitialTime(int difficulty) => difficulty switch
@@ -357,24 +354,19 @@ else
         game.GameFinished += OnGameFinished;
         game.TimerTick += OnTimerTick;
         game.CardFlipped += OnCardFlipped;
+        game.TurnChanged += OnTurnChanged;
         _eventsAttached = true;
     }
 
     private async Task FlipCard(int position, MemoryCard card)
     {
-        if (!IsGameActive || card.IsFaceUp || card.IsMatched)
+        if (!IsGameActive || game.IsHumanInteractionBlocked || card.IsFaceUp || card.IsMatched)
             return;
 
-        try
-        {
-            await game.FlipCardAsync(position, card);
-            MovesCount = game.TotalMoves.ToString();
-            CurrentScore = game.CurrentScore.ToString("D3");
-        }
-        finally
-        {
-            await InvokeAsync(StateHasChanged);
-        }
+        await game.FlipCardAsync(position, card);
+        MovesCount = game.TotalMoves.ToString();
+        CurrentScore = game.CurrentScore.ToString("D3");
+        RequestRender();
     }
 
     private void OnTimerTick(object? sender, GameTickEventArgs gameTick)
@@ -412,7 +404,24 @@ else
 
     private void OnCardFlipped(object? sender, GameCardFlippedEventArgs e)
     {
-        _ = InvokeAsync(StateHasChanged);
+        RequestRender();
+    }
+
+    private void OnTurnChanged(object? sender, GameTurnChangedEventArgs e)
+    {
+        RequestRender();
+    }
+
+    private void RequestRender()
+    {
+        if (Interlocked.Exchange(ref _renderScheduled, 1) != 0)
+            return;
+
+        _ = InvokeAsync(() =>
+        {
+            Interlocked.Exchange(ref _renderScheduled, 0);
+            StateHasChanged();
+        });
     }
 
     private void ConfigureGridGeometry(int difficulty)
@@ -430,6 +439,7 @@ else
 
     private void RestartGame()
     {
+        game.ForceStopTimer();
         IsSelecting = true;
         IsGameActive = false;
         IsGameFinished = false;
@@ -445,6 +455,7 @@ else
             game.GameFinished -= OnGameFinished;
             game.TimerTick -= OnTimerTick;
             game.CardFlipped -= OnCardFlipped;
+            game.TurnChanged -= OnTurnChanged;
             _eventsAttached = false;
         }
 
@@ -559,14 +570,14 @@ else
         margin: 30px 0;
     }
 
-    .theme-carousel > .d-flex {
+    .theme-carousel>.d-flex {
         pointer-events: none;
     }
 
-    .theme-carousel > .d-flex button,
-    .theme-carousel > .d-flex .mud-icon-button,
-    .theme-carousel > .d-flex .mud-button-root,
-    .theme-carousel > .d-flex [tabindex] {
+    .theme-carousel>.d-flex button,
+    .theme-carousel>.d-flex .mud-icon-button,
+    .theme-carousel>.d-flex .mud-button-root,
+    .theme-carousel>.d-flex [tabindex] {
         pointer-events: auto;
     }
 
@@ -662,6 +673,18 @@ else
         z-index: 2;
     }
 
+    .game-turn-indicator {
+        position: absolute;
+        top: 105px;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        color: lightgoldenrodyellow;
+        font-family: Bangpop;
+        font-size: 30px;
+        text-align: center;
+    }
+
     .game-header-score,
     .game-header-moves,
     .game-header-time {
@@ -671,9 +694,17 @@ else
         line-height: 1;
     }
 
-    .game-header-score { text-align: left; }
-    .game-header-moves { text-align: center; }
-    .game-header-time { text-align: right; }
+    .game-header-score {
+        text-align: left;
+    }
+
+    .game-header-moves {
+        text-align: center;
+    }
+
+    .game-header-time {
+        text-align: right;
+    }
 
     .game-board {
         position: absolute;
@@ -694,8 +725,13 @@ else
         transition: transform 0.12s ease, filter 0.12s ease;
     }
 
-    .memory-card:hover { filter: brightness(1.05); }
-    .memory-card:active { transform: scale(0.95); }
+    .memory-card:hover {
+        filter: brightness(1.05);
+    }
+
+    .memory-card:active {
+        transform: scale(0.95);
+    }
 
     .card-image {
         width: 100%;
@@ -705,8 +741,13 @@ else
         pointer-events: none;
     }
 
-    .card-face { object-fit: contain; }
-    .card-back { object-fit: cover; }
+    .card-face {
+        object-fit: contain;
+    }
+
+    .card-back {
+        object-fit: cover;
+    }
 
     .statistics-container {
         position: absolute;
@@ -725,6 +766,13 @@ else
         text-shadow: 2px 2px 1px lightgoldenrodyellow;
     }
 
+    .ia-result-subtitle {
+        font-family: Bangpop;
+        color: saddlebrown;
+        font-size: 22px;
+        margin-top: 8px;
+    }
+
     .statistics-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -739,9 +787,18 @@ else
         font-size: 20px;
     }
 
-    .statistic-left { text-align: center; }
-    .statistic-right { text-align: center; }
-    .statistic-center { grid-column: 1 / -1; text-align: center; }
+    .statistic-left {
+        text-align: center;
+    }
+
+    .statistic-right {
+        text-align: center;
+    }
+
+    .statistic-center {
+        grid-column: 1 / -1;
+        text-align: center;
+    }
 
     .game-actions {
         position: absolute;
@@ -769,17 +826,45 @@ else
     }
 
     @@media (max-height: 750px) {
-        .difficulty-section { top: 120px; }
-        .selection-options { gap: 12px; }
-        .selection-button { height: 44px; min-height: 44px; }
-        .theme-section { height: calc(100vh - 350px); }
+        .difficulty-section {
+            top: 120px;
+        }
+
+        .selection-options {
+            gap: 12px;
+        }
+
+        .selection-button {
+            height: 44px;
+            min-height: 44px;
+        }
+
+        .theme-section {
+            height: calc(100vh - 350px);
+        }
     }
 
     @@media (max-width: 600px) {
-        .difficulty-section { top: 120px; }
-        .selection-options { width: 60svw; gap: 15px; }
-        .theme-section { bottom: 10px; }
-        .theme-item { width: 175px; }
-        .theme-select-button { width: 175px; height: 175px; }
+        .difficulty-section {
+            top: 120px;
+        }
+
+        .selection-options {
+            width: 60svw;
+            gap: 15px;
+        }
+
+        .theme-section {
+            bottom: 10px;
+        }
+
+        .theme-item {
+            width: 175px;
+        }
+
+        .theme-select-button {
+            width: 175px;
+            height: 175px;
+        }
     }
 </style>
