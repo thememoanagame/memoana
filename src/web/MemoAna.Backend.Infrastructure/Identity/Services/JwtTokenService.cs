@@ -175,7 +175,7 @@ public sealed class RevokedTokenStore : IRevokedTokenStore
             return true;
         }
 
-        _tokens.TryRemove(tokenId, out _);
+        _ = _tokens.TryRemove(tokenId, out _);
         return false;
     }
 

@@ -11,7 +11,7 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
     /// <summary>Initializes registration validation rules.</summary>
     public RegisterCommandValidator(IIdentityService service)
     {
-        RuleFor(x => x.Email)
+        _ = RuleFor(x => x.Email)
             .NotEmpty()
             .WithMessage("The email cannot be empty.")
             .WithErrorCode("BAD_REQUEST")
@@ -22,7 +22,7 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .WithErrorCode("CONFLICT")
             .WithMessage("The email is already in use");
 
-        RuleFor(x => x.Password)
+        _ = RuleFor(x => x.Password)
             .NotEmpty()
             .WithErrorCode("BAD_REQUEST")
             .WithMessage("The new password cannot be null or empty.")
@@ -41,14 +41,14 @@ public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
     /// <summary>Initializes login validation rules.</summary>
     public LoginCommandValidator()
     {
-        RuleFor(x => x.Email)
+        _ = RuleFor(x => x.Email)
             .NotEmpty()
             .WithMessage("The email cannot be empty.")
             .WithErrorCode("BAD_REQUEST")
             .EmailAddress()
             .WithErrorCode("UNPROCESSABLE_ENTITY")
             .WithMessage("The email address needs to be valid.");
-        RuleFor(x => x.Password)
+        _ = RuleFor(x => x.Password)
             .NotEmpty()
             .WithErrorCode("BAD_REQUEST")
             .WithMessage("The new password cannot be null or empty.")
@@ -58,7 +58,7 @@ public sealed class LoginCommandValidator : AbstractValidator<LoginCommand>
             .Must(pwd => pwd.All(c => char.IsLetter(c) || char.IsDigit(c) || char.IsUpper(c) || char.IsLower(c) || char.IsSymbol(c)))
             .WithErrorCode("UNPROCESSABLE_ENTITY")
             .WithMessage("The password must have at least one letter upper and lower case, one digit and one special character");
-        RuleFor(x => x).Must(x => string.IsNullOrWhiteSpace(x.TwoFactorCode) || string.IsNullOrWhiteSpace(x.TwoFactorRecoveryCode))
+        _ = RuleFor(x => x).Must(x => string.IsNullOrWhiteSpace(x.TwoFactorCode) || string.IsNullOrWhiteSpace(x.TwoFactorRecoveryCode))
             .WithMessage("Only one two-factor authentication code may be supplied.");
     }
 }
@@ -83,8 +83,8 @@ public sealed class ConfirmEmailCommandValidator : AbstractValidator<ConfirmEmai
     /// <summary>Initializes email-confirmation validation rules.</summary>
     public ConfirmEmailCommandValidator()
     {
-        RuleFor(x => x.UserId).NotEmpty();
-        RuleFor(x => x.Code).NotEmpty();
+        _ = RuleFor(x => x.UserId).NotEmpty();
+        _ = RuleFor(x => x.Code).NotEmpty();
     }
 }
 
@@ -122,18 +122,18 @@ public sealed class ResetPasswordCommandValidator : AbstractValidator<ResetPassw
     /// <summary>Initializes password-reset validation rules.</summary>
     public ResetPasswordCommandValidator()
     {
-        RuleFor(x => x.Email)
+        _ = RuleFor(x => x.Email)
             .NotEmpty()
             .WithMessage("The email cannot be empty.")
             .WithErrorCode("BAD_REQUEST")
             .EmailAddress()
             .WithErrorCode("UNPROCESSABLE_ENTITY")
             .WithMessage("The email address needs to be valid.");
-        RuleFor(x => x.ResetCode)
+        _ = RuleFor(x => x.ResetCode)
             .NotEmpty()
             .WithErrorCode("BAD_REQUEST")
             .WithMessage("The reset code cannot be empty");
-        RuleFor(x => x
+        _ = RuleFor(x => x
             .NewPassword)
             .NotEmpty()
             .WithErrorCode("BAD_REQUEST")
@@ -153,10 +153,10 @@ public sealed class UpdateIdentityInfoCommandValidator : AbstractValidator<Updat
     /// <summary>Initializes identity-information validation rules.</summary>
     public UpdateIdentityInfoCommandValidator()
     {
-        RuleFor(x => x.UserId).NotEmpty();
-        RuleFor(x => x.OldPassword).NotEmpty();
-        RuleFor(x => x.NewEmail).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.NewEmail));
-        RuleFor(x => x.NewPassword).MinimumLength(8).When(x => !string.IsNullOrWhiteSpace(x.NewPassword));
+        _ = RuleFor(x => x.UserId).NotEmpty();
+        _ = RuleFor(x => x.OldPassword).NotEmpty();
+        _ = RuleFor(x => x.NewEmail).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.NewEmail));
+        _ = RuleFor(x => x.NewPassword).MinimumLength(8).When(x => !string.IsNullOrWhiteSpace(x.NewPassword));
     }
 }
  

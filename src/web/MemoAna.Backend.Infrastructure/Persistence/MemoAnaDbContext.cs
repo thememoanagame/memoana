@@ -1,10 +1,8 @@
-using System.Linq.Expressions;
 using MemoAna.Backend.Domain.Common;
 using MemoAna.Backend.Infrastructure.Identity.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace MemoAna.Backend.Infrastructure.Persistence;
 
@@ -44,7 +42,7 @@ public sealed class MemoAnaDbContext(DbContextOptions<MemoAnaDbContext> options)
         //         .HasQueryFilter(filter);
         // }
 
-        builder.ApplyConfigurationsFromAssembly(
+        _ = builder.ApplyConfigurationsFromAssembly(
             typeof(MemoAnaDbContext).Assembly);
     }
 

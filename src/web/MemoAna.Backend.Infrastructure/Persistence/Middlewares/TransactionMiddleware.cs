@@ -40,7 +40,7 @@ public sealed class TransactionMiddleware<TMessage,
                 message,
                 cancellationToken);
 
-            await unitOfWork.SaveChangesAsync(
+            _ = await unitOfWork.SaveChangesAsync(
                 cancellationToken);
             await unitOfWork.CommitTransactionAsync(
                 cancellationToken);

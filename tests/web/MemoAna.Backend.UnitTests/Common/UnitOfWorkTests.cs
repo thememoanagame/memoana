@@ -2,7 +2,6 @@ using MemoAna.Backend.Infrastructure.Common.UnitOfWork;
 using MemoAna.Backend.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Common;
 
@@ -21,7 +20,7 @@ public sealed class UnitOfWorkTests
                 .Options;
         await using MemoAnaDbContext context =
             new(options);
-        await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+        _ = await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
         await using UnitOfWork unitOfWork =
             new(context);
 
@@ -55,7 +54,7 @@ public sealed class UnitOfWorkTests
                 .Options;
         await using MemoAnaDbContext context =
             new(options);
-        await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+        _ = await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
         await using UnitOfWork unitOfWork =
             new(context);
 
@@ -79,7 +78,7 @@ public sealed class UnitOfWorkTests
                 .Options;
         await using MemoAnaDbContext context =
             new(options);
-        await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
+        _ = await context.Database.EnsureCreatedAsync(TestContext.Current.CancellationToken);
         UnitOfWork unitOfWork = new(context);
 
         await unitOfWork.BeginTransactionAsync(

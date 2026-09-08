@@ -92,7 +92,7 @@ public sealed class Repository<TEntity>(
         TEntity entity,
         CancellationToken cancellationToken)
     {
-        await dbContext
+        _ = await dbContext
             .Set<TEntity>()
             .AddAsync(entity, cancellationToken);
     }
@@ -100,13 +100,13 @@ public sealed class Repository<TEntity>(
     /// <inheritdoc />
     public void Update(TEntity entity)
     {
-        dbContext.Set<TEntity>().Update(entity);
+        _ = dbContext.Set<TEntity>().Update(entity);
     }
 
     /// <inheritdoc />
     public void Remove(TEntity entity)
     {
-        dbContext.Set<TEntity>().Remove(entity);
+        _ = dbContext.Set<TEntity>().Remove(entity);
     }
 
     /// <inheritdoc />

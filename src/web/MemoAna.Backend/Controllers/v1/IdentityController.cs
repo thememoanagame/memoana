@@ -59,6 +59,25 @@ public sealed class IdentityController(
             : Unauthorized(result);
     }
 
+    /// <summary>Authenticates a user via Google Play Games.</summary>
+    [HttpPost("/login/google-play-games")]
+    [AllowAnonymous]
+    [ProducesResponseType<TokenResponse>(200)]
+    [ProducesResponseType<Response<TokenResponse>>(401)]
+    public async Task<IActionResult> GooglePlayGamesLogin(
+        GooglePlayGamesLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        Response<TokenResponse> result =
+            await mediator.Send(
+                new GooglePlayGamesLoginCommand(
+                    request.ServerAuthCode),
+                cancellationToken);
+        return result.Succeeded
+            ? Ok(result.Data)
+            : Unauthorized(result);
+    }
+
     /// <summary>Refreshes authentication tokens.</summary>
     [HttpPost("/refresh")]
     [AllowAnonymous]

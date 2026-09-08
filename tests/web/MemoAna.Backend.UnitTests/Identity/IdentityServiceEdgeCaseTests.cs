@@ -1,7 +1,5 @@
 using MemoAna.Backend.Application.Identity.Responses;
 using MemoAna.Backend.Infrastructure.Identity.Models;
-using MemoAna.Backend.UnitTests.Common.ConfiguredFixtures;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
@@ -12,7 +10,7 @@ public sealed class IdentityServiceEdgeCaseTests
     public async Task ResendConfirmation_ConfirmedUser_SucceedsWithoutSending()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("confirmed@example.com");
+        _ = await fixture.CreateUserAsync("confirmed@example.com");
 
         IdentityResultResponse result = await fixture.Service
             .ResendConfirmationEmailAsync(
@@ -45,7 +43,7 @@ public sealed class IdentityServiceEdgeCaseTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "twofactor-reset@example.com");
-        await fixture.UserManager.SetTwoFactorEnabledAsync(
+        _ = await fixture.UserManager.SetTwoFactorEnabledAsync(
             user, true);
 
         TwoFactorResponse? result = await fixture.Service
@@ -82,8 +80,8 @@ public sealed class IdentityServiceEdgeCaseTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "twofactor-whitespace@example.com");
-        await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
-        await fixture.UserManager.SetTwoFactorEnabledAsync(
+        _ = await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
+        _ = await fixture.UserManager.SetTwoFactorEnabledAsync(
             user, true);
 
         TokenResponse? result = await fixture.Service.LoginAsync(

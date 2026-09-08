@@ -1,5 +1,4 @@
 using MemoAna.Backend.Infrastructure.Identity.Models;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
@@ -47,6 +46,6 @@ public sealed class IdentityModelTests
         Assert.True(role.IsDeleted);
         Assert.Equal("system", role.CreatedBy);
         Assert.Equal("system", role.UpdatedBy);
-        Assert.NotNull(role.DeletedAt);
+        _ = Assert.NotNull(role.DeletedAt);
     }
 }

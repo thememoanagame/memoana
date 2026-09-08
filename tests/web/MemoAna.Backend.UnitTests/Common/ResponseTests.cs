@@ -1,5 +1,4 @@
 using MemoAna.Backend.Application.Common.Responses;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Common;
 
@@ -19,7 +18,7 @@ public sealed class ResponseTests
         Assert.True(success.Succeeded);
         Assert.Equal("data", success.Data);
         Assert.False(enumerableFailure.Succeeded);
-        Assert.Single(enumerableFailure.Errors);
+        _ = Assert.Single(enumerableFailure.Errors);
         Assert.False(paramsFailure.Succeeded);
         Assert.Equal(2, paramsFailure.Errors.Count);
     }

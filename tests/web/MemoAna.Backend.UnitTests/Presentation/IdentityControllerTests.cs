@@ -10,7 +10,6 @@ using Mediator;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Presentation;
 
@@ -21,7 +20,7 @@ public sealed class IdentityControllerTests
     public async Task Register_Success_ReturnsOk()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<RegisterCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -32,14 +31,14 @@ public sealed class IdentityControllerTests
             new RegisterRequest("a@b.com", "Password1!"),
             CancellationToken.None);
 
-        Assert.IsType<OkResult>(result);
+        _ = Assert.IsType<OkResult>(result);
     }
 
     [Fact]
     public async Task Register_Failure_ReturnsBadRequest()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<RegisterCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -50,7 +49,7 @@ public sealed class IdentityControllerTests
             new RegisterRequest("a@b.com", "Password1!"),
             CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        _ = Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
@@ -58,7 +57,7 @@ public sealed class IdentityControllerTests
     {
         Mock<IMediator> mediator = new();
         TokenResponse token = new("Bearer", "access", 300, "refresh");
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<LoginCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<TokenResponse>>(
@@ -81,7 +80,7 @@ public sealed class IdentityControllerTests
     public async Task Login_Failure_ReturnsUnauthorized()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<LoginCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<TokenResponse>>(
@@ -92,7 +91,7 @@ public sealed class IdentityControllerTests
             new LoginRequest("a@b.com", "bad", null, null),
             CancellationToken.None);
 
-        Assert.IsType<UnauthorizedObjectResult>(result);
+        _ = Assert.IsType<UnauthorizedObjectResult>(result);
     }
 
     [Fact]
@@ -100,7 +99,7 @@ public sealed class IdentityControllerTests
     {
         Mock<IMediator> mediator = new();
         TokenResponse token = new("Bearer", "access", 300, "refresh");
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<RefreshTokenCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<TokenResponse>>(
@@ -111,14 +110,14 @@ public sealed class IdentityControllerTests
             new RefreshRequest("refresh"),
             CancellationToken.None);
 
-        Assert.IsType<OkObjectResult>(result);
+        _ = Assert.IsType<OkObjectResult>(result);
     }
 
     [Fact]
     public async Task Refresh_Failure_ReturnsUnauthorized()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<RefreshTokenCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<TokenResponse>>(
@@ -129,14 +128,14 @@ public sealed class IdentityControllerTests
             new RefreshRequest("refresh"),
             CancellationToken.None);
 
-        Assert.IsType<UnauthorizedObjectResult>(result);
+        _ = Assert.IsType<UnauthorizedObjectResult>(result);
     }
 
     [Fact]
     public async Task Revoke_True_ReturnsOk()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<RevokeTokenCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<bool>>(
@@ -147,14 +146,14 @@ public sealed class IdentityControllerTests
         IActionResult result = await controller.Revoke(
             CancellationToken.None);
 
-        Assert.IsType<OkResult>(result);
+        _ = Assert.IsType<OkResult>(result);
     }
 
     [Fact]
     public async Task Revoke_False_ReturnsUnauthorized()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<RevokeTokenCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<bool>>(
@@ -164,14 +163,14 @@ public sealed class IdentityControllerTests
         IActionResult result = await controller.Revoke(
             CancellationToken.None);
 
-        Assert.IsType<UnauthorizedObjectResult>(result);
+        _ = Assert.IsType<UnauthorizedObjectResult>(result);
     }
 
     [Fact]
     public async Task ConfirmEmail_True_ReturnsOk()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ConfirmEmailCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<bool>>(
@@ -184,14 +183,14 @@ public sealed class IdentityControllerTests
             null,
             CancellationToken.None);
 
-        Assert.IsType<OkResult>(result);
+        _ = Assert.IsType<OkResult>(result);
     }
 
     [Fact]
     public async Task ConfirmEmail_False_ReturnsBadRequest()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ConfirmEmailCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<bool>>(
@@ -204,14 +203,14 @@ public sealed class IdentityControllerTests
             "new@b.com",
             CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        _ = Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
     public async Task ResendConfirmation_Success_ReturnsOk()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ResendConfirmationEmailCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -222,14 +221,14 @@ public sealed class IdentityControllerTests
             new EmailRequest("a@b.com"),
             CancellationToken.None);
 
-        Assert.IsType<OkObjectResult>(result);
+        _ = Assert.IsType<OkObjectResult>(result);
     }
 
     [Fact]
     public async Task ResendConfirmation_Failure_ReturnsBadRequest()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ResendConfirmationEmailCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -240,14 +239,14 @@ public sealed class IdentityControllerTests
             new EmailRequest("a@b.com"),
             CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        _ = Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
     public async Task ForgotPassword_Success_ReturnsOk()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ForgotPasswordCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -258,14 +257,14 @@ public sealed class IdentityControllerTests
             new EmailRequest("a@b.com"),
             CancellationToken.None);
 
-        Assert.IsType<OkResult>(result);
+        _ = Assert.IsType<OkResult>(result);
     }
 
     [Fact]
     public async Task ForgotPassword_Failure_ReturnsBadRequest()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ForgotPasswordCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -276,14 +275,14 @@ public sealed class IdentityControllerTests
             new EmailRequest("a@b.com"),
             CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        _ = Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
     public async Task ResetPassword_Success_ReturnsOk()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ResetPasswordCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -297,14 +296,14 @@ public sealed class IdentityControllerTests
                 "Password2!"),
             CancellationToken.None);
 
-        Assert.IsType<OkResult>(result);
+        _ = Assert.IsType<OkResult>(result);
     }
 
     [Fact]
     public async Task ResetPassword_Failure_ReturnsBadRequest()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ResetPasswordCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -315,7 +314,7 @@ public sealed class IdentityControllerTests
             new ResetPasswordRequest("a@b.com", "code", "bad"),
             CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        _ = Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
@@ -327,7 +326,7 @@ public sealed class IdentityControllerTests
         IActionResult result = await controller.GetInfo(
             CancellationToken.None);
 
-        Assert.IsType<UnauthorizedResult>(result);
+        _ = Assert.IsType<UnauthorizedResult>(result);
     }
 
     [Fact]
@@ -335,7 +334,7 @@ public sealed class IdentityControllerTests
     {
         Mock<IMediator> mediator = new();
         IdentityInfoResponse info = new("a@b.com", true);
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<GetIdentityInfoQuery>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<IdentityInfoResponse>>(
@@ -347,7 +346,7 @@ public sealed class IdentityControllerTests
         IActionResult result = await controller.GetInfo(
             CancellationToken.None);
 
-        Assert.IsType<OkObjectResult>(result);
+        _ = Assert.IsType<OkObjectResult>(result);
         mediator.Verify(item => item.Send(
                 It.Is<GetIdentityInfoQuery>(query =>
                     query.UserId == "subject"),
@@ -359,7 +358,7 @@ public sealed class IdentityControllerTests
     public async Task GetInfo_MissingUser_ReturnsNotFound()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<GetIdentityInfoQuery>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<IdentityInfoResponse>>(
@@ -371,7 +370,7 @@ public sealed class IdentityControllerTests
         IActionResult result = await controller.GetInfo(
             CancellationToken.None);
 
-        Assert.IsType<NotFoundObjectResult>(result);
+        _ = Assert.IsType<NotFoundObjectResult>(result);
     }
 
     [Fact]
@@ -384,14 +383,14 @@ public sealed class IdentityControllerTests
             new InfoRequest("new@b.com", null, "old"),
             CancellationToken.None);
 
-        Assert.IsType<UnauthorizedResult>(result);
+        _ = Assert.IsType<UnauthorizedResult>(result);
     }
 
     [Fact]
     public async Task UpdateInfo_Success_ReturnsOk()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<UpdateIdentityInfoCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -404,14 +403,14 @@ public sealed class IdentityControllerTests
             new InfoRequest("new@b.com", "Password2!", "Password1!"),
             CancellationToken.None);
 
-        Assert.IsType<OkResult>(result);
+        _ = Assert.IsType<OkResult>(result);
     }
 
     [Fact]
     public async Task UpdateInfo_Failure_ReturnsBadRequest()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<UpdateIdentityInfoCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<IdentityResultResponse>(
@@ -424,7 +423,7 @@ public sealed class IdentityControllerTests
             new InfoRequest("new@b.com", "Password2!", "Password1!"),
             CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        _ = Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
@@ -437,7 +436,7 @@ public sealed class IdentityControllerTests
             new TwoFactorRequest(true, "123456", false, false, false),
             CancellationToken.None);
 
-        Assert.IsType<UnauthorizedResult>(result);
+        _ = Assert.IsType<UnauthorizedResult>(result);
     }
 
     [Fact]
@@ -450,7 +449,7 @@ public sealed class IdentityControllerTests
             ["code"],
             true,
             false);
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ConfigureTwoFactorCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<TwoFactorResponse>>(
@@ -471,7 +470,7 @@ public sealed class IdentityControllerTests
     public async Task ConfigureTwoFactor_Failure_ReturnsBadRequest()
     {
         Mock<IMediator> mediator = new();
-        mediator.Setup(item => item.Send(
+        _ = mediator.Setup(item => item.Send(
                 It.IsAny<ConfigureTwoFactorCommand>(),
                 It.IsAny<CancellationToken>()))
             .Returns(new ValueTask<Response<TwoFactorResponse>>(
@@ -484,7 +483,7 @@ public sealed class IdentityControllerTests
             new TwoFactorRequest(true, "123456", false, false, false),
             CancellationToken.None);
 
-        Assert.IsType<BadRequestObjectResult>(result);
+        _ = Assert.IsType<BadRequestObjectResult>(result);
     }
 
     private static IdentityController CreateController(

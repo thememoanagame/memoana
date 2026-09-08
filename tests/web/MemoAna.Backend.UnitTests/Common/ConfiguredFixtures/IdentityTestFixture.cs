@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Cryptography;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Common.ConfiguredFixtures;
 
@@ -24,12 +23,12 @@ public sealed class IdentityTestFixture : IDisposable
     {
         EmailSender = new CapturingEmailSender();
         var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddHttpContextAccessor();
-        services.AddAuthentication(options => options.DefaultScheme = IdentityConstants.ApplicationScheme)
+        _ = services.AddLogging();
+        _ = services.AddHttpContextAccessor();
+        _ = services.AddAuthentication(options => options.DefaultScheme = IdentityConstants.ApplicationScheme)
             .AddCookie(IdentityConstants.ApplicationScheme);
-        services.AddDbContext<MemoAnaDbContext>(options => options.UseInMemoryDatabase(Guid.NewGuid().ToString("N")));
-        services.AddIdentityCore<User>(options =>
+        _ = services.AddDbContext<MemoAnaDbContext>(options => options.UseInMemoryDatabase(Guid.NewGuid().ToString("N")));
+        _ = services.AddIdentityCore<User>(options =>
             {
                 options.User.RequireUniqueEmail = true;
                 options.SignIn.RequireConfirmedAccount = true;
@@ -43,7 +42,7 @@ public sealed class IdentityTestFixture : IDisposable
             .AddSignInManager<SignInManager<User>>()
             .AddEntityFrameworkStores<MemoAnaDbContext>()
             .AddDefaultTokenProviders();
-        services.Configure<JwtOptions>(options =>
+        _ = services.Configure<JwtOptions>(options =>
         {
             options.Key = "MemoAna.Backend-test-secret-key-with-at-least-256-bits-2026";
             options.Issuer = "MemoAna.Backend.Test";
@@ -51,13 +50,13 @@ public sealed class IdentityTestFixture : IDisposable
             options.AccessTokenLifetime = TimeSpan.FromMinutes(15);
             options.RefreshTokenLifetime = TimeSpan.FromDays(14);
         });
-        services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
-        services.AddScoped<IJwtTokenService, JwtTokenService>();
-        services.AddSingleton<IIdentityEmailSender>(EmailSender);
-        services.AddScoped<IdentityService>();
+        _ = services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
+        _ = services.AddScoped<IJwtTokenService, JwtTokenService>();
+        _ = services.AddSingleton<IIdentityEmailSender>(EmailSender);
+        _ = services.AddScoped<IdentityService>();
         
         _provider = services.BuildServiceProvider();
-        _provider.GetRequiredService<MemoAnaDbContext>().Database.EnsureCreated();
+        _ = _provider.GetRequiredService<MemoAnaDbContext>().Database.EnsureCreated();
     }
         
     public IdentityService Service => _provider.GetRequiredService<IdentityService>();

@@ -1,5 +1,4 @@
 using MemoAna.Backend.Infrastructure.Identity.Services;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 

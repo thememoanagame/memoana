@@ -1,5 +1,4 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq.Expressions;
 using System.Security.Claims;
 using MemoAna.Backend.Application.Common.Contracts;
 using MemoAna.Backend.Application.Identity.Abstractions;
@@ -341,16 +340,16 @@ public sealed class IdentityService(
                 return null;
             }
 
-            await userManager.SetTwoFactorEnabledAsync(user, true);
+            _ = await userManager.SetTwoFactorEnabledAsync(user, true);
         }
         else if (enable == false || resetSharedKey)
         {
-            await userManager.SetTwoFactorEnabledAsync(user, false);
+            _ = await userManager.SetTwoFactorEnabledAsync(user, false);
         }
 
         if (resetSharedKey)
         {
-            await userManager.ResetAuthenticatorKeyAsync(user);
+            _ = await userManager.ResetAuthenticatorKeyAsync(user);
         }
 
         string[]? recoveryCodes = null;
@@ -362,7 +361,7 @@ public sealed class IdentityService(
         var key = await userManager.GetAuthenticatorKeyAsync(user);
         if (string.IsNullOrWhiteSpace(key))
         {
-            await userManager.ResetAuthenticatorKeyAsync(user);
+            _ = await userManager.ResetAuthenticatorKeyAsync(user);
             key = await userManager.GetAuthenticatorKeyAsync(user);
         }
 

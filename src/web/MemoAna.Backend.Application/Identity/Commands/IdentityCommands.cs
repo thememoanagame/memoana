@@ -26,6 +26,12 @@ public sealed record LoginCommand(
     string? TwoFactorRecoveryCode = null)
     : IRequest<Response<TokenResponse>>;
 
+/// <summary>Requests Google Play Games user authentication.</summary>
+/// <param name="ServerAuthCode">The server authentication code from the client.</param>
+public sealed record GooglePlayGamesLoginCommand(
+    string ServerAuthCode)
+    : IRequest<Response<TokenResponse>>;
+
 /// <summary>Requests a refresh token exchange.</summary>
 /// <param name="RefreshToken">The refresh token.</param>
 public sealed record RefreshTokenCommand(

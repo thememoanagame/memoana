@@ -6,7 +6,6 @@ using MemoAna.Backend.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Common.Fixtures;
 
@@ -19,11 +18,11 @@ public sealed class IdentityTestFixture : IDisposable
     public IdentityTestFixture()
     {
         ServiceCollection services = new();
-        services.AddLogging();
-        services.AddHttpContextAccessor();
-        services.AddDbContext<MemoAnaDbContext>(options =>
+        _ = services.AddLogging();
+        _ = services.AddHttpContextAccessor();
+        _ = services.AddDbContext<MemoAnaDbContext>(options =>
             options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
-        services.AddIdentityCore<User>(options =>
+        _ = services.AddIdentityCore<User>(options =>
         {
             options.Password.RequireDigit = false;
             options.Password.RequireLowercase = false;
@@ -34,9 +33,9 @@ public sealed class IdentityTestFixture : IDisposable
         }).AddRoles<Role>()
         .AddEntityFrameworkStores<MemoAnaDbContext>()
         .AddSignInManager();
-        services.AddScoped<IIdentityEmailSender,
+        _ = services.AddScoped<IIdentityEmailSender,
             TestIdentityEmailSender>();
-        services.Configure<
+        _ = services.Configure<
             JwtOptions>(
             options =>
             {
@@ -45,11 +44,11 @@ public sealed class IdentityTestFixture : IDisposable
                 options.Issuer = "MemoAna.Backend.Tests";
                 options.Audience = "MemoAna.Backend.Tests";
             });
-        services.AddSingleton<IRevokedTokenStore,
+        _ = services.AddSingleton<IRevokedTokenStore,
             RevokedTokenStore>();
-        services.AddScoped<IJwtTokenService,
+        _ = services.AddScoped<IJwtTokenService,
             JwtTokenService>();
-        services.AddScoped<IdentityService>();
+        _ = services.AddScoped<IdentityService>();
         provider = services.BuildServiceProvider();
     }
 

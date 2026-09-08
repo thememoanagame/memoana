@@ -3,9 +3,7 @@ using MemoAna.Backend.Application.Identity.Responses;
 using MemoAna.Backend.Infrastructure.Identity.Models;
 using MemoAna.Backend.Infrastructure.Identity.Options;
 using MemoAna.Backend.Infrastructure.Identity.Services;
-using MemoAna.Backend.UnitTests.Common.ConfiguredFixtures;
 using Microsoft.Extensions.Options;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
@@ -18,11 +16,11 @@ public sealed class IdentityServiceBranchTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "recovery@example.com");
-        await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
+        _ = await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
         string[]? codes = (await fixture.UserManager
             .GenerateNewTwoFactorRecoveryCodesAsync(user, 10))
             ?.ToArray();
-        await fixture.UserManager.SetTwoFactorEnabledAsync(
+        _ = await fixture.UserManager.SetTwoFactorEnabledAsync(
             user, true);
 
         string recoveryCode = codes![0];
@@ -39,8 +37,8 @@ public sealed class IdentityServiceBranchTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "invalid-code@example.com");
-        await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
-        await fixture.UserManager.SetTwoFactorEnabledAsync(
+        _ = await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
+        _ = await fixture.UserManager.SetTwoFactorEnabledAsync(
             user, true);
 
         TokenResponse? result = await fixture.Service.LoginAsync(
@@ -56,8 +54,8 @@ public sealed class IdentityServiceBranchTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "missing-code@example.com");
-        await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
-        await fixture.UserManager.SetTwoFactorEnabledAsync(
+        _ = await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
+        _ = await fixture.UserManager.SetTwoFactorEnabledAsync(
             user, true);
 
         TokenResponse? result = await fixture.Service.LoginAsync(
@@ -73,9 +71,9 @@ public sealed class IdentityServiceBranchTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "locked@example.com");
-        await fixture.UserManager.SetLockoutEnabledAsync(
+        _ = await fixture.UserManager.SetLockoutEnabledAsync(
             user, true);
-        await fixture.UserManager.SetLockoutEndDateAsync(
+        _ = await fixture.UserManager.SetLockoutEndDateAsync(
             user, DateTimeOffset.UtcNow.AddMinutes(5));
 
         TokenResponse? result = await fixture.Service.LoginAsync(
@@ -92,7 +90,7 @@ public sealed class IdentityServiceBranchTests
         User user = await fixture.CreateUserAsync(
             "not-allowed@example.com");
         user.EmailConfirmed = false;
-        await fixture.UserManager.UpdateAsync(user);
+        _ = await fixture.UserManager.UpdateAsync(user);
         fixture.UserManager.Options.SignIn.RequireConfirmedEmail =
             true;
 
@@ -153,7 +151,7 @@ public sealed class IdentityServiceBranchTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "owner@example.com");
-        await fixture.CreateUserAsync("taken@example.com");
+        _ = await fixture.CreateUserAsync("taken@example.com");
 
         IdentityResultResponse result =
             await fixture.Service.UpdateInfoAsync(
@@ -282,7 +280,7 @@ public sealed class IdentityServiceBranchTests
     public async Task EmailExistsAsync_ReturnsTrueForExistingEmail()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("case@example.com");
+        _ = await fixture.CreateUserAsync("case@example.com");
 
         bool exists = await fixture.Service.EmailExistsAsync(
             "case@example.com", CancellationToken.None);

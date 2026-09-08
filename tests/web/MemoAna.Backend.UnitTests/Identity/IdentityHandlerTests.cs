@@ -1,10 +1,8 @@
-using MemoAna.Backend.Application.Common.Responses;
 using MemoAna.Backend.Application.Identity.Abstractions;
 using MemoAna.Backend.Application.Identity.Commands;
 using MemoAna.Backend.Application.Identity.Handlers;
 using MemoAna.Backend.Application.Identity.Queries;
 using MemoAna.Backend.Application.Identity.Responses;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
@@ -14,8 +12,9 @@ public sealed class IdentityHandlerTests
     [Fact]
     public async Task Handlers_ForwardSuccessfulOperations()
     {
-        FakeIdentityService service = new();
-        IdentityHandlers handlers = new(service);
+        FakeIdentityService identityService = new();
+        FakeGooglePlayGamesAuthenticationService googleService = new();
+        IdentityHandlers handlers = new(identityService, googleService);
         CancellationToken token = CancellationToken.None;
 
         Assert.True((await handlers.Handle(
@@ -59,11 +58,16 @@ public sealed class IdentityHandlerTests
     [Fact]
     public async Task Handlers_MapMissingResultsToFailures()
     {
-        FakeIdentityService service = new()
+        FakeIdentityService identityService = new()
         {
             ReturnData = false
         };
-        IdentityHandlers handlers = new(service);
+
+        FakeGooglePlayGamesAuthenticationService googleService = new()
+        {
+            ReturnData = false
+        };
+        IdentityHandlers handlers = new(identityService, googleService);
         CancellationToken token = CancellationToken.None;
 
         Assert.False((await handlers.Handle(
@@ -87,6 +91,17 @@ public sealed class IdentityHandlerTests
             .Data);
     }
 
+    private sealed class FakeGooglePlayGamesAuthenticationService : IGooglePlayGamesAuthenticationService
+    {
+        public bool ReturnData { get; set; } = true;
+        private static TokenResponse Token =>
+                    new("Bearer", "access", 900, "refresh");
+        public Task<TokenResponse?> AuthenticateAsync(string serverAuthCode, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ReturnData ? Token : null);
+        }
+
+    }
     private sealed class FakeIdentityService : IIdentityService
     {
         public bool ReturnData { get; set; } = true;

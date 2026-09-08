@@ -1,5 +1,4 @@
 using MemoAna.Backend.Domain.Common;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Common;
 

@@ -6,7 +6,6 @@ using MemoAna.Backend.Infrastructure.Identity.Options;
 using MemoAna.Backend.Infrastructure.Identity.Services;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
@@ -167,7 +166,7 @@ public sealed class JwtTokenServiceTests
         DateTimeOffset? expiration = service.GetExpiration(
             tokens.AccessToken);
 
-        Assert.NotNull(expiration);
+        _ = Assert.NotNull(expiration);
         Assert.True(expiration > DateTimeOffset.UtcNow);
     }
 
@@ -184,7 +183,7 @@ public sealed class JwtTokenServiceTests
             Options.Create(options),
             new RevokedTokenStore());
 
-        Assert.Throws<InvalidOperationException>(() =>
+        _ = Assert.Throws<InvalidOperationException>(() =>
             service.CreateTokens(
                 "user-1", "user@example.com", [], []));
     }

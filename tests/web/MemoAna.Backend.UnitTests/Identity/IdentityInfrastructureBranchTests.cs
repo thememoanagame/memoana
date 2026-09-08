@@ -1,8 +1,6 @@
-using MemoAna.Backend.Application.Identity.Responses;
 using MemoAna.Backend.Infrastructure.Identity.Options;
 using MemoAna.Backend.Infrastructure.Identity.Services;
 using Microsoft.Extensions.Logging;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
