@@ -1,7 +1,6 @@
 using MemoAna.Backend.Infrastructure.Identity.Models;
 using MemoAna.Backend.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Common;
 
@@ -16,19 +15,19 @@ public sealed class MemoAnaDbContextTests
         Role role = new("Operator");
         string userId = user.Id;
         string roleId = role.Id;
-        context.Users.Add(user);
-        context.Roles.Add(role);
+        _ = context.Users.Add(user);
+        _ = context.Roles.Add(role);
 
-        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _ = await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(userId, user.Id);
         Assert.Equal(roleId, role.Id);
 
-        context.Users.Remove(user);
-        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _ = context.Users.Remove(user);
+        _ = await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Assert.True(user.IsDeleted);
-        Assert.NotNull(user.DeletedAt);
+        _ = Assert.NotNull(user.DeletedAt);
         User? persisted = await context.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.Id == user.Id, TestContext.Current.CancellationToken);

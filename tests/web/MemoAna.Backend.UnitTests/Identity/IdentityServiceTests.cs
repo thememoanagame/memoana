@@ -1,6 +1,4 @@
 using MemoAna.Backend.Infrastructure.Identity.Models;
-using MemoAna.Backend.UnitTests.Common.ConfiguredFixtures;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
@@ -23,7 +21,7 @@ public sealed class IdentityServiceTests
     public async Task RegisterAsync_Duplicate_Fails()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("same@example.com");
+        _ = await fixture.CreateUserAsync("same@example.com");
 
         var result = await fixture.Service.RegisterAsync(
             "same@example.com", "Password1!",
@@ -36,7 +34,7 @@ public sealed class IdentityServiceTests
     public async Task LoginAsync_Succeeds()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("login@example.com");
+        _ = await fixture.CreateUserAsync("login@example.com");
 
         var result = await fixture.Service.LoginAsync(
             "login@example.com", "Password1!", null, null,
@@ -59,7 +57,7 @@ public sealed class IdentityServiceTests
     public async Task LoginAsync_InvalidPassword_ReturnsNull()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("wrong@example.com");
+        _ = await fixture.CreateUserAsync("wrong@example.com");
 
         Assert.Null(await fixture.Service.LoginAsync(
             "wrong@example.com", "wrong", null, null,
@@ -70,7 +68,7 @@ public sealed class IdentityServiceTests
     public async Task RefreshAsync_SucceedsAndRevokesOldToken()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("refresh@example.com");
+        _ = await fixture.CreateUserAsync("refresh@example.com");
         var login = await fixture.Service.LoginAsync(
             "refresh@example.com", "Password1!", null, null,
             CancellationToken.None);
@@ -87,7 +85,7 @@ public sealed class IdentityServiceTests
     public async Task RefreshAsync_AccessToken_ReturnsNull()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("refresh2@example.com");
+        _ = await fixture.CreateUserAsync("refresh2@example.com");
         var login = await fixture.Service.LoginAsync(
             "refresh2@example.com", "Password1!", null, null,
             CancellationToken.None);
@@ -100,7 +98,7 @@ public sealed class IdentityServiceTests
     public async Task RevokeAsync_ValidToken_ReturnsTrue()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("revoke@example.com");
+        _ = await fixture.CreateUserAsync("revoke@example.com");
         var login = await fixture.Service.LoginAsync(
             "revoke@example.com", "Password1!", null, null,
             CancellationToken.None);
@@ -162,7 +160,7 @@ public sealed class IdentityServiceTests
         User user = await fixture.CreateUserAsync(
             "resend@example.com");
         user.EmailConfirmed = false;
-        await fixture.UserManager.UpdateAsync(user);
+        _ = await fixture.UserManager.UpdateAsync(user);
 
         var result = await fixture.Service
             .ResendConfirmationEmailAsync(
@@ -187,7 +185,7 @@ public sealed class IdentityServiceTests
     public async Task ForgotPasswordAsync_Existing_Succeeds()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("forgot@example.com");
+        _ = await fixture.CreateUserAsync("forgot@example.com");
 
         var result = await fixture.Service.ForgotPasswordAsync(
             "forgot@example.com", CancellationToken.None);
@@ -330,7 +328,7 @@ public sealed class IdentityServiceTests
     public async Task EmailExistsAsync_ReturnsExpectedValues()
     {
         using IdentityTestFixture fixture = new();
-        await fixture.CreateUserAsync("exists@example.com");
+        _ = await fixture.CreateUserAsync("exists@example.com");
 
         Assert.True(await fixture.Service.EmailExistsAsync(
             "exists@example.com", CancellationToken.None));

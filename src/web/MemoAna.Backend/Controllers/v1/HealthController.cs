@@ -1,7 +1,5 @@
 ﻿using Mediator;
 using MemoAna.Backend.Application.Health.Queries;
-using MemoAna.Backend.Application.Health.Responses;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemoAna.Backend.Controllers.v1;

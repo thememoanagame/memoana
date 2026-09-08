@@ -16,6 +16,10 @@ public sealed record LoginRequest(string Email, string Password, string? TwoFact
 /// <param name="RefreshToken">The refresh token to exchange.</param>
 public sealed record RefreshRequest(string RefreshToken);
 
+/// <summary>Represents a Google Play Games authentication request payload.</summary>
+/// <param name="ServerAuthCode">The server authentication code obtained from the client.</param>
+public sealed record GooglePlayGamesLoginRequest(string ServerAuthCode);
+
 /// <summary>Represents an email-only request payload.</summary>
 /// <param name="Email">The email address.</param>
 public sealed record EmailRequest(string Email);

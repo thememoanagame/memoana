@@ -99,7 +99,7 @@ public sealed class FakeRepository<TEntity>
     /// <inheritdoc />
     public void Remove(TEntity entity)
     {
-        _entities.Remove(entity);
+        _ = _entities.Remove(entity);
     }
 
     /// <inheritdoc />

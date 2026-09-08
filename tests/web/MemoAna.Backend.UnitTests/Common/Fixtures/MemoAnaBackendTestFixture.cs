@@ -9,12 +9,10 @@ using MemoAna.Backend.Infrastructure.Identity.Services;
 using MemoAna.Backend.Infrastructure.Persistence;
 using MemoAna.Backend.Infrastructure.Persistence.Middlewares;
 using MemoAna.Backend.UnitTests.Common.Mocks;
-using FluentValidation;
 using Mediator;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Common.Fixtures;
 
@@ -27,12 +25,12 @@ public sealed class MemoAnaBackendTestFixture : IDisposable
     public MemoAnaBackendTestFixture()
     {
         ServiceCollection services = new();
-        services.AddLogging();
-        services.AddHttpContextAccessor();
-        services.AddSignalR();
-        services.AddDbContext<MemoAnaDbContext>(options =>
+        _ = services.AddLogging();
+        _ = services.AddHttpContextAccessor();
+        _ = services.AddSignalR();
+        _ = services.AddDbContext<MemoAnaDbContext>(options =>
             options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
-        services.AddIdentityCore<User>(options =>
+        _ = services.AddIdentityCore<User>(options =>
         {
             options.Password.RequireDigit = false;
             options.Password.RequireLowercase = false;
@@ -43,18 +41,18 @@ public sealed class MemoAnaBackendTestFixture : IDisposable
         }).AddRoles<Role>()
         .AddEntityFrameworkStores<MemoAnaDbContext>()
         .AddSignInManager();
-        services.AddScoped<IIdentityEmailSender,
+        _ = services.AddScoped<IIdentityEmailSender,
             TestIdentityEmailSender>();
-        services.Configure<JwtOptions>(options =>
+        _ = services.Configure<JwtOptions>(options =>
         {
             options.Key = "01234567890123456789012345678901";
             options.Issuer = "MemoAna.Backend.Tests";
             options.Audience = "MemoAna.Backend.Tests";
         });
-        services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
-        services.AddScoped<IJwtTokenService, JwtTokenService>();
-        services.AddScoped<IdentityService>();
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        _ = services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
+        _ = services.AddScoped<IJwtTokenService, JwtTokenService>();
+        _ = services.AddScoped<IdentityService>();
+        _ = services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Register the validators consumed by ValidationMiddleware, matching the
         // application composition root. Without this registration the middleware
@@ -66,12 +64,12 @@ public sealed class MemoAnaBackendTestFixture : IDisposable
         // independently with the real IHubContext supplied by AddSignalR().
         //services.AddScoped<FakeSignalRService>();
         //services.AddScoped<ISignalRService>(sp =>
-            //sp.GetRequiredService<FakeSignalRService>());
+        //sp.GetRequiredService<FakeSignalRService>());
         //services.AddScoped<SignalRService>();
 
-        services.AddScoped(typeof(IRepository<>), typeof(FakeRepository<>));
+        _ = services.AddScoped(typeof(IRepository<>), typeof(FakeRepository<>));
         //services.AddScoped(sp => new SignalRHandlers(sp.GetRequiredService<ISignalRService>()));
-        services.AddMediator(options =>
+        _ = services.AddMediator(options =>
         {
             options.ServiceLifetime = ServiceLifetime.Scoped;
             options.Assemblies = [typeof(IdentityHandlers).Assembly];

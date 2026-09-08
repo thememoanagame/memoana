@@ -1,5 +1,4 @@
 ﻿using MemoAna.Backend.Application.Common.Utils;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace MemoAna.Backend.Infrastructure.Common.HealthChecks;

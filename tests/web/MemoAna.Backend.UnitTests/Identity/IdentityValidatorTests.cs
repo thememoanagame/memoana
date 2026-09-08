@@ -2,7 +2,6 @@ using MemoAna.Backend.Application.Identity.Abstractions;
 using MemoAna.Backend.Application.Identity.Commands;
 using MemoAna.Backend.Application.Identity.Responses;
 using MemoAna.Backend.Application.Identity.Validators;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 

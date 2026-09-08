@@ -1,6 +1,4 @@
 using MemoAna.Backend.Infrastructure.Identity.Models;
-using MemoAna.Backend.UnitTests.Common.ConfiguredFixtures;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
@@ -13,7 +11,7 @@ public sealed class IdentityServiceBusinessRuleTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "authenticator@example.com");
-        await fixture.UserManager.SetTwoFactorEnabledAsync(
+        _ = await fixture.UserManager.SetTwoFactorEnabledAsync(
             user, true);
         string code = await fixture.GenerateValidAuthenticatorCodeAsync(user);
 
@@ -30,8 +28,8 @@ public sealed class IdentityServiceBusinessRuleTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "bad-authenticator@example.com");
-        await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
-        await fixture.UserManager.SetTwoFactorEnabledAsync(
+        _ = await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
+        _ = await fixture.UserManager.SetTwoFactorEnabledAsync(
             user, true);
 
         var result = await fixture.Service.LoginAsync(
@@ -48,7 +46,7 @@ public sealed class IdentityServiceBusinessRuleTests
         User user = await fixture.CreateUserAsync(
             "locked@example.com");
         user.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(5);
-        await fixture.UserManager.UpdateAsync(user);
+        _ = await fixture.UserManager.UpdateAsync(user);
 
         var result = await fixture.Service.LoginAsync(
             user.Email!, "Password1!", null, null,
@@ -64,7 +62,7 @@ public sealed class IdentityServiceBusinessRuleTests
         User user = await fixture.CreateUserAsync(
             "unconfirmed@example.com");
         user.EmailConfirmed = false;
-        await fixture.UserManager.UpdateAsync(user);
+        _ = await fixture.UserManager.UpdateAsync(user);
         fixture.UserManager.Options.SignIn
             .RequireConfirmedEmail = true;
 

@@ -15,9 +15,11 @@
     </PackageReference>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" Version="2.3.3">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="NSubstitute" Version="6.2.0" />
     <PackageReference Include="xunit.v3" Version="4.0.0" />
   </ItemGroup>
@@ -31,12 +33,9 @@
   </ItemGroup>
  
   <ItemGroup>
-    <ProjectReference
-      Include="..\..\..\src\web\MemoAna.Backend\MemoAna.Backend.csproj" />
-    <ProjectReference
-      Include="..\..\..\src\web\MemoAna.Backend.Application\MemoAna.Backend.Application.csproj" />
-    <ProjectReference
-      Include="..\..\..\src\web\MemoAna.Backend.Infrastructure\MemoAna.Backend.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\web\MemoAna.Backend\MemoAna.Backend.csproj" />
+    <ProjectReference Include="..\..\..\src\web\MemoAna.Backend.Application\MemoAna.Backend.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\web\MemoAna.Backend.Infrastructure\MemoAna.Backend.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

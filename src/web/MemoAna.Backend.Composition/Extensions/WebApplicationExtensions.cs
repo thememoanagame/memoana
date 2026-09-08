@@ -1,6 +1,4 @@
-using MemoAna.Backend.Application.Common.Contracts;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
 
@@ -22,17 +20,17 @@ public static class WebApplicationExtensions
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
-                app.UseExceptionHandler("/Error", createScopeForErrors: true);
+                _ = app.UseExceptionHandler("/Error", createScopeForErrors: true);
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                app.UseHsts();
+                _ = app.UseHsts();
             }
             else
             {
-                app.MapOpenApi("ma/{v1}.json").AllowAnonymous();
-                app.MapScalarApiReference("ma/scalar",  async options =>
+                _ = app.MapOpenApi("ma/{v1}.json").AllowAnonymous();
+                _ = app.MapScalarApiReference("ma/scalar", async options =>
                 {
-                    options.WithOpenApiRoutePattern("/ma/{documentName}.json");
-                    options.WithTitle($"MemoAna Backend: [{app.Environment.EnvironmentName}]");
+                    _ = options.WithOpenApiRoutePattern("/ma/{documentName}.json");
+                    _ = options.WithTitle($"MemoAna Backend: [{app.Environment.EnvironmentName}]");
                     options.HeadContent = @"
                     <!-- MudBlazor JavaScript, Fonts & base CSS  -->
                     <link href=""https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"" rel=""stylesheet"" />
@@ -55,7 +53,7 @@ public static class WebApplicationExtensions
                         });
                     </script>
                 ";
-                options.WithCustomCss(@"
+                    _ = options.WithCustomCss(@"
                     :root {
                         --scalar-background-1: var(--mud-palette-surface, #ffffff);
                         --scalar-background-2: var(--mud-palette-background, #f5f5f5);
@@ -93,15 +91,15 @@ public static class WebApplicationExtensions
                 ");
                 });
             }
-            app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-            app.UseHttpsRedirection();
-            app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseAntiforgery();
+            _ = app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+            _ = app.UseHttpsRedirection();
+            _ = app.UseAuthentication();
+            _ = app.UseAuthorization();
+            _ = app.UseAntiforgery();
 
-            app.MapStaticAssets();
-            app.MapControllers();
-            app.MapRazorComponents<T>()
+            _ = app.MapStaticAssets();
+            _ = app.MapControllers();
+            _ = app.MapRazorComponents<T>()
                 .AddInteractiveServerRenderMode();
 
             await app.RunAsync();

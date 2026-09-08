@@ -8,14 +8,16 @@ using Mediator;
 namespace MemoAna.Backend.Application.Identity.Handlers;
 
 /// <summary>Handles identity messages.</summary>
-/// <param name="identityService">
-/// The identity service.
-/// </param>
+/// <param name="identityService">The identity service.</param>
+/// <param name="googlePlayGamesService">The Google Play Games authentication service.</param>
 public sealed class IdentityHandlers(
-    IIdentityService identityService)
+    IIdentityService identityService,
+    IGooglePlayGamesAuthenticationService googlePlayGamesService)
     : IRequestHandler<RegisterCommand,
         IdentityResultResponse>,
       IRequestHandler<LoginCommand,
+        Response<TokenResponse>>,
+      IRequestHandler<GooglePlayGamesLoginCommand,
         Response<TokenResponse>>,
       IRequestHandler<RefreshTokenCommand,
         Response<TokenResponse>>,
@@ -65,6 +67,23 @@ public sealed class IdentityHandlers(
         return result is null
             ? Response.Failure<TokenResponse>(
                 ["Invalid credentials."])
+            : Response.Success(result);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<Response<TokenResponse>>
+        Handle(
+            GooglePlayGamesLoginCommand request,
+            CancellationToken cancellationToken)
+    {
+        TokenResponse? result =
+            await googlePlayGamesService.AuthenticateAsync(
+                request.ServerAuthCode,
+                cancellationToken);
+
+        return result is null
+            ? Response.Failure<TokenResponse>(
+                ["Google Play Games authentication failed."])
             : Response.Success(result);
     }
 

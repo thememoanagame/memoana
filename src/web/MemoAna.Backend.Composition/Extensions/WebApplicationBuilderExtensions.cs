@@ -27,7 +27,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
-using MongoDB.Bson;
 using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
@@ -48,7 +47,7 @@ public static class WebApplicationBuilderExtensions
             where TApp : IComponent
         {
 
-            builder.Configuration
+            _ = builder.Configuration
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
@@ -81,30 +80,31 @@ public static class WebApplicationBuilderExtensions
 
                 Secret[] secrets = await client.Secrets().ListAsync(options) ?? throw new InvalidOperationException("Failed to fetch secrets, returned null response");
             }
-            builder.Services.AddRazorComponents()
+            _ = builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
-            builder.Services.AddControllers();
-            builder.Services.AddSignalR();
-            builder.Services.AddOpenApi();
+            _ = builder.Services.AddControllers();
+            _ = builder.Services.AddSignalR();
+            _ = builder.Services.AddOpenApi();
             
             configurePresentationServices?.Invoke(builder);
 
-            builder.Services
+            _ = builder.Services
                 .AddHealthChecks()
                 .AddCheck<ApiCheck>("ApiCheck")
                 .AddCheck<ApiDiskUsageCheck>("ApiDiskUsageCheck")
                 .AddCheck<HostInfoCheck>("HostInfoCheck")
                 .AddCheck<DatabaseCheck>("DatabaseCheck");
 
-            builder.Services.Configure<JwtOptions>(
+            _ = builder.Services.Configure<JwtOptions>(
                 builder.Configuration.GetSection(
                     JwtOptions.SectionName));
-            builder.Services.Configure<ConnectionStringsOptions>(
+            _ = builder.Services.Configure<ConnectionStringsOptions>(
                 builder.Configuration.GetSection(
                     ConnectionStringsOptions.SectionName));
 
-            builder.Services.AddDbContext<MemoAnaDbContext>(
-                options => { 
+            _ = builder.Services.AddDbContext<MemoAnaDbContext>(
+                options =>
+                {
                     if (builder.Environment.IsProduction())
                     {
                         ConnectionStringsOptions cs = builder.Configuration
@@ -113,19 +113,19 @@ public static class WebApplicationBuilderExtensions
                             ?? throw new InvalidOperationException(
                                 "MemoAna ConnectionStrings configuration is missing.");
 
-                        options.UseNpgsql(cs.MemoAna, sql => sql.CommandTimeout(90));
+                        _ = options.UseNpgsql(cs.MemoAna, sql => sql.CommandTimeout(90));
                     }
                     else if (builder.Environment.IsDevelopment())
                     {
                         string? ConnectionStrings__Postgress = Environment.GetEnvironmentVariable("ConnectionStrings__Postgress")?.ToString();
-                        ArgumentNullException.ThrowIfNullOrEmpty(ConnectionStrings__Postgress,nameof(ConnectionStrings__Postgress));
-                        ArgumentNullException.ThrowIfNullOrWhiteSpace(ConnectionStrings__Postgress,nameof(ConnectionStrings__Postgress));
-                        options.UseNpgsql(ConnectionStrings__Postgress, sql => sql.CommandTimeout(90));
+                        ArgumentException.ThrowIfNullOrEmpty(ConnectionStrings__Postgress, nameof(ConnectionStrings__Postgress));
+                        ArgumentException.ThrowIfNullOrWhiteSpace(ConnectionStrings__Postgress, nameof(ConnectionStrings__Postgress));
+                        _ = options.UseNpgsql(ConnectionStrings__Postgress, sql => sql.CommandTimeout(90));
                     }
                     else throw new InvalidOperationException("No data provider configured");
                 });
 
-            builder.Services.AddIdentityCore<User>(
+            _ = builder.Services.AddIdentityCore<User>(
                 options =>
                 {
                     options.User.RequireUniqueEmail = true;
@@ -144,15 +144,20 @@ public static class WebApplicationBuilderExtensions
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
 
-            builder.Services.AddScoped<IIdentityService, IdentityService>();
-            builder.Services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
-            builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-            builder.Services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
-            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-            builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-            builder.Services.AddValidatorsFromAssemblyContaining<RegisterCommandValidator>();
-            builder.Services.AddScoped<IHealthService, HealthService>();
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            _ = builder.Services.AddScoped<IIdentityService, IdentityService>();
+
+            _ = builder.Services.Configure<GooglePlayGamesOptions>(
+                builder.Configuration.GetSection("GooglePlayGames"));
+            _ = builder.Services.AddScoped<IGooglePlayGamesAuthenticationService, GooglePlayGamesAuthenticationService>();
+
+            _ = builder.Services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
+            _ = builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+            _ = builder.Services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
+            _ = builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            _ = builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+            _ = builder.Services.AddValidatorsFromAssemblyContaining<RegisterCommandValidator>();
+            _ = builder.Services.AddScoped<IHealthService, HealthService>();
+            _ = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
                     JwtOptions jwt = builder.Configuration
@@ -224,7 +229,7 @@ public static class WebApplicationBuilderExtensions
                     };
                 });
 
-            builder.Services.AddAuthorizationBuilder()
+            _ = builder.Services.AddAuthorizationBuilder()
                 .AddPolicy(IdentityPolicies.Administrator,
                     policy => policy.RequireClaim(
                         IdentityClaimTypes.Permission,
@@ -234,11 +239,11 @@ public static class WebApplicationBuilderExtensions
                         IdentityClaimTypes.Permission,
                         "system.user"));
 
-            builder.Services.AddMediator(options =>
+            _ = builder.Services.AddMediator(options =>
             {
                 options.ServiceLifetime = ServiceLifetime.Scoped;
                 options.Assemblies = [typeof(IdentityHandlers).Assembly];
-                options.PipelineBehaviors = 
+                options.PipelineBehaviors =
                 [
                     typeof(ValidationMiddleware<,>),
                     typeof(TransactionMiddleware<,>)

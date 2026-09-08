@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using MemoAna.Backend.Infrastructure.Identity.Models;
-using MemoAna.Backend.UnitTests.Common.ConfiguredFixtures;
 using Microsoft.AspNetCore.Identity;
-using Xunit;
 
 namespace MemoAna.Backend.UnitTests.Identity;
 
@@ -15,8 +13,8 @@ public sealed class IdentityServiceAdditionalTests
         using IdentityTestFixture fixture = new();
         User user = await fixture.CreateUserAsync(
             "2fa-invalid@example.com");
-        await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
-        await fixture.UserManager.SetTwoFactorEnabledAsync(
+        _ = await fixture.UserManager.ResetAuthenticatorKeyAsync(user);
+        _ = await fixture.UserManager.SetTwoFactorEnabledAsync(
             user, true);
 
         var result = await fixture.Service.LoginAsync(
