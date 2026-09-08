@@ -1,4 +1,3 @@
-markdown
 # Project Architecture
 
 ## Solution model
@@ -68,4 +67,3 @@ graph TD
     style L4 fill:#0f0f0F,stroke:#12B886,stroke-width:1px
     style L5 fill:#0f0f0f,stroke:#F59F00,stroke-width:1px
 ```
-
