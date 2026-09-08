@@ -79,6 +79,7 @@ public sealed class IdentityHandlers(
         TokenResponse? result =
             await googlePlayGamesService.AuthenticateAsync(
                 request.ServerAuthCode,
+                request.RedirectUri,
                 cancellationToken);
 
         return result is null

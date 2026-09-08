@@ -22,7 +22,7 @@ public sealed class GooglePlayGamesAuthenticationService(
     private readonly GooglePlayGamesOptions _options = options.Value;
 
     /// <inheritdoc />
-    public async Task<Application.Identity.Responses.TokenResponse?> AuthenticateAsync(string serverAuthCode, CancellationToken cancellationToken)
+    public async Task<Application.Identity.Responses.TokenResponse?> AuthenticateAsync(string serverAuthCode, string redirectUri, CancellationToken cancellationToken)
     {
         try
         {
@@ -33,13 +33,17 @@ public sealed class GooglePlayGamesAuthenticationService(
                     ClientId = _options.ClientId,
                     ClientSecret = _options.ClientSecret
                 },
-                Scopes = [GamesService.Scope.Games]
+                Scopes = [GamesService.Scope.Games, 
+                    GamesService.Scope.DriveAppdata,
+                    "openid",
+                    "profile",
+                    "email"],
             });
 
             Google.Apis.Auth.OAuth2.Responses.TokenResponse? tokenResponse = null;
             try 
             {
-                tokenResponse = await flow.ExchangeCodeForTokenAsync(string.Empty, serverAuthCode, string.Empty, cancellationToken);
+                tokenResponse = await flow.ExchangeCodeForTokenAsync(string.Empty, serverAuthCode, redirectUri, cancellationToken);
             } 
             catch (Exception ex)
             {
@@ -59,11 +63,19 @@ public sealed class GooglePlayGamesAuthenticationService(
                 HttpClientInitializer = credential,
                 ApplicationName = "MemoAna"
             });
-
-            var player = await gamesService.Players.Get("me").ExecuteAsync(cancellationToken);
-            if (player == null || string.IsNullOrEmpty(player.PlayerId))
+            Google.Apis.Games.v1.Data.Player player = default!;
+            try
             {
-                logger.LogWarning("Could not retrieve player ID from Google Play Games.");
+                player = await gamesService.Players.Get("me").ExecuteAsync(cancellationToken);
+                if (player == null || string.IsNullOrEmpty(player.PlayerId))
+                {
+                    logger.LogWarning("Could not retrieve player ID from Google Play Games.");
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "The user doens't have a play games profile");
                 return null;
             }
 

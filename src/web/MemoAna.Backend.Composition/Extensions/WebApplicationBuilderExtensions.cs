@@ -19,6 +19,7 @@ using MemoAna.Backend.Infrastructure.Persistence;
 using MemoAna.Backend.Infrastructure.Persistence.Middlewares;
 using MemoAna.Backend.Infrastructure.Persistence.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
@@ -26,10 +27,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace MemoAna.Backend.Composition.Extensions;
 
@@ -157,8 +160,37 @@ public static class WebApplicationBuilderExtensions
             _ = builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             _ = builder.Services.AddValidatorsFromAssemblyContaining<RegisterCommandValidator>();
             _ = builder.Services.AddScoped<IHealthService, HealthService>();
-            _ = builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+            System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+            Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler.DefaultInboundClaimTypeMap.Clear();
+            _ = builder.Services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = "BearerSelector";
+                    options.DefaultChallengeScheme = "BearerSelector";
+                })
+                .AddPolicyScheme("BearerSelector", "Local or Google JWT", options =>
+                {
+                    options.ForwardDefaultSelector = context =>
+                    {
+                        string? authorization = context.Request.Headers.Authorization;
+                        if (!string.IsNullOrEmpty(authorization) && authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string token = authorization["Bearer ".Length..].Trim();
+                            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+
+                            if (handler.CanReadToken(token))
+                            {
+                                var jwtToken = handler.ReadJwtToken(token);
+                                if (jwtToken.Issuer.Contains("accounts.google.com"))
+                                {
+                                    return "GoogleJwt";
+                                }
+                            }
+                        }
+
+                        return "LocalJwt";
+                    };
+                })
+                .AddJwtBearer("LocalJwt", options =>
                 {
                     JwtOptions jwt = builder.Configuration
                         .GetSection(JwtOptions.SectionName)
@@ -190,54 +222,92 @@ public static class WebApplicationBuilderExtensions
 
                     options.Events = new JwtBearerEvents
                     {
+                        OnAuthenticationFailed = context =>
+                        {
+                            var logger = context.HttpContext.RequestServices
+                                .GetRequiredService<ILoggerFactory>()
+                                .CreateLogger("JwtBearerDebug");
+
+                            logger.LogError(context.Exception, "Falha na Autenticação JWT: {Message}", context.Exception.Message);
+                            return Task.CompletedTask;
+                        },
                         OnTokenValidated = context =>
                         {
-                            JwtSecurityToken? token =
-                                context.SecurityToken
-                                    as JwtSecurityToken;
-                            string? tokenType = token?
-                                .Claims
-                                .FirstOrDefault(
-                                    claim => claim.Type ==
-                                        JwtRegisteredClaimNames.Typ)
-                                ?.Value;
-
-                            if (!string.Equals(
-                                tokenType,
-                                "access",
-                                StringComparison.Ordinal))
+                            var principal = context.Principal;
+                            if (principal == null)
                             {
-                                context.Fail(
-                                    "The token is not an access token.");
+                                context.Fail("Invalid token principal.");
                                 return Task.CompletedTask;
                             }
 
-                            if (token is not null &&
-                                context.HttpContext
-                                    .RequestServices
-                                    .GetRequiredService<
-                                        IRevokedTokenStore>()
-                                    .IsRevoked(token.Id))
+                            string? tokenType = principal.FindFirst("typ")?.Value
+                                            ?? principal.FindFirst("http://schemas.openxmlformats.org/claims/type")?.Value;
+
+                            if (string.IsNullOrEmpty(tokenType) && context.SecurityToken != null)
                             {
-                                context.Fail(
-                                    "The access token "
-                                    + "has been revoked.");
+                                if (context.SecurityToken is Microsoft.IdentityModel.JsonWebTokens.JsonWebToken jwt)
+                                {
+                                    tokenType = jwt.Typ;
+                                }
+                                else if (context.SecurityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwtLegacy)
+                                {
+                                    tokenType = jwtLegacy.Header.Typ;
+                                }
+                            }
+
+                            if (!string.IsNullOrEmpty(tokenType) &&
+                                !string.Equals(tokenType, "access", StringComparison.OrdinalIgnoreCase) &&
+                                !string.Equals(tokenType, "JWT", StringComparison.OrdinalIgnoreCase))
+                            {
+                                context.Fail($"The token is not an access token. Type found: '{tokenType}'.");
+                                return Task.CompletedTask;
+                            }
+
+                            string? tokenId = principal.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value
+                                            ?? principal.FindFirst("jti")?.Value;
+
+                            if (!string.IsNullOrEmpty(tokenId))
+                            {
+                                var revokedStore = context.HttpContext.RequestServices.GetRequiredService<IRevokedTokenStore>();
+                                if (revokedStore.IsRevoked(tokenId))
+                                {
+                                    context.Fail("The access token has been revoked.");
+                                    return Task.CompletedTask;
+                                }
                             }
 
                             return Task.CompletedTask;
                         }
                     };
+                })
+                .AddJwtBearer("GoogleJwt", options =>
+                {
+                    options.Authority = "https://accounts.google.com";
+                    options.Audience = $"{builder.Configuration["GooglePlayGames:ClientId"]}.apps.googleusercontent.com"; // ClientId da Credencial Web
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuers = ["accounts.google.com", "https://accounts.google.com"],
+                        ValidateAudience = true,
+                        ValidAudience = $"{builder.Configuration["GooglePlayGames:ClientId"]}.apps.googleusercontent.com",
+                        ValidateIssuerSigningKey = true,
+                        ValidateLifetime = true,
+                        ClockSkew = TimeSpan.FromMinutes(5)
+                    };
                 });
 
             _ = builder.Services.AddAuthorizationBuilder()
-                .AddPolicy(IdentityPolicies.Administrator,
-                    policy => policy.RequireClaim(
-                        IdentityClaimTypes.Permission,
-                        "system.admin"))
-                .AddPolicy(IdentityPolicies.User,
-                    policy => policy.RequireClaim(
-                        IdentityClaimTypes.Permission,
-                        "system.user"));
+                .AddPolicy(IdentityPolicies.Administrator, policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireClaim(IdentityClaimTypes.Permission, "system.admin"))
+
+                .AddPolicy(IdentityPolicies.User, policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireClaim(IdentityClaimTypes.Permission, "system.user"))
+
+                .SetDefaultPolicy(new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build());
 
             _ = builder.Services.AddMediator(options =>
             {

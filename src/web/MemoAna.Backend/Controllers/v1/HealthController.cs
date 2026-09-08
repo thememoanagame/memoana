@@ -1,5 +1,6 @@
 ﻿using Mediator;
 using MemoAna.Backend.Application.Health.Queries;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemoAna.Backend.Controllers.v1;
@@ -12,6 +13,7 @@ namespace MemoAna.Backend.Controllers.v1;
 [Route("api/v1/healthcheck")]
 [ApiController]
 [Tags("HealthChecks")]
+[Authorize]
 public class HealthController(IMediator mediator) : ControllerBase
 {
     [HttpGet("api")]

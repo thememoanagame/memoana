@@ -28,9 +28,11 @@ public sealed record LoginCommand(
 
 /// <summary>Requests Google Play Games user authentication.</summary>
 /// <param name="ServerAuthCode">The server authentication code from the client.</param>
+/// <param name="RedirectUri">The application redirect uri</param>
 public sealed record GooglePlayGamesLoginCommand(
-    string ServerAuthCode)
+    string ServerAuthCode, string RedirectUri)
     : IRequest<Response<TokenResponse>>;
+
 
 /// <summary>Requests a refresh token exchange.</summary>
 /// <param name="RefreshToken">The refresh token.</param>
