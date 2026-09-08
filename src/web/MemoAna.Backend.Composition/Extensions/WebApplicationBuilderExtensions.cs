@@ -4,6 +4,7 @@ using Infisical.Sdk.Model;
 using MemoAna.Backend.Application.Common.Abstractions;
 using MemoAna.Backend.Application.Common.Contracts;
 using MemoAna.Backend.Application.Common.Pipeline.Validation;
+using MemoAna.Backend.Application.Game.Abstractions;
 using MemoAna.Backend.Application.Health.Abstractions;
 using MemoAna.Backend.Application.Identity.Abstractions;
 using MemoAna.Backend.Application.Identity.Handlers;
@@ -15,6 +16,7 @@ using MemoAna.Backend.Infrastructure.Common.UnitOfWork;
 using MemoAna.Backend.Infrastructure.Identity.Models;
 using MemoAna.Backend.Infrastructure.Identity.Options;
 using MemoAna.Backend.Infrastructure.Identity.Services;
+using MemoAna.Backend.Infrastructure.Game;
 using MemoAna.Backend.Infrastructure.Persistence;
 using MemoAna.Backend.Infrastructure.Persistence.Middlewares;
 using MemoAna.Backend.Infrastructure.Persistence.Options;
@@ -150,6 +152,7 @@ public static class WebApplicationBuilderExtensions
                 .AddDefaultTokenProviders();
 
             _ = builder.Services.AddScoped<IIdentityService, IdentityService>();
+            _ = builder.Services.AddScoped<IGameDataService, GameDataService>();
 
             _ = builder.Services.Configure<GooglePlayGamesOptions>(
                 builder.Configuration.GetSection("GooglePlayGames"));
