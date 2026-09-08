@@ -6,7 +6,14 @@
 <div class="game-page">
     <img src="images/empty.png" class="game-background" alt="" />
 
-    @if (IsSelecting)
+    @if (IsBusy)
+    {
+        <div class="loading-container">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Warning" />
+            <MudText Class="loading-text">Preparando Tabuleiro...</MudText>
+        </div>
+    }
+    else if (IsSelecting)
     {
 
         <div class="difficulty-section">
@@ -90,13 +97,6 @@
                     </ItemTemplate>
                 </MudCarousel>
             }
-        </div>
-    }
-    else if (IsBusy)
-    {
-        <div class="loading-container">
-            <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Warning" />
-            <MudText Class="loading-text">Preparando Tabuleiro...</MudText>
         </div>
     }
     else if (IsGameActive)
@@ -213,9 +213,7 @@
 
         if (string.IsNullOrWhiteSpace(Difficulty))
             return;
-        IsSelecting = false;
-        IsBusy = true;
-        await InvokeAsync(StateHasChanged);
+       
         await StartSelectedGameAsync();
     }
 
@@ -245,6 +243,7 @@
             IEnumerable<CardThemeManifestDto> themes = await themeService.GetThemesAsync();
 
             Themes.Clear();
+            await InvokeAsync(StateHasChanged);
             foreach (CardThemeManifestDto theme in themes)
                 Themes.Add(theme);
 
@@ -261,10 +260,11 @@
         }
     }
 
-    private async Task StartSelectedGameAsync()
+    private Task StartSelectedGameAsync()
     {
         if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level) || Mode == "2")
-            return;
+            return Task.CompletedTask;
+        
         logger.LogInformation("Preparing game for start...");
         IsSelecting = false;
         IsGameActive = false;
@@ -272,54 +272,70 @@
         IsVictory = string.Empty;
         Statistics = GameStatisticsDto.Default;
         Cards.Clear();
-        try
+        IsBusy = true;
+        // The event handler will complete here, and Blazor will implicitly trigger StateHasChanged()
+        
+        _ = Task.Run(async () =>
         {
-            ConfigureGridGeometry(level);
-            Theme = SelectedTheme.ThemeName;
+            try
+            {
+                ConfigureGridGeometry(level);
+                string themeName = SelectedTheme.ThemeName;
+                
+                // Do the heavy background loading off the UI thread
+                await game.StartGameAsync(level, themeName, Mode);
 
-            AttachGameEvents();
+                await InvokeAsync(() =>
+                {
+                    Theme = themeName;
+                    AttachGameEvents();
+                    foreach (KeyValuePair<int, MemoryCard> card in game.CurrentCards)
+                        Cards.Add(card);
 
-            await game.StartGameAsync(level, Theme, Mode);
+                    GameTime = game.CurrentMode == GameMode.TimeAttack
+                                    ? TimeSpan.FromSeconds(GetInitialTime(level)).ToString("mm\\:ss")
+                                    : "--:--";
+                    CurrentScore = game.CurrentScore.ToString("D3");
+                    MovesCount = game.TotalMoves.ToString();
+                });
+                
+                await audio.StopAsync();
+                await audio.PlayMainGameAsync();
+                
+                await InvokeAsync(() =>
+                {
+                    IsGameActive = true;
+                });
+                
+                logger.LogInformation(
+                    "Game initialized. Theme: {Theme}, Difficulty: {Difficulty}, Mode: {Mode}, Cards: {CardCount}",
+                    themeName, level, Mode, Cards.Count);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(
+                    e,
+                    "Error initializing game. Theme: {Theme}, Difficulty: {Difficulty}",
+                    SelectedTheme?.ThemeName, Difficulty);
 
-            foreach (KeyValuePair<int, MemoryCard> card in game.CurrentCards)
-                Cards.Add(card);
+                await InvokeAsync(() =>
+                {
+                    IsSelecting = true;
+                    IsGameActive = false;
+                    IsGameFinished = false;
+                });
+            }
+            finally
+            {
+                await InvokeAsync(() =>
+                {
+                    IsBusy = false;
+                    StateHasChanged();
+                });
+            }
+        });
 
-            GameTime = game.CurrentMode == GameMode.TimeAttack
-                            ? TimeSpan.FromSeconds(GetInitialTime(level)).ToString("mm\\:ss")
-                            : "--:--";
-            CurrentScore = game.CurrentScore.ToString("D3");
-            MovesCount = game.TotalMoves.ToString();
-            IsBusy = false;
-            await audio.StopAsync();
-            await audio.PlayMainGameAsync();
-            IsGameActive = true;
-            await InvokeAsync(StateHasChanged);
-
-            logger.LogInformation(
-                "Game initialized. Theme: {Theme}, Difficulty: {Difficulty}, Mode: {Mode}, Cards: {CardCount}",
-                Theme,
-                level,
-                Mode,
-                Cards.Count);
-            
-        }
-        catch (Exception e)
-        {
-            logger.LogError(
-                e,
-                "Error initializing game. Theme: {Theme}, Difficulty: {Difficulty}",
-                Theme,
-                Difficulty);
-
-            IsSelecting = true;
-            IsGameActive = false;
-            IsGameFinished = false;
-        }
-        finally
-        {
-            IsBusy = false;
-            await InvokeAsync(StateHasChanged);
-        }
+        return Task.CompletedTask;
     }
 
     private static int GetInitialTime(int difficulty) => difficulty switch
