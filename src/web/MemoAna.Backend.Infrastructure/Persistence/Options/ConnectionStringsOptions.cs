@@ -4,5 +4,5 @@ public sealed class ConnectionStringsOptions
 {
     public const string SectionName = "ConnectionStrings";
 
-    public required string MemoAna { get; set; }    
+    public required string MemoAna { get; set; }
 }

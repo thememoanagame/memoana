@@ -5,7 +5,8 @@ namespace MemoAna.Backend.Domain.Game;
 /// <summary>
 /// SQL catalog metadata for a card theme.
 /// </summary>
-public sealed class CardThemeManifestEntity(string id = "") : EntityBase(id)
+public sealed class CardThemeManifestEntity(string id = "") : EntityBase(id),
+    IRelationalEntityBase
 {
     public string ThemeName { get; set; } = string.Empty;
 

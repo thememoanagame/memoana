@@ -7,66 +7,30 @@ using Microsoft.EntityFrameworkCore;
 namespace MemoAna.Backend.Infrastructure.Common.Repository;
 
 /// <summary>
-/// Provides EF Core persistence operations.
+/// Provides EF Core persistence operations for the relational model.
 /// </summary>
-/// <typeparam name="TEntity">The entity type.</typeparam>
+/// <typeparam name="TEntity">The supported relational entity type.</typeparam>
 public sealed class Repository<TEntity>(
     MemoAnaDbContext dbContext) : IRepository<TEntity>
-    where TEntity : class, IEntityBase
+    where TEntity : class, IRelationalEntityBase
 {
     /// <inheritdoc />
-    public async Task<TEntity?> GetByIdAsync(
+    public Task<TEntity?> GetByIdAsync(
         string id,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken)
-    {
-        IQueryable<TEntity> query = dbContext
-            .Set<TEntity>()
-            .AsNoTracking();
-        query = ApplyIncludes(query, includes);
-        return await query.FirstOrDefaultAsync(
-            entity => entity.Id == id,
-            cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<TEntity?> GetTrackedByIdAsync(
-        string id,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken)
-    {
-        IQueryable<TEntity> query = dbContext.Set<TEntity>();
-        query = ApplyIncludes(query, includes);
-        return await query.FirstOrDefaultAsync(
-            entity => entity.Id == id,
-            cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<TEntity?> FirstOrDefaultAsync(
-        Expression<Func<TEntity, bool>> predicate,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken)
-    {
-        IQueryable<TEntity> query = dbContext
-            .Set<TEntity>()
-            .AsNoTracking();
-        query = ApplyIncludes(query, includes);
-        return await query.FirstOrDefaultAsync(
-            predicate,
-            cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        dbContext.Set<TEntity>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                entity => entity.Id == id,
+                cancellationToken);
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<TEntity>> ListAsync(
-        Expression<Func<TEntity, bool>>? predicate,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken)
+        Expression<Func<TEntity, bool>>? predicate = null,
+        CancellationToken cancellationToken = default)
     {
-        IQueryable<TEntity> query = dbContext
-            .Set<TEntity>()
+        IQueryable<TEntity> query = dbContext.Set<TEntity>()
             .AsNoTracking();
-        query = ApplyIncludes(query, includes);
 
         if (predicate is not null)
         {
@@ -77,54 +41,48 @@ public sealed class Repository<TEntity>(
     }
 
     /// <inheritdoc />
-    public Task<bool> ExistsAsync(
-        Expression<Func<TEntity, bool>> predicate,
-        CancellationToken cancellationToken)
-    {
-        return dbContext
-            .Set<TEntity>()
-            .AsNoTracking()
-            .AnyAsync(predicate, cancellationToken);
-    }
-
-    /// <inheritdoc />
     public async Task AddAsync(
         TEntity entity,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        _ = await dbContext
-            .Set<TEntity>()
+        _ = await dbContext.Set<TEntity>()
             .AddAsync(entity, cancellationToken);
     }
 
     /// <inheritdoc />
-    public void Update(TEntity entity)
+    public async Task<bool> UpdateAsync(
+        TEntity entity,
+        CancellationToken cancellationToken = default)
     {
-        _ = dbContext.Set<TEntity>().Update(entity);
-    }
+        bool exists = await dbContext.Set<TEntity>()
+            .AsNoTracking()
+            .AnyAsync(
+                candidate => candidate.Id == entity.Id,
+                cancellationToken);
 
-    /// <inheritdoc />
-    public void Remove(TEntity entity)
-    {
-        _ = dbContext.Set<TEntity>().Remove(entity);
-    }
-
-    /// <inheritdoc />
-    public void RemoveRange(IEnumerable<TEntity> entities)
-    {
-        dbContext.Set<TEntity>().RemoveRange(entities);
-    }
-
-    private static IQueryable<TEntity> ApplyIncludes(
-        IQueryable<TEntity> query,
-        Expression<Func<TEntity, object?>>[] includes)
-    {
-        foreach (Expression<Func<TEntity, object?>> include
-            in includes)
+        if (!exists)
         {
-            query = query.Include(include);
+            return false;
         }
 
-        return query;
+        _ = dbContext.Set<TEntity>().Update(entity);
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RemoveAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        TEntity? entity = await dbContext.Set<TEntity>()
+            .FindAsync([id], cancellationToken);
+
+        if (entity is null)
+        {
+            return false;
+        }
+
+        _ = dbContext.Set<TEntity>().Remove(entity);
+        return true;
     }
 }

@@ -3,6 +3,7 @@ using System;
 using MemoAna.Backend.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MemoAna.Backend.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MemoAnaDbContext))]
-    partial class MemoAnaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260908103807_AddGameCatalog")]
+    partial class AddGameCatalog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

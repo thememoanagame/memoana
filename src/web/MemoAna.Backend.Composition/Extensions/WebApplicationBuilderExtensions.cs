@@ -29,7 +29,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 using Microsoft.IdentityModel.Tokens;
-using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -104,6 +103,9 @@ public static class WebApplicationBuilderExtensions
             _ = builder.Services.Configure<ConnectionStringsOptions>(
                 builder.Configuration.GetSection(
                     ConnectionStringsOptions.SectionName));
+            _ = builder.Services.Configure<MongoDbOptions>(
+                builder.Configuration.GetSection(
+                    MongoDbOptions.SectionName));
 
             _ = builder.Services.AddDbContext<MemoAnaDbContext>(
                 options =>
@@ -158,6 +160,10 @@ public static class WebApplicationBuilderExtensions
             _ = builder.Services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
             _ = builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             _ = builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+            _ = builder.Services.AddSingleton<MemoAnaMongoDbContext>();
+            _ = builder.Services.AddScoped(
+                typeof(INoRepository<>),
+                typeof(NoRepository<>));
             _ = builder.Services.AddValidatorsFromAssemblyContaining<RegisterCommandValidator>();
             _ = builder.Services.AddScoped<IHealthService, HealthService>();
             System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();

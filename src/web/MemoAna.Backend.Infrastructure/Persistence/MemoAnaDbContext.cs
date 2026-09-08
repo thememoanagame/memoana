@@ -1,4 +1,5 @@
 using MemoAna.Backend.Domain.Common;
+using MemoAna.Backend.Domain.Game;
 using MemoAna.Backend.Infrastructure.Identity.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,13 @@ namespace MemoAna.Backend.Infrastructure.Persistence;
 public sealed class MemoAnaDbContext(DbContextOptions<MemoAnaDbContext> options)
     : IdentityDbContext<User, Role, string>(options)
 {
+    /// <summary>Gets the card theme catalog.</summary>
+    public DbSet<CardThemeEntity> CardThemes => Set<CardThemeEntity>();
+
+    /// <summary>Gets the card theme manifests.</summary>
+    public DbSet<CardThemeManifestEntity> CardThemeManifests =>
+        Set<CardThemeManifestEntity>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(
         ModelBuilder builder)
