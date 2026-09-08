@@ -24,11 +24,11 @@
     <Project Path="src/docs/memoana.github.io/memoana.github.io.csproj" />
   </Folder>
   <Folder Name="/MemoAna/src/web/">
+    <Project Path="src/web/MemoAna.Backend/MemoAna.Backend.csproj" />
     <Project Path="src/web/MemoAna.Backend.Application/MemoAna.Backend.Application.csproj" Id="16d92d7b-fd38-4f59-86a5-3f7284a52c65" />
     <Project Path="src/web/MemoAna.Backend.Composition/MemoAna.Backend.Composition.csproj" Id="1b72c525-9d22-4b9d-87b5-a59db308a433" />
     <Project Path="src/web/MemoAna.Backend.Domain/MemoAna.Backend.Domain.csproj" Id="d7e8d4bf-fdea-4347-9bf0-5ce2854e884a" />
     <Project Path="src/web/MemoAna.Backend.Infrastructure/MemoAna.Backend.Infrastructure.csproj" Id="1a4bc0b6-e0b0-4f0c-a80f-aee3c66799df" />
-    <Project Path="src/web/MemoAna.Backend/MemoAna.Backend.csproj" />
   </Folder>
   <Folder Name="/MemoAna/tests/" />
   <Folder Name="/MemoAna/tests/web/">
