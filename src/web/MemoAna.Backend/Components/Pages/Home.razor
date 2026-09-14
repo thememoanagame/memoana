@@ -1,3 +1,32 @@
 ﻿@page "/"
+@attribute [Authorize]
+@using MemoAna.Backend.Application.Common.Authorization
+@inject IAuthenticatedUserClassifier UserClassifier
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || AuthenticationStateTask is null)
+        {
+            return;
+        }
+
+        AuthenticationState authenticationState = await AuthenticationStateTask;
+        AuthenticatedUserType userType = await UserClassifier.ClassifyAsync(
+            authenticationState.User);
+
+        string destination = userType switch
+        {
+            AuthenticatedUserType.SystemAdmin => "/dashboard",
+            AuthenticatedUserType.SystemUser => "/dashboard",
+            AuthenticatedUserType.Player => "/main",
+            _ => "/login"
+        };
+
+        Navigation.NavigateTo(destination, replace: true);
+    }
+}

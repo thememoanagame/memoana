@@ -2,6 +2,7 @@ using FluentValidation;
 using Infisical.Sdk;
 using Infisical.Sdk.Model;
 using MemoAna.Backend.Application.Common.Abstractions;
+using MemoAna.Backend.Application.Common.Authorization;
 using MemoAna.Backend.Application.Common.Contracts;
 using MemoAna.Backend.Application.Common.Pipeline.Validation;
 using MemoAna.Backend.Application.Game.Abstractions;
@@ -20,6 +21,7 @@ using MemoAna.Backend.Infrastructure.Game;
 using MemoAna.Backend.Infrastructure.Persistence.Contexts;
 using MemoAna.Backend.Infrastructure.Persistence.Middlewares;
 using MemoAna.Backend.Infrastructure.Persistence.Options;
+using MemoAna.Backend.Composition.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -95,6 +97,7 @@ public static class WebApplicationBuilderExtensions
                     s => s.SecretValue
                 )!);
             }
+            _ = builder.Services.AddCascadingAuthenticationState();
             _ = builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
             _ = builder.Services.AddControllers();
@@ -151,6 +154,7 @@ public static class WebApplicationBuilderExtensions
                 .AddDefaultTokenProviders();
 
             _ = builder.Services.AddScoped<IIdentityService, IdentityService>();
+            _ = builder.Services.AddScoped<IAuthenticatedUserClassifier, AuthenticatedUserClassifier>();
             _ = builder.Services.AddScoped<IGameDataService, GameDataService>();
 
             _ = builder.Services.Configure<GooglePlayGamesOptions>(
