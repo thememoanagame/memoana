@@ -44,6 +44,11 @@ public sealed class GooglePlayGamesAuthenticationService(
             {
                 throw;
             }
+            catch (Google.Apis.Auth.OAuth2.Responses.TokenResponseException tre)
+            {
+                logger.LogWarning(tre, "{Message}", tre.Message);
+                return null;
+            }
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Failed to exchange server auth code.");

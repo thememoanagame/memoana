@@ -25,6 +25,37 @@
             }
         },
         {
+            "label": "MemoAna.Backend: Debug",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "run",
+                "--project",
+                "${workspaceFolder}/src/web/MemoAna.Backend/MemoAna.Backend.csproj",
+                "-c",
+                "Debug",
+            ],
+            "problemMatcher": "$msCompile",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true,
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "MemoAna.Backend: Docker",
+            "type": "shell",
+            "command": "docker compose up -d --build",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
             "label": "MemoAna.Backend: Setup Infisical",
             "type": "shell",
             "command": "powershell",

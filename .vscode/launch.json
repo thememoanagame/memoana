@@ -9,6 +9,32 @@
             "type": "dotnet",
             "request": "launch",
             "projectPath": "${workspaceFolder}/src/app/MemoAna/MemoAna.csproj"
+        },
+        {
+            "name": "ASPNET: MemoAna Debug",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/src/web/MemoAna.Backend/MemoAna.Backend.csproj"
+        },
+        {
+            "name": "Docker Compose: Start & Attach",
+            "type": "coreclr",
+            "request": "attach",
+            "preLaunchTask": "docker-compose-up",
+            "processId": "${command:pickTargetProcess}",
+            "pipeTransport": {
+                "pipeProgram": "docker",
+                "pipeArgs": [
+                    "exec",
+                    "-i",
+                    "memoana" 
+                ],
+                "debuggerPath": "/vsdbg/vsdbg",
+                "pipeCwd": "${workspaceFolder}"
+            },
+            "sourceFileMap": {
+                "/app": "${workspaceFolder}"
+            }
         }
     ]
 }

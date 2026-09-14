@@ -25,6 +25,8 @@ services:
     depends_on:
       - memoana-sql
       - memoana-nosql
+    security_opt:
+      - seccomp:unconfined
     volumes:
       - memoana-data:/app/
       - memoana-protection-keys:/root:ro 
