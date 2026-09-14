@@ -2,11 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-namespace MemoAna.Backend.Infrastructure.Persistence;
+namespace MemoAna.Backend.Infrastructure.Persistence.Contexts;
 
-public class MemoAnaDbContextFactory : IDesignTimeDbContextFactory<MemoAnaDbContext>
+public class PostgresDbContextFactory : IDesignTimeDbContextFactory<PostgresDbContext>
 {
-    public MemoAnaDbContext CreateDbContext(string[] args)
+    public PostgresDbContext CreateDbContext(string[] args)
     {
         string basePath = Directory.GetCurrentDirectory();
 
@@ -24,8 +24,8 @@ public class MemoAnaDbContextFactory : IDesignTimeDbContextFactory<MemoAnaDbCont
             throw new InvalidOperationException("The 'MemoAna' ConnectionString was not found at appsettings.json.");
         }
 
-        return new MemoAnaDbContext(
-            new DbContextOptionsBuilder<MemoAnaDbContext>()
+        return new PostgresDbContext(
+            new DbContextOptionsBuilder<PostgresDbContext>()
             .UseNpgsql(cs)
             .Options);
     }

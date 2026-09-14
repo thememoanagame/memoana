@@ -5,10 +5,10 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
-namespace MemoAna.Backend.Infrastructure.Persistence;
+namespace MemoAna.Backend.Infrastructure.Persistence.Contexts;
 
-/// <summary>Represents the MemoAna.Backend database context.</summary>
-public sealed class MemoAnaDbContext(DbContextOptions<MemoAnaDbContext> options)
+/// <summary>Represents the Postgres database context.</summary>
+public sealed class PostgresDbContext(DbContextOptions<PostgresDbContext> options)
     : IdentityDbContext<User, Role, string>(options)
 {
     /// <summary>Gets the card theme catalog.</summary>
@@ -51,7 +51,7 @@ public sealed class MemoAnaDbContext(DbContextOptions<MemoAnaDbContext> options)
         // }
 
         _ = builder.ApplyConfigurationsFromAssembly(
-            typeof(MemoAnaDbContext).Assembly);
+            typeof(PostgresDbContext).Assembly);
     }
 
     /// <inheritdoc />

@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using MemoAna.Backend.Application.Common.Abstractions;
 using MemoAna.Backend.Domain.Common;
 using MemoAna.Backend.Infrastructure.Persistence;
+using MemoAna.Backend.Infrastructure.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 
 namespace MemoAna.Backend.Infrastructure.Common.Repository;
@@ -10,8 +11,7 @@ namespace MemoAna.Backend.Infrastructure.Common.Repository;
 /// Provides EF Core persistence operations for the relational model.
 /// </summary>
 /// <typeparam name="TEntity">The supported relational entity type.</typeparam>
-public sealed class Repository<TEntity>(
-    MemoAnaDbContext dbContext) : IRepository<TEntity>
+public sealed class Repository<TEntity>(PostgresDbContext dbContext) : IRepository<TEntity>
     where TEntity : class, IRelationalEntityBase
 {
     /// <inheritdoc />

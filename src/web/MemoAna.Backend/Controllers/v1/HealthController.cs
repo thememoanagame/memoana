@@ -9,11 +9,11 @@ namespace MemoAna.Backend.Controllers.v1;
 /// Controller for health check endpoints.
 /// Provides information about the application's health status, disk usage, database connectivity, and host information.
 /// </summary>
-/// <param name="mediator"></param>
+/// <param name="mediator">The application mediator</param>
 [Route("api/v1/healthcheck")]
 [ApiController]
 [Tags("HealthChecks")]
-[Authorize]
+[Authorize(Policy = "system.admin")]
 public class HealthController(IMediator mediator) : ControllerBase
 {
     [HttpGet("api")]

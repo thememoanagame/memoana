@@ -15,8 +15,7 @@ namespace MemoAna.Backend.Controllers.v1;
 /// <param name="mediator">The application mediator.</param>
 [ApiController]
 [Route("api/v1/identity")]
-public sealed class IdentityController(
-    IMediator mediator) : ControllerBase
+public sealed class IdentityController(IMediator mediator) : ControllerBase
 {
     /// <summary>Registers a new user.</summary>
     [HttpPost("register")]

@@ -3,10 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Scalar.AspNetCore;
 
 namespace MemoAna.Backend.Composition.Extensions;
-/// <summary>
-/// 
-/// </summary>
-
+/// <summary>WebApplication extension methods class.</summary>
 public static class WebApplicationExtensions
 {
     extension(WebApplication app)
@@ -16,7 +13,7 @@ public static class WebApplicationExtensions
         /// </summary>
         public async Task RunMemoAnaAsync<T>() where T : Microsoft.AspNetCore.Components.IComponent
         {
-            
+            _ = app.UseForwardedHeaders();
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {
@@ -26,6 +23,7 @@ public static class WebApplicationExtensions
             }
             else
             {
+                app.UseHttpsRedirection();
                 _ = app.MapOpenApi("ma/{v1}.json").AllowAnonymous();
                 _ = app.MapScalarApiReference("ma/scalar", async options =>
                 {
@@ -35,7 +33,6 @@ public static class WebApplicationExtensions
                 });
             }
             _ = app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-            _ = app.UseHttpsRedirection();
             _ = app.UseAuthentication();
             _ = app.UseAuthorization();
             _ = app.UseAntiforgery();

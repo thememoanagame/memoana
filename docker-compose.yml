@@ -1,32 +1,38 @@
 services:
   memoana:
     image: ${DOCKER_REGISTRY-}memoana
+    container_name: memoana
     build:
       context: .
       dockerfile: src/web/MemoAna.Backend/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_HTTP_PORTS: 80
-      ASPNETCORE_HTTPS_PORTS: 443
-      ConnectionStrings__Postgres: "Host=memoana-db;Port=5432;Database=${POSTGRES_DB:-MemoAnaDB};Username=${POSTGRES_USER:-memoana};Password=${POSTGRES_PASSWORD:-M3M0@n@}" 
-      Jwt__Key: ${JWT_KEY:-"5t8iai8+8U6+KkWe7A/FMMjOQsKVik/JVR2TedmbM2XSdwn3pKQ+AKFloMlE1gBKq8Pi/Yl6GzyYxSCMeTLatQ=="}
-      ASPNETCORE_Kestrel__Certificates__Default__Path: /root/memoana.pfx
-      ASPNETCORE_Kestrel__Certificates__Default__Password: ${CERT_PASSWORD:-"M3M0@n@"}
+      ASPNETCORE_HTTP_PORTS: 5000
+      ASPNETCORE_HTTPS_PORTS: 5443
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /app/https/aspnetapp.pfx
+      ASPNETCORE_Kestrel__Certificates__Default__Password: ${HTTPS_PWD}
+      PORT: 5000
+      ICID: ${ICID}
+      ICS: ${ICS}
+      IENV: dev
+      IPID: ${IPID}
+      ISP: ${ISP}
     ports:
-      - "8000:80"
-      - "8443:443"
+      - "8000:5000"
+      - "8443:5443"
     networks:
       - memoana
     depends_on:
-      - memoana-db
+      - memoana-sql
+      - memoana-nosql
     volumes:
       - memoana-data:/app/
       - memoana-protection-keys:/root:ro 
-      - ./certs/memoana.pfx:/root/memoana.pfx:ro
-      - ./certs/memoana.crt:/root/memoana.crt:ro 
-  
-  memoana-db:
+      - ./.certs:/app/https:ro
+
+  memoana-sql:
     image: postgres:17
+    container_name: memoana-sql
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-memoana}}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-M3M0@n@}}
@@ -36,14 +42,30 @@ services:
     networks:
       - memoana
     volumes:
-      - memoana-db-data:/var/lib/postgresql/data   
+      - memoana-sql-data:/var/lib/postgresql/data   
     
+  memoana-nosql:
+    image: mongo:latest
+    container_name: memoana-nosql
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-memoana}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-M3M0_4n4}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-MemoAnaNoSqlDB}
+    ports:
+      - "27017:27017"
+    networks:
+      - memoana
+    volumes:
+      - memoana-nosql-data:/data/db
+      
 volumes:
   memoana-data:
     driver: local
   memoana-protection-keys:
     driver: local
-  memoana-db-data:
+  memoana-sql-data:
+    driver: local
+  memoana-nosql-data:
     driver: local
 
 networks:

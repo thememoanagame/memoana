@@ -4,6 +4,7 @@ using MemoAna.Backend.Application.Game.Commands;
 using MemoAna.Backend.Application.Game.Dtos;
 using MemoAna.Backend.Application.Game.Queries;
 using MemoAna.Backend.Application.Game.Requests;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemoAna.Backend.Controllers.v1;
@@ -13,6 +14,7 @@ namespace MemoAna.Backend.Controllers.v1;
 [ApiController]
 [Route("api/v1/game-data")]
 [Tags("GameData")]
+[Authorize(Policy = "system.admin")]
 public sealed class GameDataController(IMediator mediator) : ControllerBase
 {
     /// <summary>Gets all complete card theme aggregates.</summary>

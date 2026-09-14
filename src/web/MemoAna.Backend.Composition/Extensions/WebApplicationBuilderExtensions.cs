@@ -17,7 +17,7 @@ using MemoAna.Backend.Infrastructure.Identity.Models;
 using MemoAna.Backend.Infrastructure.Identity.Options;
 using MemoAna.Backend.Infrastructure.Identity.Services;
 using MemoAna.Backend.Infrastructure.Game;
-using MemoAna.Backend.Infrastructure.Persistence;
+using MemoAna.Backend.Infrastructure.Persistence.Contexts;
 using MemoAna.Backend.Infrastructure.Persistence.Middlewares;
 using MemoAna.Backend.Infrastructure.Persistence.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -28,12 +28,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Hosting;
 
 namespace MemoAna.Backend.Composition.Extensions;
 
@@ -56,33 +55,45 @@ public static class WebApplicationBuilderExtensions
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables();
+            
+            var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+            builder.WebHost.UseUrls($"http://*:{port}");
+            
+            // reads the infisical env vars (Machine Identity) for the current environment 
+            string? cid = Environment.GetEnvironmentVariable("ICID");
+            string? cs = Environment.GetEnvironmentVariable("ICS");
+            string? sp = Environment.GetEnvironmentVariable("ISP") ?? "/";
 
-            if (builder.Environment.IsProduction())
+            // dynamic slug: "dev", "prod", "staging", etc. (Defaults to current environment from ASP.NET, lowercase)
+            string env = Environment.GetEnvironmentVariable("IENV")
+                            ?? builder.Environment.EnvironmentName.ToLowerInvariant();
+
+            if (!string.IsNullOrEmpty(cid) && !string.IsNullOrEmpty(cs))
             {
-
-                var settings = new InfisicalSdkSettingsBuilder()    
-                    //.WithHostUri("http://localhost:8080") // Optional. Will default to https://app.infisical.com
-                    .Build();
-
+                var settings = new InfisicalSdkSettingsBuilder().Build();
                 var client = new InfisicalClient(settings);
-
-                string cid = Environment.GetEnvironmentVariable("MUACID")?.ToString() ?? throw new InvalidOperationException("Environment variables not set up");
-                string cs = Environment.GetEnvironmentVariable("MUACS")?.ToString() ?? throw new InvalidOperationException("Environment variables not set up");
 
                 MachineIdentityCredential credential = await client.Auth().UniversalAuth().LoginAsync(cid, cs);
 
                 var options = new ListSecretsOptions
                 {
                     SetSecretsAsEnvironmentVariables = true,
-                    EnvironmentSlug = "prod",
-                    SecretPath = "/memoana",
+                    EnvironmentSlug = env, 
+                    SecretPath = sp,
                     Recursive = true,
                     ExpandSecretReferences = true,
-                    ProjectId = "",
+                    ProjectId = Environment.GetEnvironmentVariable("IPID") ?? "",
                     ViewSecretValue = true,
                 };
 
-                Secret[] secrets = await client.Secrets().ListAsync(options) ?? throw new InvalidOperationException("Failed to fetch secrets, returned null response");
+                Secret[] secrets = await client.Secrets().ListAsync(options)
+                    ?? throw new InvalidOperationException("Failed to fetch secrets from Infisical");
+
+                // Adds secrets to .NET Configuration
+                builder.Configuration.AddInMemoryCollection(secrets.ToDictionary(
+                    s => s.SecretKey.Replace("__", ":"),
+                    s => s.SecretValue
+                )!);
             }
             _ = builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
@@ -109,27 +120,16 @@ public static class WebApplicationBuilderExtensions
                 builder.Configuration.GetSection(
                     MongoDbOptions.SectionName));
 
-            _ = builder.Services.AddDbContext<MemoAnaDbContext>(
+            _ = builder.Services.AddDbContext<PostgresDbContext>(
                 options =>
                 {
-                    if (builder.Environment.IsProduction())
-                    {
-                        ConnectionStringsOptions cs = builder.Configuration
-                            .GetSection(ConnectionStringsOptions.SectionName)
-                            .Get<ConnectionStringsOptions>()
-                            ?? throw new InvalidOperationException(
-                                "MemoAna ConnectionStrings configuration is missing.");
+                    ConnectionStringsOptions cs = builder.Configuration
+                        .GetSection(ConnectionStringsOptions.SectionName)
+                        .Get<ConnectionStringsOptions>()
+                    ?? throw new InvalidOperationException(
+                        "Postgres ConnectionStrings configuration is missing.");
+                    _ = options.UseNpgsql(cs.Postgres, sql => sql.CommandTimeout(90));
 
-                        _ = options.UseNpgsql(cs.MemoAna, sql => sql.CommandTimeout(90));
-                    }
-                    else if (builder.Environment.IsDevelopment())
-                    {
-                        string? ConnectionStrings__Postgress = Environment.GetEnvironmentVariable("ConnectionStrings__Postgress")?.ToString();
-                        ArgumentException.ThrowIfNullOrEmpty(ConnectionStrings__Postgress, nameof(ConnectionStrings__Postgress));
-                        ArgumentException.ThrowIfNullOrWhiteSpace(ConnectionStrings__Postgress, nameof(ConnectionStrings__Postgress));
-                        _ = options.UseNpgsql(ConnectionStrings__Postgress, sql => sql.CommandTimeout(90));
-                    }
-                    else throw new InvalidOperationException("No data provider configured");
                 });
 
             _ = builder.Services.AddIdentityCore<User>(
@@ -145,9 +145,8 @@ public static class WebApplicationBuilderExtensions
                     options.Lockout.MaxFailedAccessAttempts = 5;
                     options.Lockout.DefaultLockoutTimeSpan =
                         TimeSpan.FromMinutes(15);
-                })
-                .AddRoles<Role>()
-                .AddEntityFrameworkStores<MemoAnaDbContext>()
+                }).AddRoles<Role>()
+                .AddEntityFrameworkStores<PostgresDbContext>()
                 .AddSignInManager()
                 .AddDefaultTokenProviders();
 
@@ -155,15 +154,15 @@ public static class WebApplicationBuilderExtensions
             _ = builder.Services.AddScoped<IGameDataService, GameDataService>();
 
             _ = builder.Services.Configure<GooglePlayGamesOptions>(
-                builder.Configuration.GetSection("GooglePlayGames"));
-            _ = builder.Services.AddScoped<IGooglePlayGamesAuthenticationService, GooglePlayGamesAuthenticationService>();
+                builder.Configuration.GetSection(GooglePlayGamesOptions.SectionName));
 
+            _ = builder.Services.AddScoped<IGooglePlayGamesAuthenticationService, GooglePlayGamesAuthenticationService>();
             _ = builder.Services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
             _ = builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             _ = builder.Services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
             _ = builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             _ = builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-            _ = builder.Services.AddSingleton<MemoAnaMongoDbContext>();
+            _ = builder.Services.AddSingleton<MongoDbContext>();
             _ = builder.Services.AddScoped(
                 typeof(INoRepository<>),
                 typeof(NoRepository<>));
@@ -291,14 +290,21 @@ public static class WebApplicationBuilderExtensions
                 })
                 .AddJwtBearer("GoogleJwt", options =>
                 {
-                    options.Authority = "https://accounts.google.com";
-                    options.Audience = $"{builder.Configuration["GooglePlayGames:ClientId"]}.apps.googleusercontent.com"; // ClientId da Credencial Web
+                    GooglePlayGamesOptions gpg = builder.Configuration
+                        .GetSection(GooglePlayGamesOptions.SectionName)
+                        .Get<GooglePlayGamesOptions>()
+                        ?? throw new InvalidOperationException(
+                            "GooglePlayGames configuration is missing.");
+
+
+                    options.Audience = gpg.Audience;
+                    options.Authority = gpg.Authority;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
-                        ValidateIssuer = true,
-                        ValidIssuers = ["accounts.google.com", "https://accounts.google.com"],
+                        ValidAudience = gpg.ValidAudience,
                         ValidateAudience = true,
-                        ValidAudience = $"{builder.Configuration["GooglePlayGames:ClientId"]}.apps.googleusercontent.com",
+                        ValidIssuers = ["accounts.google.com", "https://accounts.google.com"],
+                        ValidateIssuer = true,
                         ValidateIssuerSigningKey = true,
                         ValidateLifetime = true,
                         ClockSkew = TimeSpan.FromMinutes(5)
@@ -309,11 +315,9 @@ public static class WebApplicationBuilderExtensions
                 .AddPolicy(IdentityPolicies.Administrator, policy => policy
                     .RequireAuthenticatedUser()
                     .RequireClaim(IdentityClaimTypes.Permission, "system.admin"))
-
                 .AddPolicy(IdentityPolicies.User, policy => policy
                     .RequireAuthenticatedUser()
                     .RequireClaim(IdentityClaimTypes.Permission, "system.user"))
-
                 .SetDefaultPolicy(new AuthorizationPolicyBuilder()
                     .RequireAuthenticatedUser()
                     .Build());
@@ -329,6 +333,14 @@ public static class WebApplicationBuilderExtensions
                 ];
             });
 
+            _ = builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+                // Clears proxies and known networks to accept the X-Forwarded-* headers from Render
+                options.KnownIPNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
             await builder.Build().RunMemoAnaAsync<TApp>();
         }
     }

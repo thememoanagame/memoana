@@ -1,5 +1,6 @@
 using MemoAna.Backend.Application.Common.Abstractions;
 using MemoAna.Backend.Infrastructure.Persistence;
+using MemoAna.Backend.Infrastructure.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace MemoAna.Backend.Infrastructure.Common.UnitOfWork;
@@ -8,7 +9,7 @@ namespace MemoAna.Backend.Infrastructure.Common.UnitOfWork;
 /// Coordinates EF Core persistence transactions.
 /// </summary>
 public sealed class UnitOfWork(
-    MemoAnaDbContext dbContext) : IUnitOfWork,
+    PostgresDbContext dbContext) : IUnitOfWork,
     IAsyncDisposable
 {
     private IDbContextTransaction?

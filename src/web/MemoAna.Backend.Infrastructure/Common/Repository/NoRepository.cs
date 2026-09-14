@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 using MemoAna.Backend.Application.Common.Abstractions;
 using MemoAna.Backend.Domain.Common;
 using MemoAna.Backend.Domain.Game;
-using MemoAna.Backend.Infrastructure.Persistence;
+using MemoAna.Backend.Infrastructure.Persistence.Contexts;
 using MongoDB.Driver;
 
 namespace MemoAna.Backend.Infrastructure.Common.Repository;
@@ -12,7 +12,7 @@ namespace MemoAna.Backend.Infrastructure.Common.Repository;
 /// </summary>
 /// <typeparam name="TEntity">The supported NoSQL document type.</typeparam>
 public sealed class NoRepository<TEntity>(
-    MemoAnaMongoDbContext dbContext) : INoRepository<TEntity>
+    MongoDbContext dbContext) : INoRepository<TEntity>
     where TEntity : class, INoSqlEntityBase
 {
     /// <inheritdoc />

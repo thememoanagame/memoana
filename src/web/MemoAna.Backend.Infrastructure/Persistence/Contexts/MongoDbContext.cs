@@ -4,28 +4,30 @@ using Microsoft.Extensions.Options;
 using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 
-namespace MemoAna.Backend.Infrastructure.Persistence;
+namespace MemoAna.Backend.Infrastructure.Persistence.Contexts;
 
 /// <summary>
 /// Provides access to the configured MongoDB database and supported collections.
 /// </summary>
-public sealed class MemoAnaMongoDbContext
+public sealed class MongoDbContext 
 {
-    private readonly MongoDbOptions options;
+    private readonly ConnectionStringsOptions options;
+    private readonly MongoDbOptions mongoOptions;
     private readonly IMongoDatabase database;
 
-    public MemoAnaMongoDbContext(IOptions<MongoDbOptions> options)
+    public MongoDbContext(IOptions<MongoDbOptions> mongoOptions, IOptions<ConnectionStringsOptions> options)
     {
+        this.mongoOptions = mongoOptions.Value;
         this.options = options.Value;
         ArgumentException.ThrowIfNullOrWhiteSpace(
-            this.options.ConnectionString);
-        ArgumentException.ThrowIfNullOrWhiteSpace(this.options.Database);
+            this.options.Mongo);
+        ArgumentException.ThrowIfNullOrWhiteSpace(this.mongoOptions.Database);
         ArgumentException.ThrowIfNullOrWhiteSpace(
-            this.options.CardThemeAssetsCollection);
+            this.mongoOptions.CardThemeAssetsCollection);
 
         RegisterMappings();
-        MongoClient client = new(this.options.ConnectionString);
-        database = client.GetDatabase(this.options.Database);
+        MongoClient client = new(this.options.Mongo);
+        database = client.GetDatabase(this.mongoOptions.Database);
     }
 
     /// <summary>Gets the configured collection for a supported document type.</summary>
@@ -39,7 +41,7 @@ public sealed class MemoAnaMongoDbContext
         }
 
         return database.GetCollection<TEntity>(
-            options.CardThemeAssetsCollection);
+            mongoOptions.CardThemeAssetsCollection);
     }
 
     /// <summary>Creates indexes required by the supported document collections.</summary>

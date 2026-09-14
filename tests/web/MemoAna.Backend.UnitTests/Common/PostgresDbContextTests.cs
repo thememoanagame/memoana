@@ -1,16 +1,17 @@
 using MemoAna.Backend.Infrastructure.Identity.Models;
 using MemoAna.Backend.Infrastructure.Persistence;
+using MemoAna.Backend.Infrastructure.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 
 namespace MemoAna.Backend.UnitTests.Common;
 
 /// <summary>Tests database context persistence behaviors.</summary>
-public sealed class MemoAnaDbContextTests
+public sealed class PostgresDbContextTests
 {
     [Fact]
     public async Task SaveChanges_HandlesIdentifiersAndSoftDelete()
     {
-        await using MemoAnaDbContext context = CreateContext();
+        await using PostgresDbContext context = CreateContext();
         User user = new("user@example.com");
         Role role = new("Operator");
         string userId = user.Id;
@@ -38,7 +39,7 @@ public sealed class MemoAnaDbContextTests
     [Fact]
     public async Task SaveChangesOverloads_ApplyPersistenceHooks()
     {
-        await using MemoAnaDbContext context = CreateContext();
+        await using PostgresDbContext context = CreateContext();
 
         Assert.Equal(0, context.SaveChanges());
         Assert.Equal(0, context.SaveChanges(true));
@@ -48,12 +49,12 @@ public sealed class MemoAnaDbContextTests
             true, CancellationToken.None));
     }
 
-    private static MemoAnaDbContext CreateContext()
+    private static PostgresDbContext CreateContext()
     {
-        DbContextOptions<MemoAnaDbContext> options =
-            new DbContextOptionsBuilder<MemoAnaDbContext>()
+        DbContextOptions<PostgresDbContext> options =
+            new DbContextOptionsBuilder<PostgresDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
-        return new MemoAnaDbContext(options);
+        return new PostgresDbContext(options);
     }
 }

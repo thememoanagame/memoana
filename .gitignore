@@ -483,3 +483,5 @@ $RECYCLE.BIN/
 /workload-install.ps1
 src/app/MemoAna/undefined
 **/*.zip
+.infisical.json
+**/.certs/*

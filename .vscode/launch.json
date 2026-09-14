@@ -5,11 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "C#: MemoAna Debug",
+            "name": "MAUI: MemoAna Debug",
             "type": "dotnet",
             "request": "launch",
             "projectPath": "${workspaceFolder}/src/app/MemoAna/MemoAna.csproj"
         }
-
     ]
 }
