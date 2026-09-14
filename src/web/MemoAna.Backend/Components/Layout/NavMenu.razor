@@ -1,7 +1,6 @@
-﻿@using MemoAna.Backend.Application.Common.Contracts
-@using Microsoft.AspNetCore.Authorization
+﻿@using MemoAna.Backend.Application.Common.Authorization
 @using System.Security.Claims
-@inject IAuthorizationService AuthorizationService
+@inject IAuthenticatedUserClassifier UserClassifier
 
 <MudStack Class="pa-4" Spacing="1">
     <MudText Typo="Typo.h6">MemoAna</MudText>
@@ -47,21 +46,10 @@
         }
 
         ClaimsPrincipal principal = (await AuthenticationStateTask).User;
-        _isAuthenticated = principal.Identity?.IsAuthenticated == true;
-
-        if (!_isAuthenticated)
-        {
-            return;
-        }
-
-        _isAdministrator =
-            (await AuthorizationService.AuthorizeAsync(
-                principal,
-                IdentityPolicies.Administrator)).Succeeded ||
-            (await AuthorizationService.AuthorizeAsync(
-                principal,
-                IdentityPolicies.User)).Succeeded;
-
-        _isPlayer = !_isAdministrator;
+        AuthenticatedUserType userType = await UserClassifier.ClassifyAsync(principal);
+        _isAuthenticated = userType is not AuthenticatedUserType.Unauthenticated;
+        _isAdministrator = userType is AuthenticatedUserType.SystemAdmin
+            or AuthenticatedUserType.SystemUser;
+        _isPlayer = userType is AuthenticatedUserType.Player;
     }
 }
