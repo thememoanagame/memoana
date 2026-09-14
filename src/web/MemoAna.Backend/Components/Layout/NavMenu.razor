@@ -1,14 +1,67 @@
-﻿@inject NavigationManager Navigation
+﻿@using MemoAna.Backend.Application.Common.Contracts
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject IAuthorizationService AuthorizationService
 
 <MudStack Class="pa-4" Spacing="1">
-    <MudText Typo="Typo.h6">MemoAna.Backend OS</MudText>
+    <MudText Typo="Typo.h6">MemoAna</MudText>
     <MudDivider Class="mb-2" />
 
     <MudNavMenu Color="Color.Primary">
-        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Start</MudNavLink>
-        <MudNavLink Href="/dashboard" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Start</MudNavLink>
-        <MudNavLink Href="/home" Icon="@Icons.Material.Filled.AddCircle">Your Home</MudNavLink>
-        <MudNavLink Href="/settings" Icon="@Icons.Material.Filled.WbSunny">Options and Settings</MudNavLink>
-        <MudNavLink Href="/setup" Icon="@Icons.Material.Filled.Settings">System setup</MudNavLink>
+        @if (_isPlayer)
+        {
+            <MudNavLink Href="/main" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
+                Home
+            </MudNavLink>
+        }
+
+        @if (_isAdministrator)
+        {
+            <MudNavLink Href="/dashboard" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+                Admin area
+            </MudNavLink>
+        }
+
+        @if (_isAuthenticated)
+        {
+            <MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Settings">
+                Settings
+            </MudNavLink>
+        }
     </MudNavMenu>
 </MudStack>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private bool _isAuthenticated;
+    private bool _isAdministrator;
+    private bool _isPlayer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask is null)
+        {
+            return;
+        }
+
+        ClaimsPrincipal principal = (await AuthenticationStateTask).User;
+        _isAuthenticated = principal.Identity?.IsAuthenticated == true;
+
+        if (!_isAuthenticated)
+        {
+            return;
+        }
+
+        _isAdministrator =
+            (await AuthorizationService.AuthorizeAsync(
+                principal,
+                IdentityPolicies.Administrator)).Succeeded ||
+            (await AuthorizationService.AuthorizeAsync(
+                principal,
+                IdentityPolicies.User)).Succeeded;
+
+        _isPlayer = !_isAdministrator;
+    }
+}
