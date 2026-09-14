@@ -12,9 +12,9 @@ public static class IdentityClaimTypes
 public static class IdentityPolicies
 {
     /// <summary>Gets the policy name required for administrator access.</summary>
-    public const string Administrator = "administrator";
+    public const string Administrator = "system.admin";
     /// <summary>Gets the policy name required for user access</summary>
-    public const string User = "user";
+    public const string User = "system.user";
 }
 
 /// <summary>Contains role names used by the application.</summary>
@@ -36,4 +36,3 @@ public static class JwtTokenTypes
     /// <summary>Gets the token type for refresh tokens.</summary>
     public const string Refresh = "refresh";
 }
-
