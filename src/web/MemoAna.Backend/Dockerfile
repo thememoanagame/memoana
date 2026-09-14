@@ -31,6 +31,9 @@ RUN dotnet publish "./MemoAna.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+USER root 
 RUN apt-get update && apt-get install -y unzip curl \
-    && curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdout -v latest -l /vsdbg
+    && curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdout -v latest -l /vsdbg \
+    && chmod -R +xr /vsdbg
+USER $APP_UID
 ENTRYPOINT ["dotnet", "MemoAna.Backend.dll"]
