@@ -17,17 +17,17 @@
             "projectPath": "${workspaceFolder}/src/web/MemoAna.Backend/MemoAna.Backend.csproj"
         },
         {
-            "name": "Docker Compose: Start & Attach",
+            "name": "Docker: MemoAna Debug",
             "type": "coreclr",
             "request": "attach",
-            "preLaunchTask": "docker-compose-up",
-            "processId": "${command:pickTargetProcess}",
+            "preLaunchTask": "MemoAna.Backend: Docker",
+            "processName": "dotnet",
             "pipeTransport": {
                 "pipeProgram": "docker",
                 "pipeArgs": [
                     "exec",
                     "-i",
-                    "memoana" 
+                    "memoana"
                 ],
                 "debuggerPath": "/vsdbg/vsdbg",
                 "pipeCwd": "${workspaceFolder}"
