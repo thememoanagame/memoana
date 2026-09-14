@@ -29,6 +29,13 @@ public interface IIdentityService
     /// <returns>The token pair, or <see langword="null"/> when authentication fails.</returns>
     Task<TokenResponse?> LoginAsync(string email, string password, string? twoFactorCode, string? twoFactorRecoveryCode, CancellationToken cancellationToken);
 
+    /// <summary>Resolves an external login to a local user and issues MemoAna JWT tokens.</summary>
+    /// <param name="loginProvider">The trusted external login provider name.</param>
+    /// <param name="providerKey">The stable provider-specific identity key.</param>
+    /// <param name="cancellationToken">The token used to cancel the operation.</param>
+    /// <returns>The token pair, or <see langword="null"/> when the external identity cannot be resolved.</returns>
+    Task<TokenResponse?> AuthenticateExternalAsync(string loginProvider, string providerKey, CancellationToken cancellationToken);
+
     /// <summary>Exchanges a valid refresh token for a new token pair.</summary>
     /// <param name="refreshToken">The refresh token to exchange.</param>
     /// <param name="cancellationToken">The token used to cancel the operation.</param>
