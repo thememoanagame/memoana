@@ -15,6 +15,11 @@ public interface INoRepository<TEntity>
         string id,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Gets the first document matching the supplied predicate.</summary>
+    Task<TEntity?> FirstOrDefaultAsync(
+        Expression<Func<TEntity, bool>> predicate,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Lists supported documents, optionally filtered by a predicate.</summary>
     Task<IReadOnlyList<TEntity>> ListAsync(
         Expression<Func<TEntity, bool>>? predicate = null,
@@ -28,6 +33,12 @@ public interface INoRepository<TEntity>
     /// <summary>Replaces an existing document.</summary>
     Task<bool> UpdateAsync(
         TEntity entity,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Replaces a document matching the supplied predicate, inserting it when absent.</summary>
+    Task UpsertAsync(
+        TEntity entity,
+        Expression<Func<TEntity, bool>> predicate,
         CancellationToken cancellationToken = default);
 
     /// <summary>Deletes a document by its stable string identifier.</summary>

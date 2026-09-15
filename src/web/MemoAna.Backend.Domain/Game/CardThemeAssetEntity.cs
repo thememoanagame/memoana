@@ -3,7 +3,7 @@ using MemoAna.Backend.Domain.Common;
 namespace MemoAna.Backend.Domain.Game;
 
 /// <summary>
-/// NoSQL document containing one image asset for a card theme.
+/// NoSQL document containing all image assets for a card theme.
 /// </summary>
 public sealed class CardThemeAssetEntity(string id = "") : NoSqlEntityBase(id)
 {
@@ -12,5 +12,5 @@ public sealed class CardThemeAssetEntity(string id = "") : NoSqlEntityBase(id)
     /// </summary>
     public string CardThemeId { get; set; } = string.Empty;
 
-    public string Base64Image { get; set; } = string.Empty;
+    public List<string> Base64Images { get; set; } = [];
 }

@@ -10,11 +10,15 @@ public interface IGameDataService
     Task<GameDataDto> CreateAsync(
         string themeName,
         bool isDefault,
-        string base64Image,
+        IReadOnlyList<string> base64Images,
         CancellationToken cancellationToken = default);
 
     Task<GameDataDto?> GetByIdAsync(
         string id,
+        CancellationToken cancellationToken = default);
+
+    Task<GameDataDto?> GetByThemeNameAsync(
+        string themeName,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<GameDataDto>> ListAsync(
@@ -24,7 +28,7 @@ public interface IGameDataService
         string id,
         string themeName,
         bool isDefault,
-        string base64Image,
+        IReadOnlyList<string> base64Images,
         CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(

@@ -52,6 +52,24 @@ public sealed class GameDataController(IMediator mediator) : ControllerBase
             : NotFound(result);
     }
 
+    /// <summary>Gets a complete card theme aggregate by theme name.</summary>
+    [HttpGet("by-name/{themeName}")]
+    [ProducesResponseType<GameDataDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Response<GameDataDto>>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetByName(
+        string themeName,
+        CancellationToken cancellationToken)
+    {
+        Response<GameDataDto> result = await mediator.Send(
+            new GetGameDataByNameQuery(themeName),
+            cancellationToken);
+
+        return result.Succeeded
+            ? Ok(result.Data)
+            : NotFound(result);
+    }
+
     /// <summary>Creates a complete card theme aggregate.</summary>
     [HttpPost]
     [ProducesResponseType<GameDataDto>(StatusCodes.Status201Created)]
@@ -67,7 +85,7 @@ public sealed class GameDataController(IMediator mediator) : ControllerBase
             new CreateGameDataCommand(
                 request.ThemeName,
                 request.IsDefault,
-                request.Base64Image),
+                request.Base64Images),
             cancellationToken);
 
         if (!result.Succeeded)
@@ -99,7 +117,7 @@ public sealed class GameDataController(IMediator mediator) : ControllerBase
                 id,
                 request.ThemeName,
                 request.IsDefault,
-                request.Base64Image),
+                request.Base64Images),
             cancellationToken);
 
         return result.Succeeded

@@ -30,6 +30,17 @@ public sealed class NoRepository<TEntity>(
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<TEntity?> FirstOrDefaultAsync(
+        Expression<Func<TEntity, bool>> predicate,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        await EnsureIndexesAsync(cancellationToken);
+        return await dbContext.GetCollection<TEntity>()
+            .Find(predicate)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     /// <inheritdoc />
     public async Task<IReadOnlyList<TEntity>> ListAsync(
         Expression<Func<TEntity, bool>>? predicate = null,
@@ -69,6 +80,22 @@ public sealed class NoRepository<TEntity>(
                 entity,
                 cancellationToken: cancellationToken);
         return result.MatchedCount > 0;
+    }
+
+    public async Task UpsertAsync(
+        TEntity entity,
+        Expression<Func<TEntity, bool>> predicate,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        await EnsureIndexesAsync(cancellationToken);
+        FilterDefinition<TEntity> filter =
+            Builders<TEntity>.Filter.Where(predicate);
+        _ = await dbContext.GetCollection<TEntity>().ReplaceOneAsync(
+            filter,
+            entity,
+            new ReplaceOptions { IsUpsert = true },
+            cancellationToken);
     }
 
     /// <inheritdoc />

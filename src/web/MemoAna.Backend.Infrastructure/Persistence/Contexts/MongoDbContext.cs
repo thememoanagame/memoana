@@ -56,7 +56,8 @@ public sealed class MongoDbContext
                 .Ascending(asset => asset.CardThemeId);
         CreateIndexOptions indexOptions = new()
         {
-            Name = "IX_CardThemeAssets_CardThemeId"
+            Name = "UX_CardThemeAssets_CardThemeId",
+            Unique = true
         };
 
         _ = await collection.Indexes.CreateOneAsync(

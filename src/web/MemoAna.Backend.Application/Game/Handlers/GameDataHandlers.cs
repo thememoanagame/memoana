@@ -11,6 +11,7 @@ namespace MemoAna.Backend.Application.Game.Handlers;
 public sealed class GameDataHandlers(IGameDataService gameDataService)
     : IRequestHandler<CreateGameDataCommand, Response<GameDataDto>>,
       IRequestHandler<GetGameDataQuery, Response<GameDataDto>>,
+      IRequestHandler<GetGameDataByNameQuery, Response<GameDataDto>>,
       IRequestHandler<GetGameDataListQuery, Response<IReadOnlyList<GameDataDto>>>,
       IRequestHandler<UpdateGameDataCommand, Response<GameDataDto>>,
       IRequestHandler<DeleteGameDataCommand, Response<bool>>
@@ -22,9 +23,21 @@ public sealed class GameDataHandlers(IGameDataService gameDataService)
         GameDataDto data = await gameDataService.CreateAsync(
             request.ThemeName,
             request.IsDefault,
-            request.Base64Image,
+            request.Base64Images,
             cancellationToken);
         return Response.Success(data);
+    }
+
+    public async ValueTask<Response<GameDataDto>> Handle(
+        GetGameDataByNameQuery request,
+        CancellationToken cancellationToken)
+    {
+        GameDataDto? data = await gameDataService.GetByThemeNameAsync(
+            request.ThemeName,
+            cancellationToken);
+        return data is null
+            ? Response.Failure<GameDataDto>("Game data was not found.")
+            : Response.Success(data);
     }
 
     public async ValueTask<Response<GameDataDto>> Handle(
@@ -56,7 +69,7 @@ public sealed class GameDataHandlers(IGameDataService gameDataService)
             request.Id,
             request.ThemeName,
             request.IsDefault,
-            request.Base64Image,
+            request.Base64Images,
             cancellationToken);
         return data is null
             ? Response.Failure<GameDataDto>("Game data was not found.")

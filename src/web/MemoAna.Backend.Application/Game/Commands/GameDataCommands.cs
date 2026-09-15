@@ -9,7 +9,7 @@ namespace MemoAna.Backend.Application.Game.Commands;
 public sealed record CreateGameDataCommand(
     string ThemeName,
     bool IsDefault,
-    string Base64Image)
+    IReadOnlyList<string> Base64Images)
     : ITransactionalRequest<Response<GameDataDto>>;
 
 /// <summary>Updates a card theme metadata and its asset.</summary>
@@ -17,7 +17,7 @@ public sealed record UpdateGameDataCommand(
     string Id,
     string ThemeName,
     bool IsDefault,
-    string Base64Image)
+    IReadOnlyList<string> Base64Images)
     : ITransactionalRequest<Response<GameDataDto>>;
 
 /// <summary>Deletes a card theme and its asset.</summary>

@@ -17,11 +17,11 @@ public sealed class GameDataService(
     public async Task<GameDataDto> CreateAsync(
         string themeName,
         bool isDefault,
-        string base64Image,
+        IReadOnlyList<string> base64Images,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(themeName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(base64Image);
+        ValidateImages(base64Images);
 
         CardThemeEntity theme = new();
         CardThemeManifestEntity manifest = new()
@@ -30,17 +30,20 @@ public sealed class GameDataService(
             ThemeName = themeName,
             IsDefault = isDefault
         };
-        CardThemeAssetEntity asset = new()
+        CardThemeAssetEntity asset = new(theme.Id)
         {
             CardThemeId = theme.Id,
-            Base64Image = base64Image
+            Base64Images = [.. base64Images]
         };
         manifest.PreviewAssetId = asset.Id;
         theme.ManifestId = manifest.Id;
 
         await cardThemeRepository.AddAsync(theme, cancellationToken);
         await manifestRepository.AddAsync(manifest, cancellationToken);
-        await assetRepository.AddAsync(asset, cancellationToken);
+        await assetRepository.UpsertAsync(
+            asset,
+            candidate => candidate.CardThemeId == theme.Id,
+            cancellationToken);
 
         return Map(theme, manifest, asset);
     }
@@ -67,10 +70,37 @@ public sealed class GameDataService(
             return null;
         }
 
-        CardThemeAssetEntity? asset = await assetRepository.GetByIdAsync(
-            manifest.PreviewAssetId,
+        CardThemeAssetEntity? asset = await assetRepository.FirstOrDefaultAsync(
+            candidate => candidate.CardThemeId == theme.Id,
             cancellationToken);
         return asset is null ? null : Map(theme, manifest, asset);
+    }
+
+    public async Task<GameDataDto?> GetByThemeNameAsync(
+        string themeName,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(themeName);
+        CardThemeManifestEntity? manifest = (await manifestRepository.ListAsync(
+            candidate => candidate.ThemeName == themeName,
+            cancellationToken)).FirstOrDefault();
+        if (manifest is null)
+        {
+            return null;
+        }
+
+        CardThemeAssetEntity? asset = await assetRepository.FirstOrDefaultAsync(
+            candidate => candidate.CardThemeId == manifest.CardThemeId,
+            cancellationToken);
+        return asset is null
+            ? null
+            : new GameDataDto(
+                manifest.CardThemeId,
+                manifest.Id,
+                manifest.ThemeName,
+                manifest.IsDefault,
+                asset.Id,
+                asset.Base64Images);
     }
 
     public async Task<IReadOnlyList<GameDataDto>> ListAsync(
@@ -88,14 +118,14 @@ public sealed class GameDataService(
 
         Dictionary<string, CardThemeManifestEntity> manifestsById =
             manifests.ToDictionary(manifest => manifest.Id);
-        Dictionary<string, CardThemeAssetEntity> assetsById =
-            assets.ToDictionary(asset => asset.Id);
+        Dictionary<string, CardThemeAssetEntity> assetsByThemeId =
+            assets.ToDictionary(asset => asset.CardThemeId);
 
         List<GameDataDto> result = [];
         foreach (CardThemeEntity theme in themes)
         {
             if (!manifestsById.TryGetValue(theme.ManifestId, out CardThemeManifestEntity? manifest)
-                || !assetsById.TryGetValue(manifest.PreviewAssetId, out CardThemeAssetEntity? asset))
+                || !assetsByThemeId.TryGetValue(theme.Id, out CardThemeAssetEntity? asset))
             {
                 continue;
             }
@@ -110,12 +140,12 @@ public sealed class GameDataService(
         string id,
         string themeName,
         bool isDefault,
-        string base64Image,
+        IReadOnlyList<string> base64Images,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(themeName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(base64Image);
+        ValidateImages(base64Images);
 
         CardThemeEntity? theme = await cardThemeRepository.GetByIdAsync(
             id,
@@ -134,8 +164,8 @@ public sealed class GameDataService(
             return null;
         }
 
-        CardThemeAssetEntity? asset = await assetRepository.GetByIdAsync(
-            manifest.PreviewAssetId,
+        CardThemeAssetEntity? asset = await assetRepository.FirstOrDefaultAsync(
+            candidate => candidate.CardThemeId == theme.Id,
             cancellationToken);
         if (asset is null)
         {
@@ -144,7 +174,7 @@ public sealed class GameDataService(
 
         manifest.ThemeName = themeName;
         manifest.IsDefault = isDefault;
-        asset.Base64Image = base64Image;
+        asset.Base64Images = [.. base64Images];
         _ = await manifestRepository.UpdateAsync(manifest, cancellationToken);
         _ = await assetRepository.UpdateAsync(asset, cancellationToken);
         return Map(theme, manifest, asset);
@@ -169,9 +199,13 @@ public sealed class GameDataService(
                 cancellationToken);
         if (manifest is not null)
         {
-            _ = await assetRepository.RemoveAsync(
-                manifest.PreviewAssetId,
+            CardThemeAssetEntity? asset = await assetRepository.FirstOrDefaultAsync(
+                candidate => candidate.CardThemeId == theme.Id,
                 cancellationToken);
+            if (asset is not null)
+            {
+                _ = await assetRepository.RemoveAsync(asset.Id, cancellationToken);
+            }
             _ = await manifestRepository.RemoveAsync(
                 manifest.Id,
                 cancellationToken);
@@ -192,5 +226,16 @@ public sealed class GameDataService(
             manifest.ThemeName,
             manifest.IsDefault,
             asset.Id,
-            asset.Base64Image);
+            asset.Base64Images);
+
+    private static void ValidateImages(IReadOnlyList<string> images)
+    {
+        ArgumentNullException.ThrowIfNull(images);
+        if (images.Count == 0 || images.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new ArgumentException(
+                "At least one non-empty Base64 image is required.",
+                nameof(images));
+        }
+    }
 }

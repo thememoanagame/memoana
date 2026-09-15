@@ -9,4 +9,4 @@ public sealed record GameDataDto(
     string ThemeName,
     bool IsDefault,
     string PreviewAssetId,
-    string Base64Image);
+    IReadOnlyList<string> Base64Images);
