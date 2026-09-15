@@ -1,0 +1,93 @@
+﻿@page "/seed"
+@using Mediator
+@using MemoAna.Backend.Application.Common.Responses
+@using MemoAna.Backend.Application.Seed
+@using MemoAna.Backend.Application.Seed.Commands
+@using MemoAna.Backend.Application.Seed.Dtos
+@using MemoAna.Backend.Application.Seed.Queries
+@inject IMediator Mediator
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="pa-6">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h4">Application initialization</MudText>
+
+        @if (_status is null)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else if (!_status.SeedRequired)
+        {
+            <MudAlert Severity="Severity.Success">
+                The application is initialized. This temporary endpoint is no longer available.
+            </MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning">
+                The application still requires initialization.
+            </MudAlert>
+            <MudList Dense="true" T="MudListItem<string>">
+                @foreach (string requirement in _status.MissingRequirements)
+                {
+                    <MudListItem T="string" Text="@requirement" />
+                }
+            </MudList>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@_isRunning"
+                       OnClick="RunSeedAsync">
+                @(_isRunning ? "Initializing..." : "Run seed")
+            </MudButton>
+            @if (_message is not null)
+            {
+                <MudAlert Severity="Severity.Error">@_message</MudAlert>
+            }
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    private SeedStatusDto? _status;
+    private bool _isRunning;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshStatusAsync();
+    }
+
+    private async Task RunSeedAsync()
+    {
+        if (_status is null || !_status.SeedRequired)
+        {
+            return;
+        }
+
+        _isRunning = true;
+        _message = null;
+        try
+        {
+            _ = await Mediator.Send(
+                new SeedApplicationCommand(),
+                CancellationToken.None);
+            await RefreshStatusAsync();
+        }
+        catch (SeedException exception)
+        {
+            _message = string.Join(" ", exception.Errors);
+            await RefreshStatusAsync();
+        }
+        finally
+        {
+            _isRunning = false;
+        }
+    }
+
+    private async Task RefreshStatusAsync()
+    {
+        Response<SeedStatusDto> response = await Mediator.Send(
+            new GetSeedStatusQuery(),
+            CancellationToken.None);
+        _status = response.Data;
+    }
+}
