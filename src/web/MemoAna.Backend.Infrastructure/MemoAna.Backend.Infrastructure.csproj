@@ -26,4 +26,8 @@
   <ItemGroup>
     <ProjectReference Include="..\MemoAna.Backend.Application\MemoAna.Backend.Application.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Persistence\Seed\NoSql\**\*" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>
