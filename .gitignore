@@ -485,3 +485,4 @@ src/app/MemoAna/undefined
 **/*.zip
 .infisical.json
 **/.certs/*
+**/.vsdbg/

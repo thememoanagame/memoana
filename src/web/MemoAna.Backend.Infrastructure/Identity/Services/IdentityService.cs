@@ -26,7 +26,7 @@ public sealed class IdentityService(
     SignInManager<User> signInManager,
     IJwtTokenService tokenService,
     IRevokedTokenStore revokedTokenStore,
-    IIdentityEmailSender emailSender) : IIdentityService
+    IIdentityEmailSender emailSender) : IIdentityService 
 {
 
     /// <summary>

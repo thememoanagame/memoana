@@ -18,8 +18,8 @@ services:
       IPID: ${IPID}
       ISP: ${ISP}
     ports:
-      - "8000:5000"
-      - "8443:5443"
+      - "5000:5000"
+      - "5443:5443"
     networks:
       - memoana
     depends_on:
@@ -31,6 +31,7 @@ services:
       - memoana-data:/app/
       - memoana-protection-keys:/root:ro 
       - ./.certs:/app/https:ro
+      - ./.vsdbg:/vsdbg:ro
 
   memoana-sql:
     image: postgres:17

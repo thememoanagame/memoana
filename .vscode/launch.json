@@ -30,7 +30,8 @@
                     "memoana"
                 ],
                 "debuggerPath": "/vsdbg/vsdbg",
-                "pipeCwd": "${workspaceFolder}"
+                "pipeCwd": "${workspaceFolder}",
+                "quoteArgs": false
             },
             "sourceFileMap": {
                 "/app": "${workspaceFolder}"
