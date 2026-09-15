@@ -1,5 +1,6 @@
 using System.Reflection;
 using MemoAna.Backend.Application.Common.Abstractions;
+using MemoAna.Backend.Application.Seed.Abstractions;
 using MemoAna.Backend.Domain.Game;
 
 namespace MemoAna.Backend.Infrastructure.Persistence.Seed.NoSql;
@@ -8,7 +9,7 @@ namespace MemoAna.Backend.Infrastructure.Persistence.Seed.NoSql;
 /// Builds one MongoDB asset document per seeded card theme.
 /// </summary>
 public sealed class CardThemeAssetSeedService(
-    INoRepository<CardThemeAssetEntity> assetRepository)
+    INoRepository<CardThemeAssetEntity> assetRepository) : ICardThemeAssetSeedService
 {
     private static readonly SeedDefinition[] Definitions =
     [

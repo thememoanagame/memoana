@@ -10,6 +10,7 @@ using MemoAna.Backend.Application.Health.Abstractions;
 using MemoAna.Backend.Application.Identity.Abstractions;
 using MemoAna.Backend.Application.Identity.Handlers;
 using MemoAna.Backend.Application.Identity.Validators;
+using MemoAna.Backend.Application.Seed.Abstractions;
 using MemoAna.Backend.Infrastructure.Common.HealthChecks;
 using MemoAna.Backend.Infrastructure.Common.Repository;
 using MemoAna.Backend.Infrastructure.Common.Services;
@@ -22,6 +23,7 @@ using MemoAna.Backend.Infrastructure.Persistence.Contexts;
 using MemoAna.Backend.Infrastructure.Persistence.Middlewares;
 using MemoAna.Backend.Infrastructure.Persistence.Options;
 using MemoAna.Backend.Infrastructure.Persistence.Seed.NoSql;
+using MemoAna.Backend.Infrastructure.Persistence.Seed.Postgres;
 using MemoAna.Backend.Composition.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -168,7 +170,8 @@ public static class WebApplicationBuilderExtensions
             _ = builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             _ = builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             _ = builder.Services.AddSingleton<MongoDbContext>();
-            _ = builder.Services.AddScoped<CardThemeAssetSeedService>();
+            _ = builder.Services.AddScoped<ICardThemeAssetSeedService, CardThemeAssetSeedService>();
+            _ = builder.Services.AddScoped<IPostgresSeedService, PostgresSeedService>();
             _ = builder.Services.AddScoped(
                 typeof(INoRepository<>),
                 typeof(NoRepository<>));
