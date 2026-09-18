@@ -15,11 +15,10 @@ namespace MemoAna.Backend.Controllers.v1;
 /// <param name="mediator">The application mediator.</param>
 [ApiController]
 [Route("api/v1/identity")]
-public sealed class IdentityController(
-    IMediator mediator) : ControllerBase
+public sealed class IdentityController(IMediator mediator) : ControllerBase
 {
     /// <summary>Registers a new user.</summary>
-    [HttpPost("/register")]
+    [HttpPost("register")]
     [AllowAnonymous]
     [ProducesResponseType(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
@@ -38,7 +37,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Authenticates a user.</summary>
-    [HttpPost("/login")]
+    [HttpPost("login")]
     [AllowAnonymous]
     [ProducesResponseType<TokenResponse>(200)]
     [ProducesResponseType<Response<TokenResponse>>(401)]
@@ -60,7 +59,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Authenticates a user via Google Play Games.</summary>
-    [HttpPost("/login/google-play-games")]
+    [HttpPost("login/google-play-games")]
     [AllowAnonymous]
     [ProducesResponseType<TokenResponse>(200)]
     [ProducesResponseType<Response<TokenResponse>>(401)]
@@ -71,7 +70,8 @@ public sealed class IdentityController(
         Response<TokenResponse> result =
             await mediator.Send(
                 new GooglePlayGamesLoginCommand(
-                    request.ServerAuthCode),
+                    request.ServerAuthCode,
+                    request.RedirectUri),
                 cancellationToken);
         return result.Succeeded
             ? Ok(result.Data)
@@ -79,7 +79,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Refreshes authentication tokens.</summary>
-    [HttpPost("/refresh")]
+    [HttpPost("refresh")]
     [AllowAnonymous]
     [ProducesResponseType<TokenResponse>(200)]
     [ProducesResponseType<Response<TokenResponse>>(401)]
@@ -96,7 +96,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Revokes the current access token.</summary>
-    [HttpPost("/revoke")]
+    [HttpPost("revoke")]
     [Authorize]
     [ProducesResponseType(200)]
     [ProducesResponseType<Response<bool>>(401)]
@@ -120,7 +120,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Confirms a user's email.</summary>
-    [HttpGet("/confirmEmail")]
+    [HttpGet("confirmEmail")]
     [AllowAnonymous]
     [ProducesResponseType(200)]
     [ProducesResponseType<Response<bool>>(400)]
@@ -142,7 +142,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Resends the confirmation email.</summary>
-    [HttpPost("/resendConfirmationEmail")]
+    [HttpPost("resendConfirmationEmail")]
     [AllowAnonymous]
     [ProducesResponseType<IdentityResultResponse>(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
@@ -160,7 +160,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Starts password recovery.</summary>
-    [HttpPost("/forgotPassword")]
+    [HttpPost("forgotPassword")]
     [AllowAnonymous]
     [ProducesResponseType(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
@@ -177,7 +177,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Resets a password.</summary>
-    [HttpPost("/resetPassword")]
+    [HttpPost("resetPassword")]
     [AllowAnonymous]
     [ProducesResponseType(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
@@ -197,7 +197,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Gets authenticated identity information.</summary>
-    [HttpGet("/manage/info")]
+    [HttpGet("manage/info")]
     [Authorize]
     [ProducesResponseType<IdentityInfoResponse>(200)]
     [ProducesResponseType(401)]
@@ -221,7 +221,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Updates authenticated identity information.</summary>
-    [HttpPost("/manage/info")]
+    [HttpPost("manage/info")]
     [Authorize]
     [ProducesResponseType(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
@@ -249,7 +249,7 @@ public sealed class IdentityController(
     }
 
     /// <summary>Configures two-factor authentication.</summary>
-    [HttpPost("/manage/2fa")]
+    [HttpPost("manage/2fa")]
     [Authorize]
     [ProducesResponseType<TwoFactorResponse>(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]

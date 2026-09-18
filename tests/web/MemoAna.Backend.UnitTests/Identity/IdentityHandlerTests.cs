@@ -96,7 +96,10 @@ public sealed class IdentityHandlerTests
         public bool ReturnData { get; set; } = true;
         private static TokenResponse Token =>
                     new("Bearer", "access", 900, "refresh");
-        public Task<TokenResponse?> AuthenticateAsync(string serverAuthCode, CancellationToken cancellationToken)
+        public Task<TokenResponse?> AuthenticateAsync(
+            string serverAuthCode,
+            string redirectUri,
+            CancellationToken cancellationToken)
         {
             return Task.FromResult(ReturnData ? Token : null);
         }

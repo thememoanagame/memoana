@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
 using System.Security.Claims;
 using MemoAna.Backend.Application.Common.Contracts;
 using MemoAna.Backend.Application.Identity.Abstractions;
@@ -25,7 +26,7 @@ public sealed class IdentityService(
     SignInManager<User> signInManager,
     IJwtTokenService tokenService,
     IRevokedTokenStore revokedTokenStore,
-    IIdentityEmailSender emailSender) : IIdentityService
+    IIdentityEmailSender emailSender) : IIdentityService 
 {
 
     /// <summary>
@@ -101,6 +102,47 @@ public sealed class IdentityService(
 
             if (!valid)
             {
+                return null;
+            }
+        }
+
+        return await CreateUserTokensAsync(user, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<TokenResponse?> AuthenticateExternalAsync(
+        string loginProvider,
+        string providerKey,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(loginProvider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerKey);
+
+        User? user = await userManager.FindByLoginAsync(loginProvider, providerKey);
+        if (user is null)
+        {
+            user = new User
+            {
+                UserName = $"{loginProvider}_{providerKey}",
+                Email = $"{loginProvider}_{providerKey}@external.local",
+                EmailConfirmed = true
+            };
+
+            byte[] randomBytes = RandomNumberGenerator.GetBytes(32);
+            string randomPassword = Convert.ToBase64String(randomBytes) + "A1a!";
+
+            IdentityResult createResult = await userManager.CreateAsync(user, randomPassword);
+            if (!createResult.Succeeded)
+            {
+                return null;
+            }
+
+            IdentityResult addLoginResult = await userManager.AddLoginAsync(
+                user,
+                new UserLoginInfo(loginProvider, providerKey, loginProvider));
+            if (!addLoginResult.Succeeded)
+            {
+                _ = await userManager.DeleteAsync(user);
                 return null;
             }
         }

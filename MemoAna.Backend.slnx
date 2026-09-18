@@ -1,12 +1,21 @@
 <Solution>
   <Folder Name="/MemoAna/" />
+  <Folder Name="/MemoAna/.certs/" >
+    <File Path=".certs/aspnetapp.pfx" />
+  </Folder>
   <Folder Name="/MemoAna/.github/" />
   <Folder Name="/MemoAna/.github/workflows/">
     <File Path=".github/workflows/ci-ct-cd.yml" />
     <File Path=".github/workflows/deploy-pages.yml" />
   </Folder>
   <Folder Name="/MemoAna/docs/">
+    <File Path="docs/agent-guidelines.md" />
+    <File Path="docs/backend-architecture.md" />
+    <File Path="docs/dotnet10-guidelines.md" />
+    <File Path="docs/identity-guidelines.md" />
     <File Path="docs/project-architecture.md" />
+    <File Path="docs/request-response-flow.md" />
+    <File Path="docs/testing-guidelines.md" />
   </Folder>
   <Folder Name="/MemoAna/scripts/">
     <File Path="scripts/gen-cert.ps1" />

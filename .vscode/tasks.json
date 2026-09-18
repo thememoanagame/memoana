@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "MemoAna: Run Android Debug",
+            "label": "MemoAna: Debug Android",
             "type": "process",
             "command": "dotnet",
             "args": [
@@ -23,6 +23,83 @@
                 "clear": true,
                 "showReuseMessage": false
             }
+        },
+        {
+            "label": "MemoAna.Backend: Debug",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "run",
+                "--project",
+                "${workspaceFolder}/src/web/MemoAna.Backend/MemoAna.Backend.csproj",
+                "-c",
+                "Debug",
+            ],
+            "problemMatcher": "$msCompile",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true,
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "MemoAna.Backend: Docker",
+            "type": "shell",
+            "command": "docker compose up -d --build",
+            "problemMatcher": []
+        },
+        {
+            "label": "MemoAna.Backend: Setup Infisical",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/scripts/infisical.ps1"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "MemoAna.Backend: Build + Infisical",
+            "type": "shell",
+            "command": "infisical",
+            "args": [
+                "run",
+                "--env=dev",
+                "--",
+                "dotnet",
+                "build",
+                "${workspaceFolder}/src/web/MemoAna.Backend/MemoAna.Backend.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "MemoAna.Backend: Setup Infisical"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "MemoAna.Backend: Reopen VS Code with Infisical",
+            "type": "shell",
+            "command": "infisical",
+            "args": [
+                "run",
+                "--env=dev",
+                "--",
+                "code",
+                "--reuse-window",
+                "${workspaceFolder}"
+            ],
+            "dependsOn": [
+                "MemoAna.Backend: Setup Infisical"
+            ],
+            "problemMatcher": []
         }
     ] 
 }

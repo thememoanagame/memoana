@@ -1,0 +1,55 @@
+﻿@page "/dashboard"
+@attribute [Authorize]
+@using MemoAna.Backend.Application.Common.Authorization
+@inject IAuthenticatedUserClassifier UserClassifier
+@inject NavigationManager Navigation
+
+@if (_userType is AuthenticatedUserType.SystemAdmin or AuthenticatedUserType.SystemUser)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="pa-6">
+        <MudStack Spacing="3">
+            <MudText Typo="Typo.h4">Admin Area</MudText>
+            <MudPaper Elevation="1" Class="pa-6">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">MemoAna</MudText>
+                    <MudText Typo="Typo.body1">
+                        ADMIN/SUPPORT DASHBOARD
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        </MudStack>
+    </MudContainer>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private AuthenticatedUserType _userType = AuthenticatedUserType.Unauthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask is not null)
+        {
+            _userType = await UserClassifier.ClassifyAsync(
+                (await AuthenticationStateTask).User);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || AuthenticationStateTask is null)
+        {
+            return;
+        }
+
+        if (_userType is AuthenticatedUserType.Player)
+        {
+            Navigation.NavigateTo("/main", replace: true);
+        }
+        else if (_userType is AuthenticatedUserType.Unauthenticated)
+        {
+            Navigation.NavigateTo("/login", replace: true);
+        }
+    }
+}

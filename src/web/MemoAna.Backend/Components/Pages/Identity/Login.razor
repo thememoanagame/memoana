@@ -1,0 +1,89 @@
+﻿@page "/login"
+@using MemoAna.Backend.Components.Validators
+
+<PageTitle>MemoAna - Login</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-6">
+    <MudGrid>
+        <MudItem xs="12" sm="7">
+            <MudCard Class="pa-6 ma-6">
+                <MudCardHeader>
+                    <MudText Align="Align.Center" Color="Color.Tertiary" Typo="Typo.h3">Login</MudText>
+                </MudCardHeader>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudForm @ref="@_form" Model="@model" Validation="@(() => _loginValidator.Validate(model).IsValid)" ValidationDelay="0" Spacing="7">
+                <MudCard>
+                    <MudCardHeader>
+                        <MudText Align="Align.Start" Color="Color.Primary" Typo="Typo.h4">Admin/Support Area</MudText>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTextField For="@(() => model.Email)" />
+                        <MudTextField For="@(() => model.Password)" Label="Parameter Label" />
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" Class="ml-auto"
+                                   OnClick="@(async () => await SubmitForgot())">Forgot Password</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Class="ml-auto"
+                                   OnClick="@(async () => await SubmitRegister())">Register</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto"
+                                   OnClick="@(async () => await SubmitLogin())">Login</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudForm>
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <MudForm ValidationDelay="0" Spacing="7">
+                <MudCard>
+                    <MudCardHeader>
+                        <MudText Align="Align.Start" Color="Color.Primary" Typo="Typo.h4">Player's Area</MudText>
+                    </MudCardHeader>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Class="ml-auto"
+                                   OnClick="@(async () => await SubmitRegisterPlayGames())">Register Google Play Games</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto"
+                                   OnClick="@(async () => await SubmitLoginPlayGames())">Login Google Play Games</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudForm>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+@code{
+    private MudForm _form = null!;
+    private readonly LoginRequestModelValidator _loginValidator = new();
+    public LoginRequestModel model { get; set; } = new("", "");
+    
+    public async Task SubmitForgot()
+    {
+
+    }
+    
+    public async Task SubmitLogin()
+    {
+
+    }
+
+    public async Task SubmitRegister()
+    {
+
+    }
+    public async Task SubmitLoginPlayGames()
+    {
+
+    }
+
+    public async Task SubmitRegisterPlayGames()
+    {
+
+    }
+
+    public sealed class LoginRequestModel(string email = "", string password = "") 
+    {
+        [Label("Email")]
+        public string Email { get; set; } = email;
+        [Label("Password")]
+        public string Password { get; set; } = password;
+    };
+}

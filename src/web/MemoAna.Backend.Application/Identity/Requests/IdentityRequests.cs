@@ -18,7 +18,9 @@ public sealed record RefreshRequest(string RefreshToken);
 
 /// <summary>Represents a Google Play Games authentication request payload.</summary>
 /// <param name="ServerAuthCode">The server authentication code obtained from the client.</param>
-public sealed record GooglePlayGamesLoginRequest(string ServerAuthCode);
+/// <param name="RedirectUri">The application redirect uri</param>
+public sealed record GooglePlayGamesLoginRequest(string ServerAuthCode, string RedirectUri);
+
 
 /// <summary>Represents an email-only request payload.</summary>
 /// <param name="Email">The email address.</param>

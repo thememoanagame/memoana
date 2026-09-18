@@ -5,11 +5,37 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "C#: MemoAna Debug",
+            "name": "MAUI: MemoAna Debug",
             "type": "dotnet",
             "request": "launch",
             "projectPath": "${workspaceFolder}/src/app/MemoAna/MemoAna.csproj"
+        },
+        {
+            "name": "ASPNET: MemoAna Debug",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/src/web/MemoAna.Backend/MemoAna.Backend.csproj"
+        },
+        {
+            "name": "Docker: MemoAna Debug",
+            "type": "coreclr",
+            "request": "attach",
+            "preLaunchTask": "MemoAna.Backend: Docker",
+            "processName": "dotnet",
+            "pipeTransport": {
+                "pipeProgram": "docker",
+                "pipeArgs": [
+                    "exec",
+                    "-i",
+                    "memoana"
+                ],
+                "debuggerPath": "/vsdbg/vsdbg",
+                "pipeCwd": "${workspaceFolder}",
+                "quoteArgs": false
+            },
+            "sourceFileMap": {
+                "/app": "${workspaceFolder}"
+            }
         }
-
     ]
 }

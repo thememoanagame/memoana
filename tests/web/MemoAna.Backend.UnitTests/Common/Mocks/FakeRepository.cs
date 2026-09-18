@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using MemoAna.Backend.Application.Common.Abstractions;
 using MemoAna.Backend.Domain.Common;
 
@@ -8,7 +7,7 @@ namespace MemoAna.Backend.UnitTests.Common.Mocks;
 /// <typeparam name="TEntity">The entity type.</typeparam>
 public sealed class FakeRepository<TEntity>
     : IRepository<TEntity>
-    where TEntity : class, IEntityBase
+    where TEntity : class, IRelationalEntityBase
 {
     private readonly List<TEntity> _entities = [];
 
@@ -18,8 +17,7 @@ public sealed class FakeRepository<TEntity>
     /// <inheritdoc />
     public Task<TEntity?> GetByIdAsync(
         string id,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         return Task.FromResult(
             _entities.FirstOrDefault(
@@ -27,33 +25,9 @@ public sealed class FakeRepository<TEntity>
     }
 
     /// <inheritdoc />
-    public Task<TEntity?> GetTrackedByIdAsync(
-        string id,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken)
-    {
-        return GetByIdAsync(
-            id,
-            includes,
-            cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public Task<TEntity?> FirstOrDefaultAsync(
-        Expression<Func<TEntity, bool>> predicate,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken)
-    {
-        return Task.FromResult(
-            _entities.AsQueryable()
-                .FirstOrDefault(predicate));
-    }
-
-    /// <inheritdoc />
     public Task<IReadOnlyList<TEntity>> ListAsync(
-        Expression<Func<TEntity, bool>>? predicate,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken)
+        System.Linq.Expressions.Expression<Func<TEntity, bool>>? predicate = null,
+        CancellationToken cancellationToken = default)
     {
         IEnumerable<TEntity> query = _entities;
         if (predicate is not null)
@@ -67,48 +41,38 @@ public sealed class FakeRepository<TEntity>
     }
 
     /// <inheritdoc />
-    public Task<bool> ExistsAsync(
-        Expression<Func<TEntity, bool>> predicate,
-        CancellationToken cancellationToken)
-    {
-        return Task.FromResult(
-            _entities.AsQueryable()
-                .Any(predicate));
-    }
-
-    /// <inheritdoc />
     public Task AddAsync(
         TEntity entity,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         _entities.Add(entity);
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public void Update(TEntity entity)
+    public Task<bool> UpdateAsync(
+        TEntity entity,
+        CancellationToken cancellationToken = default)
     {
         int index = _entities.FindIndex(
             item => item.Id == entity.Id);
-        if (index >= 0)
+        if (index < 0)
         {
-            _entities[index] = entity;
+            return Task.FromResult(false);
         }
+
+        _entities[index] = entity;
+        return Task.FromResult(true);
     }
 
     /// <inheritdoc />
-    public void Remove(TEntity entity)
+    public Task<bool> RemoveAsync(
+        string id,
+        CancellationToken cancellationToken = default)
     {
-        _ = _entities.Remove(entity);
-    }
-
-    /// <inheritdoc />
-    public void RemoveRange(
-        IEnumerable<TEntity> entities)
-    {
-        foreach (TEntity entity in entities.ToArray())
-        {
-            Remove(entity);
-        }
+        TEntity? entity = _entities.FirstOrDefault(
+            item => item.Id == id);
+        return Task.FromResult(
+            entity is not null && _entities.Remove(entity));
     }
 }

@@ -9,5 +9,5 @@ public interface IGooglePlayGamesAuthenticationService
     /// <param name="serverAuthCode">The server authentication code from the client.</param>
     /// <param name="cancellationToken">The token used to cancel the operation.</param>
     /// <returns>The token pair, or <see langword="null"/> when authentication fails.</returns>
-    Task<TokenResponse?> AuthenticateAsync(string serverAuthCode, CancellationToken cancellationToken);
+    Task<TokenResponse?> AuthenticateAsync(string serverAuthCode, string redirectUri, CancellationToken cancellationToken);
 }

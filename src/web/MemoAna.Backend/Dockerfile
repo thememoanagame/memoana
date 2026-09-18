@@ -4,8 +4,8 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 5000
+EXPOSE 5001
 
 
 # Esta fase é usada para compilar o projeto de serviço
@@ -29,6 +29,6 @@ RUN dotnet publish "./MemoAna.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 
 # Esta fase é usada na produção ou quando executada no VS no modo normal (padrão quando não está usando a configuração de Depuração)
 FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
+WORKDIR /app 
+COPY --from=publish /app/publish . 
 ENTRYPOINT ["dotnet", "MemoAna.Backend.dll"]

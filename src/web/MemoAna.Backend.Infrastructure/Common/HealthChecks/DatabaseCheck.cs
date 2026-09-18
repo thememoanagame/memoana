@@ -1,13 +1,11 @@
-﻿using MemoAna.Backend.Infrastructure.Persistence;
+﻿using MemoAna.Backend.Infrastructure.Persistence.Contexts;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace MemoAna.Backend.Infrastructure.Common.HealthChecks;
 
-public sealed class DatabaseCheck(MemoAnaDbContext db) : IHealthCheck
+public sealed class DatabaseCheck(PostgresDbContext db) : IHealthCheck
 {
-    public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context,
-        CancellationToken cancellationToken = default)
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {

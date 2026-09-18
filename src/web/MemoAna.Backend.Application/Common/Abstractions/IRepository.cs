@@ -4,144 +4,34 @@ using MemoAna.Backend.Domain.Common;
 namespace MemoAna.Backend.Application.Common.Abstractions;
 
 /// <summary>
-/// Defines persistence operations for entities.
+/// Defines persistence operations for supported relational entities.
 /// </summary>
-/// <typeparam name="TEntity">
-/// The entity type.
-/// </typeparam>
+/// <typeparam name="TEntity">The supported relational entity type.</typeparam>
 public interface IRepository<TEntity>
-    where TEntity : class, IEntityBase
+    where TEntity : class, IRelationalEntityBase
 {
-    /// <summary>
-    /// Gets an entity without tracking.
-    /// </summary>
-    /// <param name="id">
-    /// The entity identifier.
-    /// </param>
-    /// <param name="includes">
-    /// Navigation properties to include.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// The cancellation token.
-    /// </param>
-    /// <returns>
-    /// The entity when found.
-    /// </returns>
+    /// <summary>Gets an entity by its string identifier without tracking it.</summary>
     Task<TEntity?> GetByIdAsync(
         string id,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets a tracked entity.
-    /// </summary>
-    /// <param name="id">
-    /// The entity identifier.
-    /// </param>
-    /// <param name="includes">
-    /// Navigation properties to include.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// The cancellation token.
-    /// </param>
-    /// <returns>
-    /// The entity when found.
-    /// </returns>
-    Task<TEntity?> GetTrackedByIdAsync(
-        string id,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Finds the first matching entity.
-    /// </summary>
-    /// <param name="predicate">
-    /// The query predicate.
-    /// </param>
-    /// <param name="includes">
-    /// Navigation properties to include.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// The cancellation token.
-    /// </param>
-    /// <returns>
-    /// The first matching entity.
-    /// </returns>
-    Task<TEntity?> FirstOrDefaultAsync(
-        Expression<Func<TEntity, bool>> predicate,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Lists entities matching a predicate.
-    /// </summary>
-    /// <param name="predicate">
-    /// The optional query predicate.
-    /// </param>
-    /// <param name="includes">
-    /// Navigation properties to include.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// The cancellation token.
-    /// </param>
-    /// <returns>
-    /// The matching entities.
-    /// </returns>
+    /// <summary>Lists supported entities, optionally filtered by a predicate.</summary>
     Task<IReadOnlyList<TEntity>> ListAsync(
-        Expression<Func<TEntity, bool>>? predicate,
-        Expression<Func<TEntity, object?>>[] includes,
-        CancellationToken cancellationToken);
+        Expression<Func<TEntity, bool>>? predicate = null,
+        CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Checks whether an entity matches.
-    /// </summary>
-    /// <param name="predicate">
-    /// The query predicate.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// The cancellation token.
-    /// </param>
-    /// <returns>
-    /// <see langword="true"/> when found.
-    /// </returns>
-    Task<bool> ExistsAsync(
-        Expression<Func<TEntity, bool>> predicate,
-        CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Adds an entity to the unit of work.
-    /// </summary>
-    /// <param name="entity">
-    /// The entity to add.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// The cancellation token.
-    /// </param>
+    /// <summary>Adds an entity to the current unit of work.</summary>
     Task AddAsync(
         TEntity entity,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Updates an entity in the unit of work.
-    /// </summary>
-    /// <param name="entity">
-    /// The entity to update.
-    /// </param>
-    void Update(TEntity entity);
+    /// <summary>Stages an existing entity for update.</summary>
+    Task<bool> UpdateAsync(
+        TEntity entity,
+        CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Removes an entity from the unit of work.
-    /// </summary>
-    /// <param name="entity">
-    /// The entity to remove.
-    /// </param>
-    void Remove(TEntity entity);
-
-    /// <summary>
-    /// Removes entities from the unit of work.
-    /// </summary>
-    /// <param name="entities">
-    /// The entities to remove.
-    /// </param>
-    void RemoveRange(IEnumerable<TEntity> entities);
+    /// <summary>Stages an existing entity for removal.</summary>
+    Task<bool> RemoveAsync(
+        string id,
+        CancellationToken cancellationToken = default);
 }

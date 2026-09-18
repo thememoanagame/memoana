@@ -1,14 +1,30 @@
-function Test-Admin {
-    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
-    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$isElevated = if ($IsWindows -or $PSVersionTable.PSVersion.Major -lt 6) {
+    ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+} else {
+    (id -u) -eq 0
 }
 
-# Solicitar elevação se não estiver como admin
-if (-not (Test-Admin)) {
-    Write-Error "Este script precisa ser executado como Administrador."
-    Start-Process powershell.exe "-File `"$PSCommandPath`" $($MyInvocation.UnboundArguments)" -Verb RunAs
-    exit
+if (-not $isElevated) {
+    if ($IsWindows -or $PSVersionTable.PSVersion.Major -lt 6) {
+        Write-Host "Elevating for Administrator permissions..." -ForegroundColor Yellow
+        
+        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $processInfo.FileName = "pwsh.exe" # Use "powershell.exe" se estiver usando o Windows PowerShell 5.1
+        $processInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+        $processInfo.Verb = "RunAs"
+        
+        try {
+            [System.Diagnostics.Process]::Start($processInfo) | Out-Null
+        } catch {
+            Write-Error "Privilege elevation was cancelled."
+        }
+        exit
+    } else {
+        Write-Host "Needs sudo..." -ForegroundColor Yellow
+        
+        exec sudo pwsh -NoProfile -ExecutionPolicy Bypass -File "$PSCommandPath"
+        exit
+    }
 }
 
 # Solicita os dados do certificado
