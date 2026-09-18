@@ -24,6 +24,11 @@ public sealed class GameStatisticsEntity : EntityBase
         PlayedAt = DateTime.UtcNow;
     }
 
-    public GameStatisticsEventArgs ToEventArgs()
-        => new((this is GameStatisticsEntity gs ? gs.ThemeName : throw new ArgumentNullException(nameof(gs))), gs.Difficulty, DateTime.FromFileTimeUtc(gs.PlayedAt.ToFileTime()), gs.IsVictory, gs.RemainingSeconds, gs.TotalMoves, gs.SuccessfulMoves, gs.Mistakes, gs.FinalScore);
+    public GameStatisticsEventArgs ToEventArgs(
+        int playerScore = -1,
+        int aiScore = 0,
+        int aiFinalScore = 0,
+        int aiSuccessfulMoves = 0,
+        int aiMistakes = 0)
+        => new((this is GameStatisticsEntity gs ? gs.ThemeName : throw new ArgumentNullException(nameof(gs))), gs.Difficulty, DateTime.FromFileTimeUtc(gs.PlayedAt.ToFileTime()), gs.IsVictory, gs.RemainingSeconds, gs.TotalMoves, gs.SuccessfulMoves, gs.Mistakes, gs.FinalScore, playerScore < 0 ? gs.FinalScore : playerScore, aiScore, aiFinalScore, aiSuccessfulMoves, aiMistakes);
 }

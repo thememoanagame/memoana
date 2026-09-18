@@ -41,8 +41,19 @@ public sealed class GameService : IGameService, IAsyncDisposable
     private int _mistakes;
     private int _currentStreak;
     private int _accumulatedScore;
+    private int _aiPairs;
+    private int _aiMistakes;
+    private int _aiStreak;
+    private int _aiAccumulatedScore;
+    private int _playerPairs;
     public int TotalMoves => _totalMoves;
     public int CurrentScore => _accumulatedScore;
+    public int PlayerScore => _accumulatedScore;
+    public int AIScore => _aiAccumulatedScore;
+    public int PlayerSuccessfulMoves => _successfulMoves;
+    public int AISuccessfulMoves => _aiPairs;
+    public int PlayerMistakes => _mistakes;
+    public int AIMistakes => _aiMistakes;
     public ObservableCollection<KeyValuePair<int, MemoryCard>> CurrentCards { get; } = [];
     public TimeSpan RemainingTime { get; private set; }
     public bool IsGameActive { get; private set; }
@@ -156,6 +167,11 @@ public sealed class GameService : IGameService, IAsyncDisposable
         _mistakes = 0;
         _currentStreak = 0;
         _accumulatedScore = 0;
+        _playerPairs = 0;
+        _aiPairs = 0;
+        _aiMistakes = 0;
+        _aiStreak = 0;
+        _aiAccumulatedScore = 0;
 
         CurrentCards.Clear();
 
@@ -256,8 +272,15 @@ public sealed class GameService : IGameService, IAsyncDisposable
             if (!isAiTurn)
             {
                 _successfulMoves++;
+                _playerPairs++;
                 _currentStreak++;
                 _accumulatedScore = (_accumulatedScore + 1) * _currentStreak;
+            }
+            else
+            {
+                _aiPairs++;
+                _aiStreak++;
+                _aiAccumulatedScore = (_aiAccumulatedScore + 1) * _aiStreak;
             }
 
             ResetTurn();
@@ -269,6 +292,11 @@ public sealed class GameService : IGameService, IAsyncDisposable
             {
                 _mistakes++;
                 _currentStreak = 0;
+            }
+            else
+            {
+                _aiMistakes++;
+                _aiStreak = 0;
             }
 
             await Task.Delay(gameSettings.Options.CardFlipDelayMs, cancellationToken);
@@ -296,16 +324,37 @@ public sealed class GameService : IGameService, IAsyncDisposable
     }
 
     /// <summary>
-    /// Ends the generation only when every card is matched, deriving victory
-    /// from the turn that completed the final match rather than from the fact
-    /// that the board is complete.
+    /// Ends the generation only when every card is matched. In IA mode, the
+    /// final result is calculated from both participants' completed scores
+    /// and pair counts rather than from the turn that completed the board.
     /// </summary>
     /// <param name="gameGeneration">The generation that performed the match.</param>
-    /// <param name="completingTurn">The player responsible for the final match.</param>
+    /// <param name="completingTurn">The participant responsible for the final match.</param>
     private async Task CheckWinConditionAsync(int gameGeneration, GameTurn completingTurn)
     {
         if (CurrentCards.All(c => c.Value.IsMatched))
-            await EndGameAsync(completingTurn == GameTurn.Player, gameGeneration);
+        {
+            bool playerWon = CurrentMode == GameMode.IA
+                ? CalculateAiGameResult()
+                : completingTurn == GameTurn.Player;
+            await EndGameAsync(playerWon, gameGeneration);
+        }
+    }
+
+    /// <summary>
+    /// Calculates the IA result after the board is complete. A player pair
+    /// advantage always wins; when the IA has more pairs, the player may only
+    /// overcome that deficit with a higher score. Equal pair counts use score.
+    /// </summary>
+    private bool CalculateAiGameResult()
+    {
+        if (_playerPairs > _aiPairs)
+            return true;
+
+        if (_aiPairs > _playerPairs)
+            return _accumulatedScore > _aiAccumulatedScore;
+
+        return _accumulatedScore > _aiAccumulatedScore;
     }
 
     /// <summary>
@@ -441,7 +490,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         {
             finalScoreCalculated += remainingSeconds * 25;
         }
-        else
+        else if (CurrentMode != GameMode.IA)
         {
             int unmatchedCardsCount = CurrentCards.Count(c => !c.Value.IsMatched);
             finalScoreCalculated -= unmatchedCardsCount * 50;
@@ -473,7 +522,12 @@ public sealed class GameService : IGameService, IAsyncDisposable
         finally
         {
             if (gameGeneration == _gameGeneration)
-                GameFinished?.Invoke(this, stats.ToEventArgs());
+                GameFinished?.Invoke(this, stats.ToEventArgs(
+                    _accumulatedScore,
+                    _aiAccumulatedScore,
+                    _aiAccumulatedScore,
+                    _aiPairs,
+                    _aiMistakes));
         }
     }
 
