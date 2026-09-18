@@ -107,8 +107,24 @@
         }
 
         <div class="game-header">
-            <MudText Class="game-header-score">@CurrentScore</MudText>
-            <MudText Class="game-header-moves">@MovesCount</MudText>
+            @if (game.CurrentMode == GameMode.IA)
+            {
+                <div class="game-header-comparison game-header-score">
+                    <MudText Typo="Typo.h4" Class="stat-player">@game.PlayerScore.ToString("D3")</MudText>
+                    <MudText Typo="Typo.h4" Class="stat-separator">x</MudText>
+                    <MudText Typo="Typo.h4" Class="stat-ai">@game.AIScore.ToString("D3")</MudText>
+                </div>
+                <div class="game-header-comparison game-header-moves">
+                    <MudText Typo="Typo.h4" Class="stat-player">@game.PlayerSuccessfulMoves</MudText>
+                    <MudText Typo="Typo.h4" Class="stat-separator">x</MudText>
+                    <MudText Typo="Typo.h4" Class="stat-ai">@game.AISuccessfulMoves</MudText>
+                </div>
+            }
+            else
+            {
+                <MudText Class="game-header-score">@CurrentScore</MudText>
+                <MudText Class="game-header-moves">@MovesCount</MudText>
+            }
             @if (game.CurrentMode == GameMode.TimeAttack)
             {
                 <MudText Class="game-header-time" data-testid="game-time">@GameTime</MudText>
@@ -148,15 +164,70 @@
                 <MudText Class="statistic-value statistic-right">@Statistics.Difficulty</MudText>
                 <MudText Class="statistic-value statistic-center">@Statistics.PlayedAt</MudText>
                 <MudText Class="statistic-label">ACERTOS</MudText>
-                <MudText Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
+                @if (game.CurrentMode == GameMode.IA)
+                {
+                    <div class="statistic-value statistic-right stat-comparison">
+                        <MudText Typo="Typo.h5" Class="stat-player">@Statistics.SuccessfulMoves</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AISuccessfulMoves</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
+                }
                 <MudText Class="statistic-label">ERROS</MudText>
-                <MudText Class="statistic-value statistic-right">@Statistics.Mistakes</MudText>
+                @if (game.CurrentMode == GameMode.IA)
+                {
+                    <div class="statistic-value statistic-right stat-comparison">
+                        <MudText Typo="Typo.h5" Class="stat-player">@Statistics.Mistakes</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AIMistakes</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.Mistakes</MudText>
+                }
                 <MudText Class="statistic-label">JOGADAS</MudText>
-                <MudText Class="statistic-value statistic-right">@Statistics.TotalMoves</MudText>
+                @if (game.CurrentMode == GameMode.IA)
+                {
+                    <div class="statistic-value statistic-right stat-comparison">
+                        <MudText Typo="Typo.h5" Class="stat-player">@Statistics.SuccessfulMoves</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AISuccessfulMoves</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
+                }
                 <MudText Class="statistic-label">PONTOS</MudText>
-                <MudText Class="statistic-value statistic-right">@CurrentScore</MudText>
+                @if (game.CurrentMode == GameMode.IA)
+                {
+                    <div class="statistic-value statistic-right stat-comparison">
+                        <MudText Typo="Typo.h5" Class="stat-player">@Statistics.PlayerScore.ToString("D3")</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AIScore.ToString("D3")</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@CurrentScore</MudText>
+                }
                 <MudText Class="statistic-label">TOTAL</MudText>
-                <MudText Class="statistic-value statistic-right">@Statistics.FinalScore</MudText>
+                @if (game.CurrentMode == GameMode.IA)
+                {
+                    <div class="statistic-value statistic-right stat-comparison">
+                        <MudText Typo="Typo.h5" Class="stat-player">@Statistics.FinalScore.ToString("D3")</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AIFinalScore.ToString("D3")</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.FinalScore</MudText>
+                }
             </div>
         </div>
 
@@ -296,7 +367,7 @@
                                     ? TimeSpan.FromSeconds(GetInitialTime(level)).ToString("mm\\:ss")
                                     : "--:--";
                     CurrentScore = game.CurrentScore.ToString("D3");
-                    MovesCount = game.TotalMoves.ToString();
+                    MovesCount = game.PlayerSuccessfulMoves.ToString();
                 });
                 
                 await audio.StopAsync();
@@ -364,7 +435,7 @@
             return;
 
         await game.FlipCardAsync(position, card);
-        MovesCount = game.TotalMoves.ToString();
+        MovesCount = game.PlayerSuccessfulMoves.ToString();
         CurrentScore = game.CurrentScore.ToString("D3");
         RequestRender();
     }
@@ -394,7 +465,12 @@
                 e.TotalMoves,
                 e.SuccessfulMoves,
                 e.Mistakes,
-                e.FinalScore);
+                e.FinalScore,
+                e.PlayerScore,
+                e.AIScore,
+                e.AIFinalScore,
+                e.AISuccessfulMoves,
+                e.AIMistakes);
             IsVictory = e.IsVictory ? "+1 CONQUISTA!" : "DERROTA!";
             CurrentScore = e.FinalScore.ToString("D3");
             await audio.StopAsync();
@@ -694,6 +770,37 @@
         line-height: 1;
     }
 
+    .game-header-comparison,
+    .stat-comparison {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .game-header-comparison {
+        white-space: nowrap;
+    }
+
+    .stat-player,
+    .stat-separator,
+    .stat-ai {
+        font-family: Bangpop;
+        line-height: 1;
+    }
+
+    .stat-player {
+        color: #045a1e;
+    }
+
+    .stat-separator {
+        color: #c8c0b5;
+    }
+
+    .stat-ai {
+        color: #971ccc;
+    }
+
     .game-header-score {
         text-align: left;
     }
@@ -793,6 +900,10 @@
 
     .statistic-right {
         text-align: center;
+    }
+
+    .stat-comparison {
+        justify-self: stretch;
     }
 
     .statistic-center {

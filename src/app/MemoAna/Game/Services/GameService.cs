@@ -42,11 +42,18 @@ public sealed class GameService : IGameService, IAsyncDisposable
     private int _currentStreak;
     private int _accumulatedScore;
     private int _aiPairs;
+    private int _aiMistakes;
     private int _aiStreak;
     private int _aiAccumulatedScore;
     private int _playerPairs;
     public int TotalMoves => _totalMoves;
     public int CurrentScore => _accumulatedScore;
+    public int PlayerScore => _accumulatedScore;
+    public int AIScore => _aiAccumulatedScore;
+    public int PlayerSuccessfulMoves => _successfulMoves;
+    public int AISuccessfulMoves => _aiPairs;
+    public int PlayerMistakes => _mistakes;
+    public int AIMistakes => _aiMistakes;
     public ObservableCollection<KeyValuePair<int, MemoryCard>> CurrentCards { get; } = [];
     public TimeSpan RemainingTime { get; private set; }
     public bool IsGameActive { get; private set; }
@@ -162,6 +169,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         _accumulatedScore = 0;
         _playerPairs = 0;
         _aiPairs = 0;
+        _aiMistakes = 0;
         _aiStreak = 0;
         _aiAccumulatedScore = 0;
 
@@ -287,6 +295,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
             }
             else
             {
+                _aiMistakes++;
                 _aiStreak = 0;
             }
 
@@ -513,7 +522,12 @@ public sealed class GameService : IGameService, IAsyncDisposable
         finally
         {
             if (gameGeneration == _gameGeneration)
-                GameFinished?.Invoke(this, stats.ToEventArgs());
+                GameFinished?.Invoke(this, stats.ToEventArgs(
+                    _accumulatedScore,
+                    _aiAccumulatedScore,
+                    _aiAccumulatedScore,
+                    _aiPairs,
+                    _aiMistakes));
         }
     }
 

@@ -13,7 +13,13 @@ public interface IGameService
     GameMode CurrentMode { get; }
     GameTurn CurrentTurn { get; }
     int CurrentScore { get; }
+    int PlayerScore { get; }
+    int AIScore { get; }
     int TotalMoves { get; }
+    int PlayerSuccessfulMoves { get; }
+    int AISuccessfulMoves { get; }
+    int PlayerMistakes { get; }
+    int AIMistakes { get; }
 
     event EventHandler<GameStatisticsEventArgs>? GameFinished; 
     event EventHandler<GameTickEventArgs>? TimerTick;
