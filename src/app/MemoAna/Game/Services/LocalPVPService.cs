@@ -136,7 +136,9 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         client = new TcpClient();
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(lifetimeCancellation.Token);
         timeout.CancelAfter(ConnectionTimeout);
-        logger.LogInformation("Local PVP TCP ConnectAsync starting to {HostAddress}:{TcpPort}.", room.HostAddress, room.TcpPort);
+        logger.LogInformation(
+            "Local PVP TCP ConnectAsync starting to {HostAddress}:{TcpPort}. An Android emulator 10.0.2.x endpoint is behind emulator NAT and is not inbound-reachable from a physical device.",
+            room.HostAddress, room.TcpPort);
         IPAddress[] addresses = IPAddress.TryParse(room.HostAddress, out IPAddress? parsed)
             ? [parsed]
             : await Dns.GetHostAddressesAsync(room.HostAddress, timeout.Token);

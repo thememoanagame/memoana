@@ -16,6 +16,9 @@ internal sealed class LocalPvpMdnsDiscovery : IDisposable
     private readonly ConcurrentDictionary<string, PendingService> services = new(StringComparer.OrdinalIgnoreCase);
     private MulticastService? multicast;
     private ServiceDiscovery? discovery;
+#if ANDROID
+    private Android.Net.Wifi.WifiManager.MulticastLock? multicastLock;
+#endif
 
     internal event Action<LocalPvpRoom>? RoomDiscovered;
     internal event Action<string>? RoomRemoved;
@@ -27,6 +30,7 @@ internal sealed class LocalPvpMdnsDiscovery : IDisposable
         Stop();
         multicast = new MulticastService();
         discovery = new ServiceDiscovery(multicast);
+        ConfigureMulticast(multicast);
         ServiceProfile profile = new(new DomainName(roomId), new DomainName(ServiceType), checked((ushort)tcpPort));
         profile.AddProperty("room", roomId);
         profile.AddProperty("host", hostName);
@@ -45,6 +49,7 @@ internal sealed class LocalPvpMdnsDiscovery : IDisposable
         discovery.ServiceInstanceDiscovered += OnServiceInstanceDiscovered;
         discovery.ServiceInstanceShutdown += OnServiceInstanceShutdown;
         multicast.AnswerReceived += OnAnswerReceived;
+        ConfigureMulticast(multicast);
         multicast.Start();
         multicast.SendQuery(ServiceType, type: DnsType.PTR);
         logger.LogInformation("Local PVP mDNS discovery started for service type {ServiceType}.", ServiceType);
@@ -104,6 +109,42 @@ internal sealed class LocalPvpMdnsDiscovery : IDisposable
         }
     }
 
+    private void ConfigureMulticast(MulticastService service)
+    {
+        service.NetworkInterfaceDiscovered += OnNetworkInterfaceDiscovered;
+#if ANDROID
+        try
+        {
+            Android.Net.Wifi.WifiManager? wifiManager =
+                Android.App.Application.Context.GetSystemService(Android.Content.Context.WifiService)
+                as Android.Net.Wifi.WifiManager;
+            if (wifiManager is null)
+                throw new InvalidOperationException("O serviço Wi-Fi do Android não está disponível.");
+
+            Android.Net.Wifi.WifiManager.MulticastLock? acquiredLock =
+                wifiManager.CreateMulticastLock("MemoAna.LocalPvp");
+            if (acquiredLock is null)
+                throw new InvalidOperationException("O Android não conseguiu criar o bloqueio multicast Wi-Fi.");
+            acquiredLock.SetReferenceCounted(false);
+            acquiredLock.Acquire();
+            multicastLock = acquiredLock;
+            logger.LogInformation("Local PVP Android Wi-Fi multicast lock acquired.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Local PVP could not acquire the Android Wi-Fi multicast lock.");
+            throw;
+        }
+#endif
+    }
+
+    private void OnNetworkInterfaceDiscovered(object? sender, Makaretu.Dns.NetworkInterfaceEventArgs args)
+    {
+        logger.LogInformation(
+            "Local PVP mDNS network interfaces discovered by Makaretu: {Interfaces}.",
+            string.Join(", ", args.NetworkInterfaces));
+    }
+
     private void TryPublish(PendingService service)
     {
         if (service.Port is null || service.Addresses.Count == 0 ||
@@ -135,6 +176,26 @@ internal sealed class LocalPvpMdnsDiscovery : IDisposable
         discovery = null;
         multicast = null;
         services.Clear();
+#if ANDROID
+        if (multicastLock is not null)
+        {
+            try
+            {
+                if (multicastLock.IsHeld)
+                    multicastLock.Release();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Local PVP Android Wi-Fi multicast lock could not be released.");
+            }
+            finally
+            {
+                multicastLock.Dispose();
+                multicastLock = null;
+                logger.LogInformation("Local PVP Android Wi-Fi multicast lock released.");
+            }
+        }
+#endif
     }
 
     public void Dispose() => Stop();
