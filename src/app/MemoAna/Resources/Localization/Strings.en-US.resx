@@ -142,4 +142,16 @@
   <data name="Back" xml:space="preserve">
     <value>Back</value>
   </data>
+  <data name="PvpLocal" xml:space="preserve"><value>Local PVP</value></data>
+  <data name="PvpCreateRoom" xml:space="preserve"><value>Create room</value></data>
+  <data name="PvpJoinRoom" xml:space="preserve"><value>Join room</value></data>
+  <data name="PvpUsername" xml:space="preserve"><value>Username</value></data>
+  <data name="PvpSearchingRooms" xml:space="preserve"><value>Searching rooms...</value></data>
+  <data name="PvpNoRooms" xml:space="preserve"><value>No rooms found.</value></data>
+  <data name="PvpRoomsAvailable" xml:space="preserve"><value>Available rooms</value></data>
+  <data name="PvpRoomCreatedWaiting" xml:space="preserve"><value>Room created. Waiting for player...</value></data>
+  <data name="PvpConnect" xml:space="preserve"><value>Connect</value></data>
+  <data name="PvpConnecting" xml:space="preserve"><value>Connecting...</value></data>
+  <data name="PvpCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="PvpInvalidUsername" xml:space="preserve"><value>The username must contain between 1 and 24 characters.</value></data>
 </root>

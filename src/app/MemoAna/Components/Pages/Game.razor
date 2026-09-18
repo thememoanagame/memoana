@@ -3,6 +3,8 @@
 @implements IAsyncDisposable
 @inject ILogger<Game> logger
 @inject IThemeService themeService
+@inject ILocalPVPService localPvpService
+@inject IDialogService DialogService
 <div class="game-page">
     <img src="images/empty.png" class="game-background" alt="" />
 
@@ -41,7 +43,7 @@
                 @Localizer["GameMode"]
             </MudText>
 
-            <MudToggleGroup T="string" Class="selection-options" @bind-Value="Mode" CheckMark="true" Vertical="false"
+            <MudToggleGroup T="string" Class="selection-options" Value="@Mode" ValueChanged="OnModeChanged" CheckMark="true" Vertical="false"
                             Outlined Color="Color.Surface">
                 <MudToggleItem T="string" Class="selection-button" data-testid="mode-ai"
                                SelectedIcon="@Icons.Material.Filled.Computer" UnselectedIcon="@Icons.Material.TwoTone.Computer"
@@ -101,23 +103,23 @@
     }
     else if (IsGameActive)
     {
-        @if (game.CurrentMode == GameMode.IA)
+        @if (game.CurrentMode == GameMode.IA || game.CurrentMode == GameMode.PVP)
         {
-            <MudText Class="game-turn-indicator" data-testid="turn-indicator">@(game.CurrentTurn == GameTurn.AI ? "TURNO DA IA" : "SEU TURNO")</MudText>
+            <MudText Class="game-turn-indicator" data-testid="turn-indicator">@(game.CurrentTurn == GameTurn.AI ? (game.CurrentMode == GameMode.PVP ? "TURNO DO ADVERSÁRIO" : "TURNO DA IA") : "SEU TURNO")</MudText>
         }
 
         <div class="game-header">
-            @if (game.CurrentMode == GameMode.IA)
+            @if (game.CurrentMode == GameMode.IA || game.CurrentMode == GameMode.PVP)
             {
                 <div class="game-header-comparison game-header-score">
                     <MudText Typo="Typo.h4" Class="stat-player">@game.PlayerScore.ToString("D3")</MudText>
                     <MudText Typo="Typo.h4" Class="stat-separator">x</MudText>
-                    <MudText Typo="Typo.h4" Class="stat-ai">@game.AIScore.ToString("D3")</MudText>
+                    <MudText Typo="Typo.h4" Class="@(game.CurrentMode == GameMode.PVP ? "stat-opponent" : "stat-ai")">@game.AIScore.ToString("D3")</MudText>
                 </div>
                 <div class="game-header-comparison game-header-moves">
                     <MudText Typo="Typo.h4" Class="stat-player">@game.PlayerSuccessfulMoves</MudText>
                     <MudText Typo="Typo.h4" Class="stat-separator">x</MudText>
-                    <MudText Typo="Typo.h4" Class="stat-ai">@game.AISuccessfulMoves</MudText>
+                    <MudText Typo="Typo.h4" Class="@(game.CurrentMode == GameMode.PVP ? "stat-opponent" : "stat-ai")">@game.AISuccessfulMoves</MudText>
                 </div>
             }
             else
@@ -164,12 +166,12 @@
                 <MudText Class="statistic-value statistic-right">@Statistics.Difficulty</MudText>
                 <MudText Class="statistic-value statistic-center">@Statistics.PlayedAt</MudText>
                 <MudText Class="statistic-label">ACERTOS</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (game.CurrentMode == GameMode.IA || game.CurrentMode == GameMode.PVP)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.SuccessfulMoves</MudText>
                         <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
-                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AISuccessfulMoves</MudText>
+                        <MudText Typo="Typo.h5" Class="@(game.CurrentMode == GameMode.PVP ? "stat-opponent" : "stat-ai")">@Statistics.AISuccessfulMoves</MudText>
                     </div>
                 }
                 else
@@ -177,12 +179,12 @@
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
                 }
                 <MudText Class="statistic-label">ERROS</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (game.CurrentMode == GameMode.IA || game.CurrentMode == GameMode.PVP)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.Mistakes</MudText>
                         <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
-                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AIMistakes</MudText>
+                        <MudText Typo="Typo.h5" Class="@(game.CurrentMode == GameMode.PVP ? "stat-opponent" : "stat-ai")">@Statistics.AIMistakes</MudText>
                     </div>
                 }
                 else
@@ -190,12 +192,12 @@
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.Mistakes</MudText>
                 }
                 <MudText Class="statistic-label">JOGADAS</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (game.CurrentMode == GameMode.IA || game.CurrentMode == GameMode.PVP)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.SuccessfulMoves</MudText>
                         <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
-                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AISuccessfulMoves</MudText>
+                        <MudText Typo="Typo.h5" Class="@(game.CurrentMode == GameMode.PVP ? "stat-opponent" : "stat-ai")">@Statistics.AISuccessfulMoves</MudText>
                     </div>
                 }
                 else
@@ -203,12 +205,12 @@
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
                 }
                 <MudText Class="statistic-label">PONTOS</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (game.CurrentMode == GameMode.IA || game.CurrentMode == GameMode.PVP)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.PlayerScore.ToString("D3")</MudText>
                         <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
-                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AIScore.ToString("D3")</MudText>
+                        <MudText Typo="Typo.h5" Class="@(game.CurrentMode == GameMode.PVP ? "stat-opponent" : "stat-ai")">@Statistics.AIScore.ToString("D3")</MudText>
                     </div>
                 }
                 else
@@ -216,12 +218,12 @@
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@CurrentScore</MudText>
                 }
                 <MudText Class="statistic-label">TOTAL</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (game.CurrentMode == GameMode.IA || game.CurrentMode == GameMode.PVP)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.FinalScore.ToString("D3")</MudText>
                         <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
-                        <MudText Typo="Typo.h5" Class="stat-ai">@Statistics.AIFinalScore.ToString("D3")</MudText>
+                        <MudText Typo="Typo.h5" Class="@(game.CurrentMode == GameMode.PVP ? "stat-opponent" : "stat-ai")">@Statistics.AIFinalScore.ToString("D3")</MudText>
                     </div>
                 }
                 else
@@ -275,6 +277,22 @@
     private async Task OnDifficultyChanged(string? value)
     {
         Difficulty = value;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnModeChanged(string? value)
+    {
+        Mode = value ?? "1";
+        if (Mode != "2")
+        {
+            await localPvpService.LeaveAsync();
+            return;
+        }
+
+        if (localPvpService.IsConfigured)
+            return;
+
+        await DialogService.ShowAsync<LocalPvpDialog>("PVP local");
         await InvokeAsync(StateHasChanged);
     }
 
@@ -333,7 +351,8 @@
 
     private Task StartSelectedGameAsync()
     {
-        if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level) || Mode == "2")
+        if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level) ||
+            (Mode == "2" && !localPvpService.IsConfigured))
             return Task.CompletedTask;
         
         logger.LogInformation("Preparing game for start...");
@@ -474,6 +493,8 @@
             IsVictory = e.IsVictory ? "+1 CONQUISTA!" : "DERROTA!";
             CurrentScore = e.FinalScore.ToString("D3");
             await audio.StopAsync();
+            if (game.CurrentMode == GameMode.PVP)
+                await localPvpService.LeaveAsync();
             StateHasChanged();
         });
     }
@@ -516,6 +537,7 @@
     private void RestartGame()
     {
         game.ForceStopTimer();
+        _ = localPvpService.LeaveAsync();
         IsSelecting = true;
         IsGameActive = false;
         IsGameFinished = false;
@@ -537,6 +559,8 @@
 
         if (game is GameService service)
             service.ForceStopTimer();
+
+        await localPvpService.LeaveAsync();
 
         IsGameActive = false;
         await audio.StopAsync();
@@ -798,6 +822,12 @@
     }
 
     .stat-ai {
+        color: #971ccc;
+    }
+
+    .stat-opponent {
+        font-family: Bangpop;
+        line-height: 1;
         color: #971ccc;
     }
 

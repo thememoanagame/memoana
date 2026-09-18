@@ -17,6 +17,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
     private readonly IRepository<GameStatisticsEntity> statisticsRepository;
     private readonly IDispatcherTimer _gameTimer;
     private readonly IAIService aiService;
+    private readonly ILocalPVPService localPvpService;
     private CancellationTokenSource? _gameCancellation;
     private MemoryCard? _firstSelectedCard;
     private MemoryCard? _secondSelectedCard;
@@ -33,8 +34,9 @@ public sealed class GameService : IGameService, IAsyncDisposable
     private GameDifficulty _currentDifficulty;
     public GameMode CurrentMode { get; private set; } = GameMode.TimeAttack;
     public GameTurn CurrentTurn { get; private set; } = GameTurn.Player;
-    public bool IsHumanInteractionBlocked => CurrentMode == GameMode.IA &&
-        (CurrentTurn == GameTurn.AI /*|| _aiTurnInProgress*/);
+    public bool IsHumanInteractionBlocked =>
+        (CurrentMode == GameMode.IA || CurrentMode == GameMode.PVP) &&
+        (CurrentTurn == GameTurn.AI || _pvpAwaitingResult);
     private GameSettingsDto gameSettings = default!;
     private int _totalMoves;
     private int _successfulMoves;
@@ -46,6 +48,12 @@ public sealed class GameService : IGameService, IAsyncDisposable
     private int _aiStreak;
     private int _aiAccumulatedScore;
     private int _playerPairs;
+    private int _pvpTurnId;
+    private bool _pvpAwaitingResult;
+    private MemoryCard? _pvpLocalFirstCard;
+    private int _pvpLocalFirstPosition;
+    private MemoryCard? _pvpRemoteFirstCard;
+    private int _pvpRemoteFirstPosition;
     public int TotalMoves => _totalMoves;
     public int CurrentScore => _accumulatedScore;
     public int PlayerScore => _accumulatedScore;
@@ -54,6 +62,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
     public int AISuccessfulMoves => _aiPairs;
     public int PlayerMistakes => _mistakes;
     public int AIMistakes => _aiMistakes;
+    private string LocalPvpPlayerId => localPvpService.IsHost ? "host" : "client";
     public ObservableCollection<KeyValuePair<int, MemoryCard>> CurrentCards { get; } = [];
     public TimeSpan RemainingTime { get; private set; }
     public bool IsGameActive { get; private set; }
@@ -65,16 +74,20 @@ public sealed class GameService : IGameService, IAsyncDisposable
         IRepository<GameSettingsEntity> settingsRepository,
         IRepository<GameStatisticsEntity> statisticsRepository,
         IDispatcher dispatcher,
-        IAIService aiService)
+        IAIService aiService,
+        ILocalPVPService localPvpService)
     {
         this.themeService = themeService;
         this.settingsRepository = settingsRepository;
         this.statisticsRepository = statisticsRepository;
         this.aiService = aiService;
+        this.localPvpService = localPvpService;
 
         _gameTimer = dispatcher.CreateTimer();
         _gameTimer.Interval = TimeSpan.FromSeconds(1);
         _gameTimer.Tick += OnTimerTick;
+        localPvpService.MessageReceived += OnLocalPvpMessageReceived;
+        localPvpService.ConnectionChanged += OnLocalPvpConnectionChanged;
     }
 
     /// <summary>
@@ -96,44 +109,343 @@ public sealed class GameService : IGameService, IAsyncDisposable
         if (cancellationToken.IsCancellationRequested || gameGeneration != _gameGeneration)
             return;
 
-        CardThemeDto cards = await themeService.GetThemeAsync(_currentTheme) ?? throw new KeyNotFoundException("Tema não disponível");
-        if (cancellationToken.IsCancellationRequested || gameGeneration != _gameGeneration)
-            return;
-
-        var random = new Random();
-
-        // .OrderBy(_ => random.Next()) ensures always get a random set of cards from manifest
-        List<string> rawStrings = cards?.Base64Images.OrderBy(_ => random.Next()).Take(pairCount).ToList()
-            ?? throw new KeyNotFoundException("Imagens do tema não encontradas");
-
-        var gameCards = new List<MemoryCard>();
-        int idFactory = 0;
-        string pairIdFactory = Guid.Empty.ToString();
-
-        foreach (var base64Str in rawStrings)
+        if (CurrentMode == GameMode.PVP && !localPvpService.IsHost)
         {
-            if (string.IsNullOrEmpty(base64Str)) continue;
-            pairIdFactory = Guid.CreateVersion7().ToString();
-
-            gameCards.Add(new MemoryCard { Id = idFactory++, PairId = pairIdFactory, CardImage = base64Str });
-            gameCards.Add(new MemoryCard { Id = idFactory++, PairId = pairIdFactory, CardImage = base64Str });
+            LocalPvpMessageEventArgs message = await localPvpService.WaitForMessageAsync(LocalPvpMessageType.GameConfiguration, cancellationToken);
+            LocalPvpGameConfiguration configuration = message.Deserialize<LocalPvpGameConfiguration>(LocalPvpJson.Options);
+            _currentDifficulty = configuration.Difficulty;
+            _currentTheme = configuration.ThemeName;
+            foreach (LocalPvpBoardCard card in configuration.Board)
+                CurrentCards.Add(new KeyValuePair<int, MemoryCard>(card.Position, card.ToMemoryCard()));
+            SetTurn(configuration.InitialPlayerId == LocalPvpPlayerId ? GameTurn.Player : GameTurn.AI);
+            await localPvpService.SendReadyAsync(cancellationToken);
         }
+        else
+        {
+            CardThemeDto cards = await themeService.GetThemeAsync(_currentTheme) ?? throw new KeyNotFoundException("Tema não disponível");
+            if (cancellationToken.IsCancellationRequested || gameGeneration != _gameGeneration)
+                return;
 
-        var shuffledCards = gameCards.OrderBy(_ => random.Next()).ToList();
+            var random = new Random();
+            List<string> rawStrings = cards.Base64Images.OrderBy(_ => random.Next()).Take(pairCount).ToList();
+            var gameCards = new List<MemoryCard>();
+            int idFactory = 0;
 
-        int i = 0;
-        foreach (MemoryCard? card in shuffledCards)
-            CurrentCards.Add(new KeyValuePair<int, MemoryCard>(i += 1, card));
+            foreach (string base64Str in rawStrings)
+            {
+                if (string.IsNullOrEmpty(base64Str)) continue;
+                string pairId = Guid.CreateVersion7().ToString();
+                gameCards.Add(new MemoryCard { Id = idFactory++, PairId = pairId, CardImage = base64Str });
+                gameCards.Add(new MemoryCard { Id = idFactory++, PairId = pairId, CardImage = base64Str });
+            }
+
+            int position = 0;
+            foreach (MemoryCard card in gameCards.OrderBy(_ => random.Next()))
+                CurrentCards.Add(new KeyValuePair<int, MemoryCard>(++position, card));
+        }
 
         if (cancellationToken.IsCancellationRequested || gameGeneration != _gameGeneration)
             return;
         IsGameActive = true;
-        SetTurn(GameTurn.Player);
+        if (CurrentMode != GameMode.PVP)
+            SetTurn(GameTurn.Player);
         RemainingTime = TimeSpan.FromSeconds(totalSeconds);
         if (CurrentMode == GameMode.IA)
             aiService.StartGame(_currentDifficulty, CurrentCards);
+        else if (CurrentMode == GameMode.PVP && localPvpService.IsHost)
+        {
+            LocalPvpGameConfiguration configuration = new(
+                localPvpService.RoomId!,
+                _currentDifficulty,
+                _currentTheme,
+                CurrentCards.Select(card => new LocalPvpBoardCard(card.Key, card.Value.Id, card.Value.PairId, card.Value.CardImage)).ToList(),
+                "host");
+            await localPvpService.SendGameConfigurationAsync(configuration, cancellationToken);
+            await localPvpService.WaitForMessageAsync(LocalPvpMessageType.GameReady, cancellationToken);
+        }
         else
-            _gameTimer.Start();
+        {
+            if (CurrentMode != GameMode.PVP)
+                _gameTimer.Start();
+        }
+    }
+
+    private async Task FlipPvpCardAsync(int position, MemoryCard selectedCard, CancellationToken cancellationToken)
+    {
+        selectedCard.IsFaceUp = true;
+        NotifyCardFlipped(position, selectedCard);
+
+        if (_pvpLocalFirstCard is null)
+        {
+            _pvpLocalFirstCard = selectedCard;
+            _pvpLocalFirstPosition = position;
+            _pvpTurnId++;
+            await localPvpService.SendCardFlipAsync(new(position, _pvpTurnId, LocalPvpPlayerId), cancellationToken);
+            return;
+        }
+
+        int firstPosition = _pvpLocalFirstPosition;
+        _pvpAwaitingResult = true;
+        await localPvpService.SendCardFlipAsync(new(position, _pvpTurnId, LocalPvpPlayerId), cancellationToken);
+        if (localPvpService.IsHost)
+            await ProcessPvpTurnAsync(firstPosition, position, true, cancellationToken);
+    }
+
+    private void OnLocalPvpMessageReceived(object? sender, LocalPvpMessageEventArgs message)
+    {
+        if (CurrentMode != GameMode.PVP || !IsGameActive)
+            return;
+        _ = HandleLocalPvpMessageAsync(message);
+    }
+
+    private void OnLocalPvpConnectionChanged(object? sender, LocalPvpConnectionEventArgs connection)
+    {
+        if (connection.Connected || CurrentMode != GameMode.PVP || !IsGameActive)
+            return;
+
+        IsGameActive = false;
+        GameFinished?.Invoke(this, new(
+            _currentTheme,
+            _currentDifficulty,
+            DateTime.UtcNow,
+            false,
+            0,
+            _totalMoves,
+            _successfulMoves,
+            _mistakes,
+            _accumulatedScore,
+            _accumulatedScore,
+            _aiAccumulatedScore,
+            _aiAccumulatedScore,
+            _aiPairs,
+            _aiMistakes));
+    }
+
+    private async Task HandleLocalPvpMessageAsync(LocalPvpMessageEventArgs message)
+    {
+        await _turnGate.WaitAsync();
+        try
+        {
+            switch (message.MessageType)
+            {
+                case LocalPvpMessageType.CardFlip:
+                    await HandlePvpCardFlipAsync(message.Deserialize<LocalPvpCardFlip>(LocalPvpJson.Options));
+                    break;
+                case LocalPvpMessageType.TurnResult:
+                case LocalPvpMessageType.GameFinished:
+                    await HandlePvpTurnResultAsync(message.Deserialize<LocalPvpTurnResult>(LocalPvpJson.Options));
+                    break;
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Falha no PVP local: {ex.Message}");
+            IsGameActive = false;
+        }
+        finally
+        {
+            _turnGate.Release();
+        }
+    }
+
+    private async Task HandlePvpCardFlipAsync(LocalPvpCardFlip flip)
+    {
+        if (flip.PlayerId == LocalPvpPlayerId ||
+            (localPvpService.IsHost && flip.PlayerId != "client") ||
+            !CurrentCards.Any(card => card.Key == flip.Position))
+            return;
+
+        MemoryCard card = CurrentCards.Single(item => item.Key == flip.Position).Value;
+        if (card.IsMatched || card.IsFaceUp)
+            return;
+
+        if (localPvpService.IsHost && CurrentTurn != GameTurn.AI)
+            return;
+        int expectedTurnId = _pvpRemoteFirstCard is null ? _pvpTurnId + 1 : _pvpTurnId;
+        if (localPvpService.IsHost && flip.TurnId != expectedTurnId)
+            return;
+
+        card.IsFaceUp = true;
+        NotifyCardFlipped(flip.Position, card);
+        if (localPvpService.IsHost)
+            _pvpTurnId = flip.TurnId;
+
+        if (!localPvpService.IsHost)
+            return;
+
+        if (_pvpRemoteFirstCard is null)
+        {
+            _pvpRemoteFirstCard = card;
+            _pvpRemoteFirstPosition = flip.Position;
+            return;
+        }
+
+        int firstPosition = _pvpRemoteFirstPosition;
+        _pvpRemoteFirstCard = null;
+        await ProcessPvpTurnAsync(firstPosition, flip.Position, false, _gameCancellation?.Token ?? CancellationToken.None);
+    }
+
+    private async Task ProcessPvpTurnAsync(int firstPosition, int secondPosition, bool localPlayer, CancellationToken cancellationToken)
+    {
+        MemoryCard first = CurrentCards.Single(card => card.Key == firstPosition).Value;
+        MemoryCard second = CurrentCards.Single(card => card.Key == secondPosition).Value;
+        bool isMatch = first.PairId.Equals(second.PairId, StringComparison.Ordinal);
+
+        if (localPlayer)
+        {
+            _totalMoves++;
+            if (isMatch)
+            {
+                _successfulMoves++;
+                _playerPairs++;
+                _currentStreak++;
+                _accumulatedScore = (_accumulatedScore + 1) * _currentStreak;
+            }
+            else
+            {
+                _mistakes++;
+                _currentStreak = 0;
+            }
+        }
+        else if (isMatch)
+        {
+            _aiPairs++;
+            _aiStreak++;
+            _aiAccumulatedScore = (_aiAccumulatedScore + 1) * _aiStreak;
+        }
+        else
+        {
+            _aiMistakes++;
+            _aiStreak = 0;
+        }
+
+        if (isMatch)
+        {
+            first.IsMatched = true;
+            second.IsMatched = true;
+        }
+        else
+        {
+            await Task.Delay(gameSettings.Options.CardFlipDelayMs, cancellationToken);
+            first.IsFaceUp = false;
+            second.IsFaceUp = false;
+            NotifyCardFlipped(firstPosition, first);
+            NotifyCardFlipped(secondPosition, second);
+        }
+
+        bool finished = CurrentCards.All(card => card.Value.IsMatched);
+        string nextPlayerId = localPlayer ? "client" : "host";
+        LocalPvpTurnResult result = new(
+            _pvpTurnId,
+            firstPosition,
+            secondPosition,
+            isMatch,
+            localPlayer ? "host" : "client",
+            finished ? LocalPvpPlayerId : nextPlayerId,
+            CreatePvpStatistics(),
+            finished);
+
+        if (localPvpService.IsHost)
+        {
+            if (finished)
+                await localPvpService.SendGameFinishedAsync(result, cancellationToken);
+            else
+                await localPvpService.SendTurnResultAsync(result, cancellationToken);
+        }
+
+        _pvpLocalFirstCard = null;
+        _pvpAwaitingResult = false;
+        if (finished)
+        {
+            await EndGameAsync(CalculatePvpGameResult(), _gameGeneration);
+            return;
+        }
+
+        SetTurn(nextPlayerId == LocalPvpPlayerId ? GameTurn.Player : GameTurn.AI);
+    }
+
+    private async Task HandlePvpTurnResultAsync(LocalPvpTurnResult result)
+    {
+        if (localPvpService.IsHost)
+            return;
+
+        _pvpTurnId = Math.Max(_pvpTurnId, result.TurnId);
+        MemoryCard first = CurrentCards.Single(card => card.Key == result.FirstPosition).Value;
+        MemoryCard second = CurrentCards.Single(card => card.Key == result.SecondPosition).Value;
+        first.IsFaceUp = true;
+        second.IsFaceUp = true;
+        if (result.IsMatch)
+        {
+            first.IsMatched = true;
+            second.IsMatched = true;
+        }
+        else
+        {
+            await Task.Delay(gameSettings.Options.CardFlipDelayMs, _gameCancellation?.Token ?? CancellationToken.None);
+            first.IsFaceUp = false;
+            second.IsFaceUp = false;
+            NotifyCardFlipped(result.FirstPosition, first);
+            NotifyCardFlipped(result.SecondPosition, second);
+        }
+
+        ApplyPvpStatistics(result.Statistics);
+        _pvpAwaitingResult = false;
+        _pvpLocalFirstCard = null;
+        if (result.IsGameFinished)
+        {
+            IsGameActive = false;
+            GameFinished?.Invoke(this, CreatePvpStatisticsEventArgs(result.Statistics));
+            return;
+        }
+
+        SetTurn(result.NextPlayerId == LocalPvpPlayerId ? GameTurn.Player : GameTurn.AI);
+    }
+
+    private LocalPvpStatistics CreatePvpStatistics() => new(
+        _accumulatedScore,
+        _aiAccumulatedScore,
+        _successfulMoves,
+        _aiPairs,
+        _mistakes,
+        _aiMistakes,
+        _accumulatedScore,
+        _aiAccumulatedScore,
+        CalculatePvpGameResult() ? "host" : "client");
+
+    private void ApplyPvpStatistics(LocalPvpStatistics statistics)
+    {
+        if (LocalPvpPlayerId == "host")
+        {
+            _accumulatedScore = statistics.HostScore;
+            _aiAccumulatedScore = statistics.ClientScore;
+            _successfulMoves = statistics.HostSuccessfulMoves;
+            _aiPairs = statistics.ClientSuccessfulMoves;
+            _mistakes = statistics.HostMistakes;
+            _aiMistakes = statistics.ClientMistakes;
+        }
+        else
+        {
+            _accumulatedScore = statistics.ClientScore;
+            _aiAccumulatedScore = statistics.HostScore;
+            _successfulMoves = statistics.ClientSuccessfulMoves;
+            _aiPairs = statistics.HostSuccessfulMoves;
+            _mistakes = statistics.ClientMistakes;
+            _aiMistakes = statistics.HostMistakes;
+        }
+    }
+
+    private bool CalculatePvpGameResult() =>
+        _accumulatedScore > _aiAccumulatedScore ||
+        (_accumulatedScore == _aiAccumulatedScore && _playerPairs > _aiPairs);
+
+    private GameStatisticsEventArgs CreatePvpStatisticsEventArgs(LocalPvpStatistics statistics)
+    {
+        ApplyPvpStatistics(statistics);
+        bool playerWon = statistics.WinnerPlayerId == LocalPvpPlayerId;
+        return new(_currentTheme, _currentDifficulty, DateTime.UtcNow, playerWon, 0, _totalMoves,
+            _successfulMoves, _mistakes, _accumulatedScore, _accumulatedScore, _aiAccumulatedScore,
+            _aiAccumulatedScore, _aiPairs, _aiMistakes);
     }
 
     /// <summary>
@@ -172,6 +484,12 @@ public sealed class GameService : IGameService, IAsyncDisposable
         _aiMistakes = 0;
         _aiStreak = 0;
         _aiAccumulatedScore = 0;
+        _pvpTurnId = 0;
+        _pvpAwaitingResult = false;
+        _pvpLocalFirstCard = null;
+        _pvpRemoteFirstCard = null;
+        _pvpLocalFirstPosition = 0;
+        _pvpRemoteFirstPosition = 0;
 
         CurrentCards.Clear();
 
@@ -186,16 +504,22 @@ public sealed class GameService : IGameService, IAsyncDisposable
 
     public async Task FlipCardAsync(int position, MemoryCard selectedCard)
     {
-        if (!IsGameActive || (CurrentMode == GameMode.IA && (CurrentTurn != GameTurn.Player /*|| _aiTurnInProgress*/)) || _isProcessingTurn ||
+        if (!IsGameActive || ((CurrentMode == GameMode.IA || CurrentMode == GameMode.PVP) && (CurrentTurn != GameTurn.Player || _pvpAwaitingResult)) || _isProcessingTurn ||
             selectedCard.IsFaceUp || selectedCard.IsMatched)
             return;
 
         await _turnGate.WaitAsync();
         try
         {
-            if (!IsGameActive || (CurrentMode == GameMode.IA && (CurrentTurn != GameTurn.Player /*|| _aiTurnInProgress*/)) ||
+            if (!IsGameActive || ((CurrentMode == GameMode.IA || CurrentMode == GameMode.PVP) && (CurrentTurn != GameTurn.Player || _pvpAwaitingResult)) ||
                 _isProcessingTurn || selectedCard.IsFaceUp || selectedCard.IsMatched)
                 return;
+
+            if (CurrentMode == GameMode.PVP)
+            {
+                await FlipPvpCardAsync(position, selectedCard, _gameCancellation?.Token ?? CancellationToken.None);
+                return;
+            }
 
             int gameGeneration = _gameGeneration;
             CancellationToken cancellationToken = _gameCancellation?.Token ?? CancellationToken.None;
@@ -559,6 +883,9 @@ public sealed class GameService : IGameService, IAsyncDisposable
     {
         ForceStopTimer();
         _gameTimer.Tick -= OnTimerTick;
+        localPvpService.MessageReceived -= OnLocalPvpMessageReceived;
+        localPvpService.ConnectionChanged -= OnLocalPvpConnectionChanged;
+        await localPvpService.LeaveAsync();
         _gameCancellation?.Dispose();
         await Task.CompletedTask;
     }

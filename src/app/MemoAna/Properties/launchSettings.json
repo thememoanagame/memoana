@@ -3,6 +3,14 @@
     "Windows Machine": {
       "commandName": "Project",
       "nativeDebugging": false
+    },
+    "Dispositivo Fisico": {
+      "commandName": "Project",
+      "commandLineArgs": "-f net10.0-android --property:_DeviceName=JFQ4L7N7A6TS5X5P"
+    },
+    "Emulador": {
+      "commandName": "Project",
+      "commandLineArgs": "-f net10.0-android --property:_DeviceName=emulator-5554"
     }
   }
 }

@@ -44,6 +44,7 @@ public static class MauiAppBuilderExtensions
         {
             builder.Services.AddSingleton<IGameService, GameService>();
             builder.Services.AddSingleton<IAIService, AIService>();
+            builder.Services.AddSingleton<ILocalPVPService, LocalPVPService>();
             builder.Services.AddSingleton<IRandomSource, RandomSource>();
             builder.Services.AddScoped<IImageConverterService, ImageConverterService>();
             builder.Services.AddScoped<MemoryCard>();

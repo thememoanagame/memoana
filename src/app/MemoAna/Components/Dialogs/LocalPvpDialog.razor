@@ -1,0 +1,161 @@
+@implements IAsyncDisposable
+@inject ILogger<LocalPvpDialog> Logger
+<MudDialog>
+    <DialogContent>
+        @if (step == DialogStep.ChooseAction)
+        {
+            <MudText Typo="Typo.h6">@Localizer["PvpLocal"]</MudText>
+            <MudStack Spacing="2" Class="mt-4">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ShowHost">@Localizer["PvpCreateRoom"]</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ShowClient">@Localizer["PvpJoinRoom"]</MudButton>
+            </MudStack>
+        }
+        else if (step == DialogStep.Host)
+        {
+            <MudText Typo="Typo.h6">@Localizer["PvpCreateRoom"]</MudText>
+            <MudTextField @bind-Value="playerName" Label='@Localizer["PvpUsername"]' Immediate="true" Required="true" />
+            <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" Disabled="@string.IsNullOrWhiteSpace(playerName)" OnClick="CreateRoomAsync">
+                @Localizer["PvpCreateRoom"]
+            </MudButton>
+            @if (waitingForPlayer)
+            {
+                <MudText Class="mt-4">@Localizer["PvpRoomCreatedWaiting"]</MudText>
+                <MudProgressLinear Indeterminate="true" />
+            }
+        }
+        else
+        {
+            <MudText Typo="Typo.h6">@Localizer["PvpJoinRoom"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-2">@(isSearching ? Localizer["PvpSearchingRooms"] : rooms.Count == 0 ? Localizer["PvpNoRooms"] : Localizer["PvpRoomsAvailable"])</MudText>
+            <MudList T="LocalPvpRoom" Dense="true">
+                @foreach (LocalPvpRoom room in rooms)
+                {
+                    <MudListItem T="LocalPvpRoom" OnClick="@(() => selectedRoom = room)" Class="@(selectedRoom?.RoomId == room.RoomId ? "selected-room" : string.Empty)">
+                        @room.HostName — @room.HostAddress
+                    </MudListItem>
+                }
+            </MudList>
+            <MudTextField @bind-Value="playerName" Label='@Localizer["PvpUsername"]' Immediate="true" Required="true" />
+            <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary"
+                       Disabled="@(selectedRoom is null || string.IsNullOrWhiteSpace(playerName) || connecting)"
+                       OnClick="ConnectAsync">
+                @(connecting ? Localizer["PvpConnecting"] : Localizer["PvpConnect"])
+            </MudButton>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">@error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelAsync">@Localizer["PvpCancel"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+    [Inject] private ILocalPVPService PvpService { get; set; } = default!;
+
+    private enum DialogStep { ChooseAction, Host, Client }
+    private DialogStep step = DialogStep.ChooseAction;
+    private string playerName = string.Empty;
+    private string? error;
+    private bool waitingForPlayer;
+    private bool connecting;
+    private bool isSearching;
+    private LocalPvpRoom? selectedRoom;
+    private IReadOnlyList<LocalPvpRoom> rooms = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        PvpService.RoomsChanged += OnRoomsChanged;
+        PvpService.ConnectionChanged += OnConnectionChanged;
+        await base.OnInitializedAsync();
+        Logger.LogInformation("Local PVP mode selected and initialized.");
+    }
+
+    private void ShowHost()
+    {
+        error = null;
+        step = DialogStep.Host;
+    }
+
+    private async Task ShowClient()
+    {
+        error = null;
+        step = DialogStep.Client;
+        isSearching = true;
+        await PvpService.StartDiscoveryAsync();
+        Logger.LogInformation("Local PVP client mode started.");
+    }
+
+    private async Task CreateRoomAsync()
+    {
+        try
+        {
+            error = null;
+            await PvpService.StartHostAsync(playerName);
+            waitingForPlayer = true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private async Task ConnectAsync()
+    {
+        if (selectedRoom is null)
+            return;
+
+        try
+        {
+            error = null;
+            connecting = true;
+            await PvpService.ConnectAsync(selectedRoom, playerName);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            connecting = false;
+        }
+    }
+
+    private async Task CancelAsync()
+    {
+        await PvpService.LeaveAsync();
+        Dialog.Cancel();
+    }
+
+    private void OnRoomsChanged(object? sender, LocalPvpRoomsChangedEventArgs e)
+    {
+        _ = InvokeAsync(() =>
+        {
+            rooms = e.Rooms;
+            isSearching = rooms.Count == 0;
+            StateHasChanged();
+        });
+    }
+
+    private void OnConnectionChanged(object? sender, LocalPvpConnectionEventArgs e)
+    {
+        if (!e.Connected || step != DialogStep.Host)
+            return;
+
+        _ = InvokeAsync(() =>
+        {
+            waitingForPlayer = false;
+            Dialog.Close(DialogResult.Ok(true));
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        PvpService.RoomsChanged -= OnRoomsChanged;
+        PvpService.ConnectionChanged -= OnConnectionChanged;
+        if (!PvpService.IsConnected && !PvpService.IsHost)
+            await PvpService.LeaveAsync();
+    }
+}
