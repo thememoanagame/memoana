@@ -1,5 +1,4 @@
-﻿#pragma warning disable CA1416
-using MemoAna.Game.Core;
+﻿using MemoAna.Game.Core;
 using MemoAna.Common.Abstract.Repositories;
 using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Dtos;
@@ -890,4 +889,3 @@ public sealed class GameService : IGameService, IAsyncDisposable
         await Task.CompletedTask;
     }
 }
-#pragma warning restore CA1416
