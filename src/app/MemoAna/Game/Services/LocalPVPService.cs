@@ -25,7 +25,6 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
     private static readonly TimeSpan AdvertisementInterval = TimeSpan.FromSeconds(1.5);
     private static readonly TimeSpan RoomExpiration = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
-    private static readonly IPAddress BroadcastAddress = IPAddress.Parse("255.255.255.255");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly object stateLock = new();
@@ -70,6 +69,8 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         logger.LogInformation("Local PVP host starting with player name {PlayerName}.", playerName);
         string normalizedName = NormalizePlayerName(playerName);
         await LeaveAsync();
+        LanInterfaceInfo lanInterface = SelectLanInterface();
+        LogLanInterface(lanInterface);
         logger.LogInformation("Local PVP host configuration cleared.");
         lifetimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         IsHost = true;
@@ -81,17 +82,17 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         try
         {
             logger.LogInformation("Local PVP TCP listener starting on {TcpPort}.", GamePort);
-            listener = new TcpListener(IPAddress.Any, GamePort);
+            listener = new TcpListener(lanInterface.Ipv4Address, GamePort);
             listener.Start();
-            logger.LogInformation("Local PVP TCP listener started on {TcpPort}.", GamePort);
+            logger.LogInformation("Local PVP TCP listener bound to {TcpEndpoint}.", listener.LocalEndpoint);
             logger.LogInformation(
                 "Local PVP host started. RoomId: {RoomId}, Player: {PlayerName}, TcpPort: {TcpPort}, DiscoveryPort: {DiscoveryPort}, HostAddress: {HostAddress}",
-                RoomId, LocalPlayerName, GamePort, DiscoveryPort, GetLocalAddress());
-            UdpClient discoverySocket = CreateDiscoverySocket(DiscoveryPort);
+                RoomId, LocalPlayerName, GamePort, DiscoveryPort, lanInterface.Ipv4Address);
+            UdpClient discoverySocket = CreateDiscoverySocket(lanInterface, DiscoveryPort);
             hostDiscoveryClient = discoverySocket;
             acceptTask = AcceptPeerAsync(lifetimeCancellation.Token);
-            hostDiscoveryTask = ListenForDiscoveryQueriesAsync(discoverySocket, lifetimeCancellation.Token);
-            advertiseTask = AdvertiseRoomAsync(lifetimeCancellation.Token);
+            hostDiscoveryTask = ListenForDiscoveryQueriesAsync(discoverySocket, lanInterface, lifetimeCancellation.Token);
+            advertiseTask = AdvertiseRoomAsync(lanInterface, lifetimeCancellation.Token);
             logger.LogInformation("Local PVP room advertisement started for room {RoomId}.", RoomId);
         }
         catch
@@ -104,9 +105,20 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
     public async Task StartDiscoveryAsync(CancellationToken cancellationToken = default)
     {
         await StopDiscoveryAsync();
+        LanInterfaceInfo lanInterface;
+        try
+        {
+            lanInterface = SelectLanInterface();
+        }
+        catch (Exception ex)
+        {
+            RaiseConnectionChanged(false, null, ex.Message);
+            return;
+        }
+        LogLanInterface(lanInterface);
         CancellationTokenSource discoveryLifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         discoveryCancellation = discoveryLifetime;
-        Task task = DiscoverRoomsAsync(discoveryLifetime);
+        Task task = DiscoverRoomsAsync(lanInterface, discoveryLifetime);
         discoveryTask = task.IsCompleted ? null : task;
         logger.LogInformation("Local PVP client discovery task started.");
     }
@@ -243,7 +255,7 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         }
     }
 
-    private UdpClient CreateDiscoverySocket(int port)
+    private UdpClient CreateDiscoverySocket(LanInterfaceInfo lanInterface, int port)
     {
         UdpClient? udp = null;
         string operation = "socket creation";
@@ -258,10 +270,13 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
             logger.LogInformation("Local PVP UDP discovery listener socket configured for broadcast.");
 
             operation = "socket bind";
-            udp.Client.Bind(new IPEndPoint(IPAddress.Any, port));
+            udp.Client.Bind(new IPEndPoint(lanInterface.Ipv4Address, port));
             logger.LogInformation(
                 "Local PVP UDP discovery listener socket bound to {LocalEndpoint}.",
                 udp.Client.LocalEndPoint);
+            logger.LogInformation(
+                "Local PVP UDP discovery broadcast endpoint is {BroadcastEndpoint}.",
+                new IPEndPoint(lanInterface.BroadcastAddress, port));
             return udp;
         }
         catch (Exception ex)
@@ -275,9 +290,11 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         }
     }
 
-    private async Task ListenForDiscoveryQueriesAsync(UdpClient udp, CancellationToken cancellationToken)
+    private async Task ListenForDiscoveryQueriesAsync(UdpClient udp, LanInterfaceInfo lanInterface, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Local PVP UDP discovery listener running on {DiscoveryPort}.", DiscoveryPort);
+        logger.LogInformation(
+            "Local PVP UDP discovery listener running on {UdpEndpoint}. BroadcastEndpoint: {BroadcastEndpoint}.",
+            udp.Client.LocalEndPoint, new IPEndPoint(lanInterface.BroadcastAddress, DiscoveryPort));
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -290,7 +307,7 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
                     "Local PVP discovery query received from {Endpoint}.",
                     result.RemoteEndPoint);
                 logger.LogDebug("Local PVP discovery query validated from {Endpoint}.", result.RemoteEndPoint);
-                byte[] response = CreateRoomAdvertisement();
+                byte[] response = CreateRoomAdvertisement(lanInterface);
                 await udp.SendAsync(response, result.RemoteEndPoint);
                 logger.LogInformation(
                     "Local PVP discovery response sent to {Endpoint} for room {RoomId}.",
@@ -343,7 +360,7 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         }
     }
 
-    private byte[] CreateRoomAdvertisement() =>
+    private byte[] CreateRoomAdvertisement(LanInterfaceInfo lanInterface) =>
         System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
         {
             Protocol,
@@ -351,11 +368,11 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
             Type = "Advertisement",
             RoomId,
             HostName = LocalPlayerName,
-            HostIp = GetLocalAddress().ToString(),
+            HostIp = lanInterface.Ipv4Address.ToString(),
             TcpPort = GamePort
         }, JsonOptions));
 
-    private async Task DiscoverRoomsAsync(CancellationTokenSource discoveryLifetime)
+    private async Task DiscoverRoomsAsync(LanInterfaceInfo lanInterface, CancellationTokenSource discoveryLifetime)
     {
         CancellationToken cancellationToken = discoveryLifetime.Token;
         UdpClient? udp = null;
@@ -365,6 +382,7 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         logger.LogInformation(
             "Local PVP discovery starting. DiscoveryPort: {DiscoveryPort}, Platform: {Platform}, Runtime: {Runtime}.",
             DiscoveryPort, GetPlatformDescription(), RuntimeInformation.FrameworkDescription);
+        LogLanInterface(lanInterface);
 
         try
         {
@@ -377,7 +395,7 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
             logger.LogInformation("Local PVP discovery socket configured for IPv4 broadcast.");
 
             operation = "socket bind";
-            udp.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
+            udp.Client.Bind(new IPEndPoint(lanInterface.Ipv4Address, 0));
             localEndpoint = udp.Client.LocalEndPoint as IPEndPoint;
             logger.LogInformation("Local PVP discovery socket bound to {LocalEndpoint}.", localEndpoint);
 
@@ -387,16 +405,30 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
                 Version = ProtocolVersion,
                 Type = "Query"
             }, JsonOptions));
-            logger.LogDebug("Local PVP discovery query prepared for {BroadcastEndpoint}.", new IPEndPoint(BroadcastAddress, DiscoveryPort));
+            IPEndPoint broadcastEndpoint = new(lanInterface.BroadcastAddress, DiscoveryPort);
+            logger.LogDebug("Local PVP discovery query prepared for {BroadcastEndpoint}.", broadcastEndpoint);
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                IPEndPoint broadcastEndpoint = new(BroadcastAddress, DiscoveryPort);
                 operation = "UDP query send";
-                await udp.SendAsync(query, broadcastEndpoint);
-                logger.LogDebug(
-                    "Local PVP discovery query sent to {BroadcastEndpoint} from {LocalEndpoint}.",
-                    broadcastEndpoint, localEndpoint);
+                try
+                {
+                    logger.LogDebug(
+                        "Local PVP discovery query sending. LocalEndpoint: {LocalEndpoint}, BroadcastEndpoint: {BroadcastEndpoint}, DiscoveryPort: {DiscoveryPort}.",
+                        localEndpoint, broadcastEndpoint, DiscoveryPort);
+                    int bytesSent = await udp.SendAsync(query, broadcastEndpoint);
+                    logger.LogDebug(
+                        "Local PVP discovery query sent. LocalEndpoint: {LocalEndpoint}, BroadcastEndpoint: {BroadcastEndpoint}, BytesSent: {BytesSent}.",
+                        localEndpoint, broadcastEndpoint, bytesSent);
+                }
+                catch (Exception ex) when (ex is SocketException or ObjectDisposedException)
+                {
+                    logger.LogError(
+                        ex,
+                        "Local PVP discovery query send failed. LocalEndpoint: {LocalEndpoint}, BroadcastEndpoint: {BroadcastEndpoint}, DiscoveryPort: {DiscoveryPort}.",
+                        localEndpoint, broadcastEndpoint, DiscoveryPort);
+                    throw;
+                }
 
                 using CancellationTokenSource receiveTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 receiveTimeout.CancelAfter(500);
@@ -449,7 +481,7 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         }
     }
 
-    private async Task AdvertiseRoomAsync(CancellationToken cancellationToken)
+    private async Task AdvertiseRoomAsync(LanInterfaceInfo lanInterface, CancellationToken cancellationToken)
     {
         UdpClient? udp = null;
         string operation = "socket creation";
@@ -459,14 +491,19 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
             logger.LogDebug("Local PVP room advertisement socket created.");
             operation = "socket configuration";
             udp.EnableBroadcast = true;
+            udp.Client.Bind(new IPEndPoint(lanInterface.Ipv4Address, 0));
             logger.LogDebug("Local PVP room advertisement socket configured for broadcast.");
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                byte[] advertisement = CreateRoomAdvertisement();
-                logger.LogDebug("Local PVP sending room advertisement for {RoomId} to {BroadcastAddress}:{DiscoveryPort}.", RoomId, BroadcastAddress, DiscoveryPort);
+                byte[] advertisement = CreateRoomAdvertisement(lanInterface);
+                IPEndPoint broadcastEndpoint = new(lanInterface.BroadcastAddress, DiscoveryPort);
+                logger.LogDebug("Local PVP sending room advertisement for {RoomId} to {BroadcastEndpoint} from {LocalEndpoint}.", RoomId, broadcastEndpoint, udp.Client.LocalEndPoint);
                 operation = "UDP advertisement send";
-                await udp.SendAsync(advertisement, new IPEndPoint(BroadcastAddress, DiscoveryPort));
+                int bytesSent = await udp.SendAsync(advertisement, broadcastEndpoint);
+                logger.LogDebug(
+                    "Local PVP room advertisement sent. RoomId: {RoomId}, LocalEndpoint: {LocalEndpoint}, BroadcastEndpoint: {BroadcastEndpoint}, BytesSent: {BytesSent}.",
+                    RoomId, udp.Client.LocalEndPoint, broadcastEndpoint, bytesSent);
                 await Task.Delay(AdvertisementInterval, cancellationToken);
             }
         }
@@ -734,23 +771,99 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         return name;
     }
 
-    private static IPAddress GetLocalAddress()
+    private LanInterfaceInfo SelectLanInterface()
     {
-        IEnumerable<(int Priority, IPAddress Address)> candidates = NetworkInterface.GetAllNetworkInterfaces()
-            .Where(network => network.OperationalStatus == OperationalStatus.Up)
-            .SelectMany(network => network.GetIPProperties().UnicastAddresses
-                .Where(address => address.Address.AddressFamily == AddressFamily.InterNetwork &&
-                    !IPAddress.IsLoopback(address.Address) &&
-                    !address.Address.ToString().StartsWith("169.254.", StringComparison.Ordinal))
-                .Select(address => (Priority: network.NetworkInterfaceType switch
-                {
-                    NetworkInterfaceType.Ethernet => 0,
-                    NetworkInterfaceType.Wireless80211 => 0,
-                    _ => 1
-                }, Address: address.Address)));
+        try
+        {
+            List<LanInterfaceInfo> candidates = [];
+            foreach (NetworkInterface network in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (network.OperationalStatus != OperationalStatus.Up ||
+                    network.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel or NetworkInterfaceType.Ppp)
+                    continue;
 
-        return candidates.OrderBy(candidate => candidate.Priority).Select(candidate => candidate.Address).FirstOrDefault()
-            ?? IPAddress.Loopback;
+                foreach (UnicastIPAddressInformation address in network.GetIPProperties().UnicastAddresses)
+                {
+                    IPAddress ipv4Address = address.Address;
+                    IPAddress? subnetMask = address.IPv4Mask;
+                    if (ipv4Address.AddressFamily != AddressFamily.InterNetwork ||
+                        subnetMask is null ||
+                        IPAddress.IsLoopback(ipv4Address) ||
+                        IsLinkLocal(ipv4Address))
+                        continue;
+
+                    IPAddress broadcastAddress = CalculateBroadcastAddress(ipv4Address, subnetMask);
+                    candidates.Add(new LanInterfaceInfo(
+                        network.Name,
+                        network.Description,
+                        network.NetworkInterfaceType,
+                        ipv4Address,
+                        subnetMask,
+                        broadcastAddress));
+                }
+            }
+
+            LanInterfaceInfo? selected = candidates
+                .OrderBy(GetInterfacePriority)
+                .FirstOrDefault();
+            if (selected is null)
+                throw new InvalidOperationException("Nenhuma interface IPv4 LAN operacional foi encontrada.");
+
+            return selected;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Local PVP LAN interface selection failed.");
+            throw;
+        }
+    }
+
+    private void LogLanInterface(LanInterfaceInfo lanInterface) =>
+        logger.LogInformation(
+            "Local PVP LAN interface selected. Interface: {InterfaceName}, InterfaceType: {InterfaceType}, IPv4Address: {IPv4Address}, SubnetMask: {SubnetMask}, BroadcastAddress: {BroadcastAddress}.",
+            lanInterface.Name, lanInterface.InterfaceType, lanInterface.Ipv4Address, lanInterface.SubnetMask, lanInterface.BroadcastAddress);
+
+    private static int GetInterfacePriority(LanInterfaceInfo lanInterface)
+    {
+        int priority = lanInterface.InterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211 ? 0 : 10;
+        if (!IsPrivateAddress(lanInterface.Ipv4Address))
+            priority += 5;
+
+        string description = $"{lanInterface.Name} {lanInterface.Description}";
+        if (description.Contains("vpn", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("virtual", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("docker", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("vmware", StringComparison.OrdinalIgnoreCase) ||
+            description.Contains("emulator", StringComparison.OrdinalIgnoreCase))
+            priority += 20;
+
+        return priority;
+    }
+
+    private static IPAddress CalculateBroadcastAddress(IPAddress address, IPAddress subnetMask)
+    {
+        byte[] addressBytes = address.GetAddressBytes();
+        byte[] maskBytes = subnetMask.GetAddressBytes();
+        if (addressBytes.Length != 4 || maskBytes.Length != 4)
+            throw new InvalidOperationException("A interface LAN precisa ter endereço IPv4 e máscara IPv4.");
+
+        byte[] broadcastBytes = new byte[4];
+        for (int index = 0; index < broadcastBytes.Length; index++)
+            broadcastBytes[index] = (byte)(addressBytes[index] | ~maskBytes[index]);
+
+        return new IPAddress(broadcastBytes);
+    }
+
+    private static bool IsLinkLocal(IPAddress address) =>
+        address.GetAddressBytes() is [169, 254, _, _];
+
+    private static bool IsPrivateAddress(IPAddress address)
+    {
+        byte[] bytes = address.GetAddressBytes();
+        return bytes.Length == 4 &&
+            (bytes[0] == 10 ||
+             (bytes[0] == 172 && bytes[1] is >= 16 and <= 31) ||
+             (bytes[0] == 192 && bytes[1] == 168));
     }
 
     private static string GetPlatformDescription() =>
@@ -778,6 +891,14 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         LocalPvpMessageType Type,
         string RoomId,
         JsonElement Payload);
+
+    private sealed record LanInterfaceInfo(
+        string Name,
+        string Description,
+        NetworkInterfaceType InterfaceType,
+        IPAddress Ipv4Address,
+        IPAddress SubnetMask,
+        IPAddress BroadcastAddress);
 }
 
 internal static class DictionaryExtensions

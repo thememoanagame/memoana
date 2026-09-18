@@ -141,6 +141,17 @@
 
     private void OnConnectionChanged(object? sender, LocalPvpConnectionEventArgs e)
     {
+        if (!e.Connected && step == DialogStep.Client && !string.IsNullOrWhiteSpace(e.Error))
+        {
+            _ = InvokeAsync(() =>
+            {
+                error = e.Error;
+                isSearching = false;
+                StateHasChanged();
+            });
+            return;
+        }
+
         if (!e.Connected || step != DialogStep.Host)
             return;
 
