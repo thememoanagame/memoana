@@ -4,6 +4,10 @@
 <dict>
     <key>NSLocalNetworkUsageDescription</key>
     <string>MemoAna usa a rede local para partidas PVP entre dispositivos.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_memoana-pvp._tcp</string>
+    </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIDeviceFamily</key>
