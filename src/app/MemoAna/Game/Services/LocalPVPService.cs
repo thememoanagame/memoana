@@ -224,7 +224,10 @@ public sealed class LocalPVPService(
     {
         peer = connectedPeer;
         peerConnected?.TrySetResult(true);
-        logger.LogInformation("Local PVP peer connected: {Endpoint}.", connectedPeer.EndPoint);
+        logger.LogInformation(
+            "Local PVP peer connected: {Address}:{Port}.",
+            connectedPeer.Address,
+            connectedPeer.Port);
         if (!IsHost)
             _ = SendAsync(LocalPvpMessageType.Hello, new { PlayerName = LocalPlayerName }, CancellationToken.None);
     }
@@ -251,7 +254,10 @@ public sealed class LocalPVPService(
             byte[] bytes = System.Text.Encoding.UTF8.GetBytes(json);
             if (!LocalPvpProtocol.TryDeserialize(bytes, RoomId ?? string.Empty, out LocalPvpMessage? message))
             {
-                logger.LogWarning("Invalid Local PVP message received from {Peer}.", sender.EndPoint);
+                logger.LogWarning(
+                    "Invalid Local PVP message received from {Address}:{Port}.",
+                    sender.Address,
+                    sender.Port);
                 return;
             }
 
@@ -265,7 +271,11 @@ public sealed class LocalPVPService(
         }
         catch (Exception ex) when (ex is InvalidDataException or JsonException or InvalidOperationException)
         {
-            logger.LogWarning(ex, "Invalid Local PVP payload received from {Peer}.", sender.EndPoint);
+            logger.LogWarning(
+                ex,
+                "Invalid Local PVP payload received from {Address}:{Port}.",
+                sender.Address,
+                sender.Port);
         }
         finally
         {
