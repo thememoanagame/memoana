@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Text.Json;
 using MemoAna.Common.Abstract.Repositories;
 using MemoAna.Common.Entities;
 using MemoAna.Game.Abstract.Services;
@@ -8,6 +9,7 @@ using MemoAna.Game.Entities;
 using MemoAna.Game.Enums;
 using MemoAna.Game.Services;
 using MemoAna.Game.Models;
+using MemoAna.Game.EventArgs;
 using Microsoft.Maui.Dispatching;
 using Xunit;
 using System.Diagnostics;
@@ -212,7 +214,8 @@ public sealed class GameServiceTests
             new FakeRepository<GameSettingsEntity>(settings),
             new FakeRepository<GameStatisticsEntity>(),
             new FakeDispatcher(),
-            ai ?? new AIService(new FixedRandomSource()));
+            ai ?? new AIService(new FixedRandomSource()),
+            new FakeLocalPvpService());
     }
 
     private sealed class FakeThemeService : IThemeService
@@ -222,6 +225,34 @@ public sealed class GameServiceTests
 
         public Task<CardThemeDto> GetThemeAsync(string themeName) =>
             Task.FromResult(new CardThemeDto(Enumerable.Range(1, 6).Select(i => $"card-{i}").ToList(), "theme", null));
+    }
+
+    private sealed class FakeLocalPvpService : ILocalPVPService
+    {
+        public bool IsHost => true;
+        public bool IsConfigured => true;
+        public bool IsConnected => true;
+        public string? RoomId => "test-room";
+        public string? LocalPlayerName => "host";
+        public string? RemotePlayerName => "client";
+        public IReadOnlyList<LocalPvpRoom> DiscoveredRooms => [];
+        public event EventHandler<LocalPvpRoomsChangedEventArgs>? RoomsChanged;
+        public event EventHandler<LocalPvpConnectionEventArgs>? ConnectionChanged;
+        public event EventHandler<LocalPvpMessageEventArgs>? MessageReceived;
+
+        public Task StartHostAsync(string playerName, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task StartDiscoveryAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task ConnectAsync(LocalPvpRoom room, string playerName, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task WaitForPeerAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<LocalPvpMessageEventArgs> WaitForMessageAsync(LocalPvpMessageType messageType, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new LocalPvpMessageEventArgs(messageType, JsonDocument.Parse("{}").RootElement.Clone()));
+        public Task SendGameConfigurationAsync(LocalPvpGameConfiguration configuration, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SendReadyAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SendCardFlipAsync(LocalPvpCardFlip flip, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SendTurnResultAsync(LocalPvpTurnResult result, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SendGameFinishedAsync(LocalPvpTurnResult result, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task LeaveAsync() => Task.CompletedTask;
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class FakeRepository<TEntity>(TEntity? entity = null) : IRepository<TEntity>

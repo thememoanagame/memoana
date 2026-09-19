@@ -1,55 +1,51 @@
-using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.Json;
+using LiteNetLib;
+using LiteNetLib.Utils;
 using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Models;
+using MemoAna.Game.Protocol;
 
 namespace MemoAna.Game.Services;
 
 /// <summary>
-/// Provides direct LAN discovery and framed TCP transport for one local PVP
-/// room. The service owns all sockets and exposes only game-level messages.
+/// Provides the Local PVP LAN session over one LiteNetLib UDP transport.
+/// Network callbacks run on LiteNetLib's worker and only publish validated
+/// game messages; UI dispatch remains the responsibility of the consumer.
 /// </summary>
-public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVPService
+public sealed class LocalPVPService(
+    ILogger<LocalPVPService> logger,
+    LocalPvpOptions? options = null) : ILocalPVPService
 {
-    private const string Protocol = "MemoAnaPvp";
-    private const int ProtocolVersion = 1;
-    private const int DefaultGamePort = 45874;
-    private const int DiscoveryPort = 45873;
-    private const int GamePort = DefaultGamePort;
-    private const int FrameHeaderSize = 4;
-    private const int MaxFrameSize = 1024 * 1024;
-    private static readonly TimeSpan AdvertisementInterval = TimeSpan.FromSeconds(1.5);
-    private static readonly TimeSpan RoomExpiration = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
+    private const string DiscoveryMessage = "MemoAnaPvp.Discover";
+    private const string DiscoveryResponse = "MemoAnaPvp.Room";
+    private const string HandshakeKeyPrefix = "MemoAnaPvp/";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
+    private readonly LocalPvpOptions options = options ?? new();
     private readonly object stateLock = new();
-    private readonly SemaphoreSlim sendLock = new(1, 1);
+    private readonly ConcurrentDictionary<LocalPvpMessageType, TaskCompletionSource<LocalPvpMessageEventArgs>> messageWaiters = [];
     private readonly Dictionary<string, LocalPvpRoom> rooms = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? lifetimeCancellation;
     private CancellationTokenSource? discoveryCancellation;
-    private TcpListener? listener;
-    private TcpClient? client;
-    private NetworkStream? stream;
-    private LocalPvpMdnsDiscovery? mdns;
-    private Task? acceptTask;
-    private Task? receiveTask;
     private Task? discoveryTask;
+    private EventBasedNetListener? listener;
+    private NetManager? network;
+    private NetPeer? peer;
     private TaskCompletionSource<bool>? peerConnected;
     private TaskCompletionSource<bool>? handshakeCompleted;
-    private readonly Dictionary<LocalPvpMessageType, TaskCompletionSource<LocalPvpMessageEventArgs>> messageWaiters = [];
+    private long nextSequence;
+    private long lastReceivedSequence = -1;
+    private string? handshakeKey;
 
     public bool IsHost { get; private set; }
     public bool IsConfigured { get; private set; }
-    public bool IsConnected => stream is not null && client?.Connected == true;
+    public bool IsConnected => peer?.ConnectionState == ConnectionState.Connected;
     public string? RoomId { get; private set; }
     public string? LocalPlayerName { get; private set; }
     public string? RemotePlayerName { get; private set; }
+
     public IReadOnlyList<LocalPvpRoom> DiscoveredRooms
     {
         get
@@ -65,139 +61,96 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
 
     public async Task StartHostAsync(string playerName, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("Local PVP host starting with player name {PlayerName}.", playerName);
         string normalizedName = NormalizePlayerName(playerName);
         await LeaveAsync();
-        logger.LogInformation("Local PVP host configuration cleared.");
         lifetimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        IsHost = true;
-        IsConfigured = true;
-        LocalPlayerName = normalizedName;
-        RoomId = Guid.CreateVersion7().ToString("N");
-        peerConnected = NewCompletionSource();
-
-        try
-        {
-            logger.LogInformation("Local PVP TCP listener starting on wildcard port {TcpPort}.", DefaultGamePort);
-            listener = new TcpListener(IPAddress.IPv6Any, DefaultGamePort);
-            listener.Server.DualMode = true;
-            listener.Start();
-            logger.LogInformation("Local PVP TCP listener bound to {TcpEndpoint}.", listener.LocalEndpoint);
-            int tcpPort = ((IPEndPoint)listener.LocalEndpoint).Port;
-            logger.LogInformation(
-                "Local PVP host started. RoomId: {RoomId}, Player: {PlayerName}, TcpPort: {TcpPort}",
-                RoomId, LocalPlayerName, tcpPort);
-            mdns = new LocalPvpMdnsDiscovery(logger);
-            mdns.StartAdvertisement(RoomId, LocalPlayerName, tcpPort, ProtocolVersion);
-            acceptTask = AcceptPeerAsync(lifetimeCancellation.Token);
-            logger.LogInformation("Local PVP room advertisement started for room {RoomId}.", RoomId);
-        }
-        catch
-        {
-            await LeaveAsync();
-            throw;
-        }
+        Configure(true, normalizedName, Guid.CreateVersion7().ToString("N"));
+        peerConnected = NewCompletionSource<bool>();
+        StartNetwork();
+        logger.LogInformation(
+            "Local PVP transport started as host. RoomId: {RoomId}, Port: {Port}, Player: {PlayerName}.",
+            RoomId, options.Port, LocalPlayerName);
     }
 
     public async Task StartDiscoveryAsync(CancellationToken cancellationToken = default)
     {
         await StopDiscoveryAsync();
-        CancellationTokenSource discoveryLifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        await LeaveAsync();
+        lifetimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Configure(false, null, null);
+        StartNetwork();
+
+        CancellationTokenSource discoveryLifetime = CancellationTokenSource.CreateLinkedTokenSource(
+            lifetimeCancellation?.Token ?? cancellationToken);
         discoveryCancellation = discoveryLifetime;
-        mdns = new LocalPvpMdnsDiscovery(logger);
-        mdns.RoomDiscovered += OnMdnsRoomDiscovered;
-        mdns.RoomRemoved += OnMdnsRoomRemoved;
-        try
-        {
-            mdns.StartBrowsing();
-            logger.LogInformation("Local PVP client discovery started.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Local PVP mDNS discovery failed to start.");
-            RaiseConnectionChanged(false, null, ex.Message);
-            await StopDiscoveryAsync();
-        }
+        discoveryTask = DiscoverAsync(discoveryLifetime);
+        logger.LogInformation("Local PVP discovery started on port {Port}.", options.Port);
     }
 
-    public async Task ConnectAsync(LocalPvpRoom room, string playerName, CancellationToken cancellationToken = default)
+    public async Task ConnectAsync(
+        LocalPvpRoom room,
+        string playerName,
+        CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(room);
         string normalizedName = NormalizePlayerName(playerName);
         await StopDiscoveryAsync();
         await LeaveTransportAsync();
-
         lifetimeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        IsHost = false;
-        IsConfigured = true;
-        LocalPlayerName = normalizedName;
-        RoomId = room.RoomId;
-        logger.LogInformation("Local PVP TCP connection requested. RoomId: {RoomId}, HostAddress: {HostAddress}, TcpPort: {TcpPort}.", RoomId, room.HostAddress, room.TcpPort);
-        handshakeCompleted = NewCompletionSource();
-        client = new TcpClient();
+        Configure(false, normalizedName, room.RoomId);
+        StartNetwork();
+        handshakeCompleted = NewCompletionSource<bool>();
         using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(lifetimeCancellation.Token);
-        timeout.CancelAfter(ConnectionTimeout);
+        timeout.CancelAfter(options.ConnectionTimeout);
+        handshakeKey = HandshakeKeyPrefix + room.RoomId;
+        peer = network!.Connect(room.HostAddress, room.TcpPort, handshakeKey);
+        if (peer is null)
+            throw new InvalidOperationException("LiteNetLib did not create a connection attempt.");
+
         logger.LogInformation(
-            "Local PVP TCP ConnectAsync starting to {HostAddress}:{TcpPort}. An Android emulator 10.0.2.x endpoint is behind emulator NAT and is not inbound-reachable from a physical device.",
-            room.HostAddress, room.TcpPort);
-        IPAddress[] addresses = IPAddress.TryParse(room.HostAddress, out IPAddress? parsed)
-            ? [parsed]
-            : await Dns.GetHostAddressesAsync(room.HostAddress, timeout.Token);
-        await client.ConnectAsync(addresses, room.TcpPort, timeout.Token);
-        logger.LogInformation(
-            "Local PVP TCP connected. LocalEndpoint: {LocalEndpoint}, RemoteEndpoint: {RemoteEndpoint}.",
-            client.Client.LocalEndPoint, client.Client.RemoteEndPoint);
-        stream = client.GetStream();
-        logger.LogInformation("Local PVP TCP receive loop started.");
-        receiveTask = ReceiveLoopAsync(lifetimeCancellation.Token);
-        logger.LogInformation("Local PVP sending Hello.");
-        await SendWireMessageAsync(LocalPvpMessageType.Hello, new { PlayerName = normalizedName }, timeout.Token);
-        logger.LogInformation("Local PVP Hello sent. Waiting for HelloAccepted.");
+            "Local PVP connection requested. RoomId: {RoomId}, Peer: {Peer}, Port: {Port}.",
+            room.RoomId, room.HostAddress, room.TcpPort);
         await handshakeCompleted.Task.WaitAsync(timeout.Token);
-        logger.LogInformation("Local PVP handshake completed. RemotePlayerName: {RemotePlayerName}.", RemotePlayerName);
     }
 
     public async Task WaitForPeerAsync(CancellationToken cancellationToken = default)
     {
         if (!IsHost)
-            throw new InvalidOperationException("Somente o host aguarda o segundo jogador.");
-
-        peerConnected ??= NewCompletionSource();
-        await peerConnected.Task.WaitAsync(cancellationToken);
+            throw new InvalidOperationException("Only the host can wait for a peer.");
+        await (peerConnected ??= NewCompletionSource<bool>()).Task.WaitAsync(cancellationToken);
     }
 
-    public async Task<LocalPvpMessageEventArgs> WaitForMessageAsync(LocalPvpMessageType messageType, CancellationToken cancellationToken = default)
+    public async Task<LocalPvpMessageEventArgs> WaitForMessageAsync(
+        LocalPvpMessageType messageType,
+        CancellationToken cancellationToken = default)
     {
-        TaskCompletionSource<LocalPvpMessageEventArgs> waiter = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        lock (stateLock)
-            messageWaiters[messageType] = waiter;
+        TaskCompletionSource<LocalPvpMessageEventArgs> waiter = NewCompletionSource<LocalPvpMessageEventArgs>();
+        if (!messageWaiters.TryAdd(messageType, waiter))
+            throw new InvalidOperationException($"A waiter already exists for {messageType}.");
         try
         {
             return await waiter.Task.WaitAsync(cancellationToken);
         }
         finally
         {
-            lock (stateLock)
-            {
-                if (messageWaiters.TryGetValue(messageType, out TaskCompletionSource<LocalPvpMessageEventArgs>? current) && ReferenceEquals(current, waiter))
-                    messageWaiters.Remove(messageType);
-            }
+            messageWaiters.TryRemove(new KeyValuePair<LocalPvpMessageType, TaskCompletionSource<LocalPvpMessageEventArgs>>(messageType, waiter));
         }
     }
 
     public Task SendGameConfigurationAsync(LocalPvpGameConfiguration configuration, CancellationToken cancellationToken = default) =>
-        SendWireMessageAsync(LocalPvpMessageType.GameConfiguration, configuration, cancellationToken);
+        SendAsync(LocalPvpMessageType.GameConfiguration, configuration, cancellationToken);
 
     public Task SendReadyAsync(CancellationToken cancellationToken = default) =>
-        SendWireMessageAsync(LocalPvpMessageType.GameReady, new { }, cancellationToken);
+        SendAsync(LocalPvpMessageType.GameReady, new { }, cancellationToken);
 
     public Task SendCardFlipAsync(LocalPvpCardFlip flip, CancellationToken cancellationToken = default) =>
-        SendWireMessageAsync(LocalPvpMessageType.CardFlip, flip, cancellationToken);
+        SendAsync(LocalPvpMessageType.CardFlip, flip, cancellationToken);
 
     public Task SendTurnResultAsync(LocalPvpTurnResult result, CancellationToken cancellationToken = default) =>
-        SendWireMessageAsync(LocalPvpMessageType.TurnResult, result, cancellationToken);
+        SendAsync(LocalPvpMessageType.TurnResult, result, cancellationToken);
 
     public Task SendGameFinishedAsync(LocalPvpTurnResult result, CancellationToken cancellationToken = default) =>
-        SendWireMessageAsync(LocalPvpMessageType.GameFinished, result, cancellationToken);
+        SendAsync(LocalPvpMessageType.GameFinished, result, cancellationToken);
 
     public async Task LeaveAsync()
     {
@@ -205,17 +158,8 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         lifetimeCancellation = null;
         cancellation?.Cancel();
         await StopDiscoveryAsync();
-        listener?.Stop();
-        listener = null;
-        mdns?.Stop();
-        mdns?.Dispose();
-        mdns = null;
         await LeaveTransportAsync();
-        await AwaitQuietly(acceptTask);
-        await AwaitQuietly(receiveTask);
         cancellation?.Dispose();
-        acceptTask = null;
-        receiveTask = null;
         lock (stateLock)
             rooms.Clear();
         IsHost = false;
@@ -225,718 +169,280 @@ public sealed class LocalPVPService(ILogger<LocalPVPService> logger) : ILocalPVP
         RemotePlayerName = null;
         peerConnected = null;
         handshakeCompleted = null;
-        logger.LogInformation("Local PVP service stopped.");
+        logger.LogInformation("Local PVP transport stopped.");
     }
 
-    public async ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync() => await LeaveAsync();
+
+    private void Configure(bool isHost, string? playerName, string? roomId)
     {
-        await LeaveAsync();
-        sendLock.Dispose();
+        IsHost = isHost;
+        IsConfigured = true;
+        LocalPlayerName = playerName;
+        RoomId = roomId;
+        nextSequence = 0;
+        lastReceivedSequence = -1;
+        handshakeKey = roomId is null ? null : HandshakeKeyPrefix + roomId;
     }
 
-    private async Task AcceptPeerAsync(CancellationToken cancellationToken)
+    private void StartNetwork()
+    {
+        listener = new EventBasedNetListener();
+        listener.ConnectionRequestEvent += OnConnectionRequest;
+        listener.PeerConnectedEvent += OnPeerConnected;
+        listener.PeerDisconnectedEvent += OnPeerDisconnected;
+        listener.NetworkReceiveEvent += OnNetworkReceive;
+        listener.NetworkReceiveUnconnectedEvent += OnNetworkReceiveUnconnected;
+        listener.NetworkErrorEvent += OnNetworkError;
+        network = new NetManager(listener)
+        {
+            UnconnectedMessagesEnabled = true,
+            BroadcastReceiveEnabled = true,
+            ReuseAddress = true,
+            DisconnectTimeout = 15_000
+        };
+        if (!network.Start(options.Port))
+            throw new InvalidOperationException($"Unable to start Local PVP on UDP port {options.Port}.");
+    }
+
+    private void OnConnectionRequest(ConnectionRequest request)
+    {
+        if (!IsHost || string.IsNullOrWhiteSpace(handshakeKey))
+        {
+            request.Reject();
+            return;
+        }
+
+        peer = request.AcceptIfKey(handshakeKey);
+        if (peer is null)
+            logger.LogWarning("Local PVP rejected a peer with an invalid handshake key.");
+        else
+            logger.LogInformation("Local PVP peer connection accepted from {Endpoint}.", request.RemoteEndPoint);
+    }
+
+    private void OnPeerConnected(NetPeer connectedPeer)
+    {
+        peer = connectedPeer;
+        peerConnected?.TrySetResult(true);
+        logger.LogInformation("Local PVP peer connected: {Endpoint}.", connectedPeer.EndPoint);
+        if (!IsHost)
+            _ = SendAsync(LocalPvpMessageType.Hello, new { PlayerName = LocalPlayerName }, CancellationToken.None);
+    }
+
+    private void OnPeerDisconnected(NetPeer disconnectedPeer, DisconnectInfo disconnectInfo)
+    {
+        if (ReferenceEquals(peer, disconnectedPeer))
+            peer = null;
+        string reason = disconnectInfo.Reason.ToString();
+        logger.LogInformation("Local PVP peer disconnected. Reason: {Reason}.", reason);
+        handshakeCompleted?.TrySetException(new IOException($"The PVP peer disconnected: {reason}."));
+        RaiseConnectionChanged(false, RemotePlayerName, "The opponent disconnected.");
+    }
+
+    private void OnNetworkReceive(
+        NetPeer sender,
+        NetPacketReader reader,
+        byte channel,
+        DeliveryMethod deliveryMethod)
     {
         try
         {
-            TcpClient accepted = await listener!.AcceptTcpClientAsync(cancellationToken);
-            logger.LogInformation("Local PVP TCP listener accepted peer. RemoteEndpoint: {RemoteEndpoint}.", accepted.Client.RemoteEndPoint);
-            await LeaveTransportAsync();
-            client = accepted;
-            stream = accepted.GetStream();
-            receiveTask = ReceiveLoopAsync(cancellationToken);
-            logger.LogInformation("Local PVP TCP receive loop started.");
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Local PVP TCP accept loop failed.");
-            RaiseConnectionChanged(false, null, ex.Message);
-        }
-    }
-
-    /* Legacy UDP broadcast discovery retained only as historical reference; mDNS is the active discovery path.
-    private UdpClient CreateDiscoverySocket(LanInterfaceInfo lanInterface, int port)
-    {
-        UdpClient? udp = null;
-        string operation = "socket creation";
-        try
-        {
-            udp = new UdpClient(AddressFamily.InterNetwork);
-            logger.LogInformation("Local PVP UDP discovery listener socket created.");
-
-            operation = "socket configuration";
-            udp.EnableBroadcast = true;
-            udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            logger.LogInformation("Local PVP UDP discovery listener socket configured for broadcast.");
-
-            operation = "socket bind";
-            udp.Client.Bind(new IPEndPoint(lanInterface.Ipv4Address, port));
-            logger.LogInformation(
-                "Local PVP UDP discovery listener socket bound to {LocalEndpoint}.",
-                udp.Client.LocalEndPoint);
-            logger.LogInformation(
-                "Local PVP UDP discovery broadcast endpoint is {BroadcastEndpoint}.",
-                new IPEndPoint(lanInterface.BroadcastAddress, port));
-            return udp;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "Local PVP UDP discovery listener failed during {Operation}. LocalEndpoint: {LocalEndpoint}, DiscoveryPort: {DiscoveryPort}, Platform: {Platform}, Runtime: {Runtime}.",
-                operation, udp?.Client.LocalEndPoint, port, GetPlatformDescription(), RuntimeInformation.FrameworkDescription);
-            udp?.Dispose();
-            throw;
-        }
-    }
-
-    private async Task ListenForDiscoveryQueriesAsync(UdpClient udp, LanInterfaceInfo lanInterface, CancellationToken cancellationToken)
-    {
-        logger.LogInformation(
-            "Local PVP UDP discovery listener running on {UdpEndpoint}. BroadcastEndpoint: {BroadcastEndpoint}.",
-            udp.Client.LocalEndPoint, new IPEndPoint(lanInterface.BroadcastAddress, DiscoveryPort));
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
+            string json = reader.GetString();
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            if (!LocalPvpProtocol.TryDeserialize(bytes, RoomId ?? string.Empty, out LocalPvpMessage? message))
             {
-                UdpReceiveResult result = await udp.ReceiveAsync(cancellationToken);
-                if (!IsDiscoveryQuery(result.Buffer))
-                    continue;
-
-                logger.LogInformation(
-                    "Local PVP discovery query received from {Endpoint}.",
-                    result.RemoteEndPoint);
-                logger.LogDebug("Local PVP discovery query validated from {Endpoint}.", result.RemoteEndPoint);
-                byte[] response = CreateRoomAdvertisement(lanInterface);
-                await udp.SendAsync(response, result.RemoteEndPoint);
-                logger.LogInformation(
-                    "Local PVP discovery response sent to {Endpoint} for room {RoomId}.",
-                    result.RemoteEndPoint, RoomId);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested) { }
-        catch (SocketException ex) when (cancellationToken.IsCancellationRequested)
-        {
-            logger.LogDebug(ex, "Local PVP UDP discovery listener stopped during cancellation.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Local PVP UDP discovery listener failed on port {DiscoveryPort}.", DiscoveryPort);
-        }
-        finally
-        {
-            logger.LogInformation("Local PVP UDP discovery listener stopped on port {DiscoveryPort}.", DiscoveryPort);
-        }
-    }
-
-    private bool IsDiscoveryQuery(byte[] payload)
-    {
-        try
-        {
-            using JsonDocument document = JsonDocument.Parse(payload);
-            JsonElement root = document.RootElement;
-            return root.TryGetProperty("Protocol", out JsonElement protocol) &&
-                string.Equals(protocol.GetString(), Protocol, StringComparison.Ordinal) &&
-                root.TryGetProperty("Version", out JsonElement version) &&
-                version.GetInt32() == ProtocolVersion &&
-                root.TryGetProperty("Type", out JsonElement type) &&
-                string.Equals(type.GetString(), "Query", StringComparison.Ordinal);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogDebug(ex, "Ignoring malformed Local PVP discovery packet from the host listener.");
-            return false;
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogDebug(ex, "Ignoring invalid Local PVP discovery packet from the host listener.");
-            return false;
-        }
-        catch (FormatException ex)
-        {
-            logger.LogDebug(ex, "Ignoring invalid Local PVP discovery packet from the host listener.");
-            return false;
-        }
-    }
-
-    private byte[] CreateRoomAdvertisement(LanInterfaceInfo lanInterface) =>
-        System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
-        {
-            Protocol,
-            Version = ProtocolVersion,
-            Type = "Advertisement",
-            RoomId,
-            HostName = LocalPlayerName,
-            HostIp = lanInterface.Ipv4Address.ToString(),
-            TcpPort = GamePort
-        }, JsonOptions));
-
-    private async Task DiscoverRoomsAsync(LanInterfaceInfo lanInterface, CancellationTokenSource discoveryLifetime)
-    {
-        CancellationToken cancellationToken = discoveryLifetime.Token;
-        UdpClient? udp = null;
-        IPEndPoint? localEndpoint = null;
-        string operation = "socket creation";
-
-        logger.LogInformation(
-            "Local PVP discovery starting. DiscoveryPort: {DiscoveryPort}, Platform: {Platform}, Runtime: {Runtime}.",
-            DiscoveryPort, GetPlatformDescription(), RuntimeInformation.FrameworkDescription);
-        LogLanInterface(lanInterface);
-
-        try
-        {
-            udp = new UdpClient(AddressFamily.InterNetwork);
-            logger.LogInformation("Local PVP discovery socket created.");
-
-            operation = "socket configuration";
-            udp.EnableBroadcast = true;
-            udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            logger.LogInformation("Local PVP discovery socket configured for IPv4 broadcast.");
-
-            operation = "socket bind";
-            udp.Client.Bind(new IPEndPoint(lanInterface.Ipv4Address, 0));
-            localEndpoint = udp.Client.LocalEndPoint as IPEndPoint;
-            logger.LogInformation("Local PVP discovery socket bound to {LocalEndpoint}.", localEndpoint);
-
-            byte[] query = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
-            {
-                Protocol,
-                Version = ProtocolVersion,
-                Type = "Query"
-            }, JsonOptions));
-            IPEndPoint broadcastEndpoint = new(lanInterface.BroadcastAddress, DiscoveryPort);
-            logger.LogDebug("Local PVP discovery query prepared for {BroadcastEndpoint}.", broadcastEndpoint);
-
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                operation = "UDP query send";
-                try
-                {
-                    logger.LogDebug(
-                        "Local PVP discovery query sending. LocalEndpoint: {LocalEndpoint}, BroadcastEndpoint: {BroadcastEndpoint}, DiscoveryPort: {DiscoveryPort}.",
-                        localEndpoint, broadcastEndpoint, DiscoveryPort);
-                    int bytesSent = await udp.SendAsync(query, broadcastEndpoint);
-                    logger.LogDebug(
-                        "Local PVP discovery query sent. LocalEndpoint: {LocalEndpoint}, BroadcastEndpoint: {BroadcastEndpoint}, BytesSent: {BytesSent}.",
-                        localEndpoint, broadcastEndpoint, bytesSent);
-                }
-                catch (Exception ex) when (ex is SocketException or ObjectDisposedException)
-                {
-                    logger.LogError(
-                        ex,
-                        "Local PVP discovery query send failed. LocalEndpoint: {LocalEndpoint}, BroadcastEndpoint: {BroadcastEndpoint}, DiscoveryPort: {DiscoveryPort}.",
-                        localEndpoint, broadcastEndpoint, DiscoveryPort);
-                    throw;
-                }
-
-                using CancellationTokenSource receiveTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                receiveTimeout.CancelAfter(500);
-                try
-                {
-                    logger.LogDebug("Local PVP discovery waiting for responses on {LocalEndpoint}.", localEndpoint);
-                    operation = "UDP response receive";
-                    while (!receiveTimeout.IsCancellationRequested)
-                    {
-                        UdpReceiveResult result = await udp.ReceiveAsync(receiveTimeout.Token);
-                        logger.LogDebug("Local PVP discovery response received from {RemoteEndpoint}.", result.RemoteEndPoint);
-                        await ProcessAdvertisementAsync(result, cancellationToken);
-                    }
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (OperationCanceledException)
-                {
-                    logger.LogTrace("Local PVP discovery response window elapsed.");
-                }
-
-                RemoveExpiredRooms();
-                await Task.Delay(1000, cancellationToken);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            logger.LogInformation("Local PVP discovery canceled.");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "Local PVP discovery failed during {Operation}. LocalEndpoint: {LocalEndpoint}, DiscoveryPort: {DiscoveryPort}, Platform: {Platform}, Runtime: {Runtime}.",
-                operation, localEndpoint, DiscoveryPort, GetPlatformDescription(), RuntimeInformation.FrameworkDescription);
-            RaiseConnectionChanged(false, null, ex.Message);
-        }
-        finally
-        {
-            udp?.Dispose();
-            logger.LogInformation("Local PVP discovery socket closed.");
-            if (ReferenceEquals(discoveryCancellation, discoveryLifetime))
-            {
-                discoveryCancellation = null;
-                discoveryTask = null;
-                discoveryLifetime.Dispose();
-            }
-        }
-    }
-
-    private async Task AdvertiseRoomAsync(LanInterfaceInfo lanInterface, CancellationToken cancellationToken)
-    {
-        UdpClient? udp = null;
-        string operation = "socket creation";
-        try
-        {
-            udp = new UdpClient(AddressFamily.InterNetwork);
-            logger.LogDebug("Local PVP room advertisement socket created.");
-            operation = "socket configuration";
-            udp.EnableBroadcast = true;
-            udp.Client.Bind(new IPEndPoint(lanInterface.Ipv4Address, 0));
-            logger.LogDebug("Local PVP room advertisement socket configured for broadcast.");
-
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                byte[] advertisement = CreateRoomAdvertisement(lanInterface);
-                IPEndPoint broadcastEndpoint = new(lanInterface.BroadcastAddress, DiscoveryPort);
-                logger.LogDebug("Local PVP sending room advertisement for {RoomId} to {BroadcastEndpoint} from {LocalEndpoint}.", RoomId, broadcastEndpoint, udp.Client.LocalEndPoint);
-                operation = "UDP advertisement send";
-                int bytesSent = await udp.SendAsync(advertisement, broadcastEndpoint);
-                logger.LogDebug(
-                    "Local PVP room advertisement sent. RoomId: {RoomId}, LocalEndpoint: {LocalEndpoint}, BroadcastEndpoint: {BroadcastEndpoint}, BytesSent: {BytesSent}.",
-                    RoomId, udp.Client.LocalEndPoint, broadcastEndpoint, bytesSent);
-                await Task.Delay(AdvertisementInterval, cancellationToken);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "Local PVP room advertisement failed during {Operation}. DiscoveryPort: {DiscoveryPort}, Platform: {Platform}, Runtime: {Runtime}.",
-                operation, DiscoveryPort, GetPlatformDescription(), RuntimeInformation.FrameworkDescription);
-        }
-        finally
-        {
-            udp?.Dispose();
-            logger.LogDebug("Local PVP room advertisement socket closed.");
-        }
-    }
-
-    private async Task ProcessAdvertisementAsync(UdpReceiveResult result, CancellationToken cancellationToken)
-    {
-        try
-        {
-            logger.LogTrace("Local PVP advertisement received from {Endpoint}.", result.RemoteEndPoint);
-            using JsonDocument document = JsonDocument.Parse(result.Buffer);
-            JsonElement root = document.RootElement;
-            if (!root.TryGetProperty("Protocol", out JsonElement protocol) ||
-                !string.Equals(protocol.GetString(), Protocol, StringComparison.Ordinal) ||
-                !root.TryGetProperty("Version", out JsonElement version) ||
-                !version.TryGetInt32(out int protocolVersion) || protocolVersion != ProtocolVersion ||
-                !root.TryGetProperty("Type", out JsonElement type) ||
-                !string.Equals(type.GetString(), "Advertisement", StringComparison.Ordinal) ||
-                !root.TryGetProperty("RoomId", out JsonElement roomIdElement) ||
-                !root.TryGetProperty("HostName", out JsonElement hostNameElement) ||
-                !root.TryGetProperty("TcpPort", out JsonElement tcpPortElement) ||
-                roomIdElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(roomIdElement.GetString()) ||
-                hostNameElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(hostNameElement.GetString()) ||
-                !tcpPortElement.TryGetInt32(out int tcpPort) || tcpPort is < 1 or > 65535)
-            {
-                logger.LogDebug("Ignoring invalid Local PVP advertisement from {Endpoint}.", result.RemoteEndPoint);
+                logger.LogWarning("Invalid Local PVP message received from {Peer}.", sender.EndPoint);
                 return;
             }
 
-            string roomId = roomIdElement.GetString()!;
-            string hostName = hostNameElement.GetString()!;
-            string? advertisedHostIp = root.TryGetProperty("HostIp", out JsonElement hostIpElement) && hostIpElement.ValueKind == JsonValueKind.String
-                ? hostIpElement.GetString()
-                : null;
-            string hostAddress = result.RemoteEndPoint.Address.ToString();
-            LocalPvpRoom room = new(roomId, hostName, hostAddress, tcpPort, DateTime.UtcNow);
-            logger.LogDebug(
-                "Local PVP discovery advertisement validated. RemoteEndpoint: {RemoteEndpoint}, AdvertisedHostIp: {AdvertisedHostIp}, SelectedHostAddress: {SelectedHostAddress}, RoomId: {RoomId}, TcpPort: {TcpPort}.",
-                result.RemoteEndPoint, advertisedHostIp, hostAddress, roomId, tcpPort);
-            bool changed;
-            lock (stateLock)
+            if (message.Sequence <= lastReceivedSequence)
             {
-                changed = !rooms.TryGetValue(roomId, out LocalPvpRoom? old) ||
-                    old.HostAddress != room.HostAddress || old.HostName != room.HostName || old.TcpPort != room.TcpPort;
-                rooms[roomId] = room;
+                logger.LogDebug("Ignoring duplicate or out-of-order Local PVP message {MessageId}.", message.MessageId);
+                return;
             }
-            if (changed)
-            {
-                IReadOnlyList<LocalPvpRoom> snapshot = DiscoveredRooms;
-                logger.LogInformation(
-                    "Local PVP room discovered. RoomId: {RoomId}, HostName: {HostName}, HostAddress: {HostAddress}, TcpPort: {TcpPort}, RoomCount: {RoomCount}.",
-                    room.RoomId, room.HostName, room.HostAddress, room.TcpPort, snapshot.Count);
-                logger.LogDebug("Local PVP RoomsChanged event raised. RoomCount: {RoomCount}.", snapshot.Count);
-                RoomsChanged?.Invoke(this, new(snapshot));
-            }
+            lastReceivedSequence = message.Sequence;
+            HandleMessage(message);
         }
-        catch (JsonException ex) { logger.LogDebug(ex, "Ignoring malformed Local PVP advertisement from {Endpoint}.", result.RemoteEndPoint); }
-        catch (InvalidOperationException ex) { logger.LogDebug(ex, "Ignoring invalid Local PVP advertisement from {Endpoint}.", result.RemoteEndPoint); }
-        await Task.CompletedTask;
-    }
-
-    private void RemoveExpiredRooms()
-    {
-        DateTime threshold = DateTime.UtcNow - RoomExpiration;
-        bool changed;
-        lock (stateLock)
-            changed = rooms.RemoveWhere(pair => pair.Value.LastSeenUtc < threshold) > 0;
-        if (changed)
+        catch (Exception ex) when (ex is InvalidDataException or JsonException or InvalidOperationException)
         {
-            IReadOnlyList<LocalPvpRoom> snapshot = DiscoveredRooms;
-            logger.LogInformation("Local PVP expired rooms removed. RoomCount: {RoomCount}.", snapshot.Count);
-            logger.LogDebug("Local PVP RoomsChanged event raised after expiration. RoomCount: {RoomCount}.", snapshot.Count);
-            RoomsChanged?.Invoke(this, new(snapshot));
-        }
-    }
-
-    */
-
-    private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested && stream is not null)
-            {
-                byte[] header = await ReadExactlyAsync(stream, FrameHeaderSize, cancellationToken);
-                int length = BinaryPrimitives.ReadInt32BigEndian(header);
-                if (length <= 0 || length > MaxFrameSize)
-                {
-                    logger.LogWarning("Invalid Local PVP TCP frame length received: {FrameLength}.", length);
-                    throw new InvalidDataException("Frame TCP inválido.");
-                }
-                byte[] payload = await ReadExactlyAsync(stream, length, cancellationToken);
-                LocalPvpWireMessage? message = JsonSerializer.Deserialize<LocalPvpWireMessage>(payload, JsonOptions);
-                if (message is null || message.Protocol != Protocol || message.Version != ProtocolVersion || message.RoomId != RoomId)
-                {
-                    logger.LogWarning("Ignoring invalid Local PVP TCP message. Protocol: {Protocol}, Version: {Version}, RoomId: {RoomId}.", message?.Protocol, message?.Version, message?.RoomId);
-                    continue;
-                }
-                logger.LogDebug("Local PVP TCP message received. Type: {MessageType}.", message.Type);
-                await HandleWireMessageAsync(message, cancellationToken);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-        catch (EndOfStreamException)
-        {
-            logger.LogInformation("Local PVP TCP peer disconnected.");
-            RaiseConnectionChanged(false, RemotePlayerName, "O jogador adversário saiu.");
-        }
-        catch (InvalidDataException ex)
-        {
-            logger.LogError(ex, "Invalid Local PVP TCP frame.");
-            RaiseConnectionChanged(false, RemotePlayerName, ex.Message);
-        }
-        catch (IOException ex)
-        {
-            logger.LogError(ex, "Local PVP TCP receive error.");
-            RaiseConnectionChanged(false, RemotePlayerName, ex.Message);
-        }
-        catch (SocketException ex)
-        {
-            logger.LogError(ex, "Local PVP TCP socket receive error.");
-            RaiseConnectionChanged(false, RemotePlayerName, ex.Message);
-        }
-        catch (JsonException ex)
-        {
-            logger.LogError(ex, "Local PVP TCP message deserialization error.");
-            RaiseConnectionChanged(false, RemotePlayerName, ex.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogError(ex, "Invalid Local PVP TCP message payload.");
-            RaiseConnectionChanged(false, RemotePlayerName, ex.Message);
+            logger.LogWarning(ex, "Invalid Local PVP payload received from {Peer}.", sender.EndPoint);
         }
         finally
         {
-            logger.LogDebug("Local PVP TCP receive loop stopped.");
-            if (IsConfigured && cancellationToken.IsCancellationRequested == false)
-                RaiseConnectionChanged(false, RemotePlayerName, "Conexão encerrada.");
+            reader.Recycle();
         }
     }
 
-    private async Task HandleWireMessageAsync(LocalPvpWireMessage message, CancellationToken cancellationToken)
+    private void HandleMessage(LocalPvpMessage message)
     {
-        if (message.Type == LocalPvpMessageType.Hello)
+        if (message.MessageType == LocalPvpMessageType.Hello)
         {
             string playerName = message.Payload.GetProperty("PlayerName").GetString() ?? string.Empty;
-            logger.LogInformation("Local PVP Hello received. RemotePlayerName: {RemotePlayerName}.", playerName);
             if (!IsHost || string.Equals(playerName, LocalPlayerName, StringComparison.OrdinalIgnoreCase))
             {
                 logger.LogWarning("Local PVP handshake rejected for player {PlayerName}.", playerName);
-                await SendWireMessageAsync(LocalPvpMessageType.HelloRejected, new { Reason = "Nome de usuário inválido ou já utilizado." }, cancellationToken);
+                _ = SendAsync(LocalPvpMessageType.HelloRejected, new { Reason = "Invalid or duplicate player name." }, CancellationToken.None);
                 return;
             }
 
-            RemotePlayerName = playerName.Trim();
-            logger.LogInformation("Local PVP handshake accepted for remote player {RemotePlayerName}.", RemotePlayerName);
-            await SendWireMessageAsync(LocalPvpMessageType.HelloAccepted, new { PlayerName = LocalPlayerName }, cancellationToken);
-            logger.LogInformation("Local PVP HelloAccepted sent.");
-            if (peerConnected?.TrySetResult(true) == true)
-                logger.LogInformation("Local PVP peerConnected completed.");
+            RemotePlayerName = NormalizePlayerName(playerName);
+            _ = SendAsync(LocalPvpMessageType.HelloAccepted, new { PlayerName = LocalPlayerName }, CancellationToken.None);
+            peerConnected?.TrySetResult(true);
             RaiseConnectionChanged(true, RemotePlayerName);
+            logger.LogInformation("Local PVP handshake completed with {PlayerName}.", RemotePlayerName);
             return;
         }
 
-        if (message.Type == LocalPvpMessageType.HelloAccepted)
+        if (message.MessageType == LocalPvpMessageType.HelloAccepted)
         {
             RemotePlayerName = message.Payload.GetProperty("PlayerName").GetString();
-            logger.LogInformation("Local PVP HelloAccepted received. RemotePlayerName: {RemotePlayerName}.", RemotePlayerName);
             handshakeCompleted?.TrySetResult(true);
             RaiseConnectionChanged(true, RemotePlayerName);
+            logger.LogInformation("Local PVP handshake completed with {PlayerName}.", RemotePlayerName);
             return;
         }
 
-        if (message.Type == LocalPvpMessageType.HelloRejected)
+        if (message.MessageType == LocalPvpMessageType.HelloRejected)
         {
-            string reason = message.Payload.GetProperty("Reason").GetString() ?? "Conexão rejeitada.";
-            logger.LogWarning("Local PVP handshake rejected by host. Reason: {Reason}.", reason);
+            string reason = message.Payload.GetProperty("Reason").GetString() ?? "Connection rejected.";
             handshakeCompleted?.TrySetException(new InvalidOperationException(reason));
             return;
         }
 
-        LocalPvpMessageEventArgs args = new(message.Type, message.Payload);
-        TaskCompletionSource<LocalPvpMessageEventArgs>? waiter = null;
-        lock (stateLock)
-            messageWaiters.Remove(message.Type, out waiter);
-        waiter?.TrySetResult(args);
-        logger.LogDebug("Local PVP game message dispatched. Type: {MessageType}.", message.Type);
+        LocalPvpMessageEventArgs args = new(message.MessageType, message.Payload);
+        if (messageWaiters.TryRemove(message.MessageType, out TaskCompletionSource<LocalPvpMessageEventArgs>? waiter))
+            waiter.TrySetResult(args);
         MessageReceived?.Invoke(this, args);
-        await Task.CompletedTask;
+        logger.LogDebug("Local PVP message received. Type: {MessageType}.", message.MessageType);
     }
 
-    private async Task SendWireMessageAsync(LocalPvpMessageType type, object payload, CancellationToken cancellationToken)
+    private Task SendAsync(LocalPvpMessageType type, object payload, CancellationToken cancellationToken)
     {
-        NetworkStream currentStream = stream ?? throw new InvalidOperationException("A conexão PVP não está estabelecida.");
-        LocalPvpWireMessage message = new(Protocol, ProtocolVersion, type, RoomId ?? string.Empty,
-            JsonSerializer.SerializeToElement(payload, JsonOptions));
-        byte[] body = JsonSerializer.SerializeToUtf8Bytes(message, JsonOptions);
-        byte[] frame = new byte[FrameHeaderSize + body.Length];
-        BinaryPrimitives.WriteInt32BigEndian(frame.AsSpan(0, FrameHeaderSize), body.Length);
-        body.CopyTo(frame, FrameHeaderSize);
-        await sendLock.WaitAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        NetPeer currentPeer = peer ?? throw new InvalidOperationException("The Local PVP peer is not connected.");
+        string roomId = RoomId ?? throw new InvalidOperationException("The Local PVP room is not configured.");
+        byte[] bytes = LocalPvpProtocol.Serialize(type, roomId, Interlocked.Increment(ref nextSequence), payload);
+        NetDataWriter writer = new();
+        writer.Put(System.Text.Encoding.UTF8.GetString(bytes));
+        currentPeer.Send(writer, DeliveryMethod.ReliableOrdered);
+        return Task.CompletedTask;
+    }
+
+    private async Task DiscoverAsync(CancellationTokenSource discoveryLifetime)
+    {
         try
         {
-            await currentStream.WriteAsync(frame, cancellationToken);
-            await currentStream.FlushAsync(cancellationToken);
-            logger.LogDebug("Local PVP TCP message sent. Type: {MessageType}.", type);
+            while (!discoveryLifetime.IsCancellationRequested)
+            {
+                NetDataWriter writer = new();
+                writer.Put(DiscoveryMessage);
+                network?.SendUnconnectedMessage(writer, "255.255.255.255", options.Port);
+                await Task.Delay(options.DiscoveryInterval, discoveryLifetime.Token);
+            }
+        }
+        catch (OperationCanceledException) when (discoveryLifetime.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Local PVP discovery failed.");
+            RaiseConnectionChanged(false, null, ex.Message);
+        }
+    }
+
+    private void OnNetworkReceiveUnconnected(
+        IPEndPoint remoteEndPoint,
+        NetPacketReader reader,
+        UnconnectedMessageType messageType)
+    {
+        try
+        {
+            string message = reader.GetString();
+            if (IsHost && string.Equals(message, DiscoveryMessage, StringComparison.Ordinal))
+            {
+                NetDataWriter writer = new();
+                writer.Put(DiscoveryResponse);
+                writer.Put(RoomId);
+                writer.Put(LocalPlayerName);
+                writer.Put(options.Port);
+                network?.SendUnconnectedMessage(writer, remoteEndPoint);
+                logger.LogDebug("Local PVP room advertisement sent to {Endpoint}.", remoteEndPoint);
+                return;
+            }
+
+            if (!IsHost && string.Equals(message, DiscoveryResponse, StringComparison.Ordinal))
+            {
+                string roomId = reader.GetString();
+                string hostName = reader.GetString();
+                int port = reader.GetInt();
+                if (string.IsNullOrWhiteSpace(roomId) || string.IsNullOrWhiteSpace(hostName) || port is < 1 or > 65535)
+                    return;
+
+                LocalPvpRoom room = new(roomId, hostName, remoteEndPoint.Address.ToString(), port, DateTime.UtcNow);
+                bool changed;
+                lock (stateLock)
+                {
+                    changed = !rooms.TryGetValue(room.RoomId, out LocalPvpRoom? previous) ||
+                        previous.HostName != room.HostName ||
+                        previous.HostAddress != room.HostAddress ||
+                        previous.TcpPort != room.TcpPort;
+                    rooms[room.RoomId] = room;
+                }
+
+                if (changed)
+                {
+                    IReadOnlyList<LocalPvpRoom> snapshot = DiscoveredRooms;
+                    RoomsChanged?.Invoke(this, new(snapshot));
+                    logger.LogInformation(
+                        "Local PVP peer discovered. RoomId: {RoomId}, Host: {HostName}, Endpoint: {HostAddress}:{Port}.",
+                        room.RoomId, room.HostName, room.HostAddress, room.TcpPort);
+                }
+            }
         }
         finally
         {
-            sendLock.Release();
+            reader.Recycle();
         }
+    }
+
+    private void OnNetworkError(IPEndPoint endPoint, System.Net.Sockets.SocketError socketError) =>
+        logger.LogWarning("Local PVP network error at {Endpoint}: {SocketError}.", endPoint, socketError);
+
+    private async Task StopDiscoveryAsync()
+    {
+        CancellationTokenSource? cancellation = discoveryCancellation;
+        discoveryCancellation = null;
+        cancellation?.Cancel();
+        if (discoveryTask is not null)
+        {
+            try { await discoveryTask; }
+            catch (OperationCanceledException) when (cancellation?.IsCancellationRequested == true) { }
+        }
+        discoveryTask = null;
+        cancellation?.Dispose();
     }
 
     private async Task LeaveTransportAsync()
     {
-        stream?.Close();
-        stream?.Dispose();
-        stream = null;
-        client?.Close();
-        client?.Dispose();
-        client = null;
-        await AwaitQuietly(receiveTask);
-        receiveTask = null;
-    }
-
-    private async Task StopDiscoveryAsync()
-    {
-        discoveryCancellation?.Cancel();
-        mdns?.Stop();
-        discoveryCancellation?.Dispose();
-        discoveryCancellation = null;
-        mdns = null;
-        lock (stateLock)
-            rooms.Clear();
+        peer?.Disconnect();
+        peer = null;
+        network?.Stop();
+        network = null;
+        listener = null;
         await Task.CompletedTask;
     }
 
-    private void OnMdnsRoomDiscovered(LocalPvpRoom room)
-    {
-        bool changed;
-        lock (stateLock)
-        {
-            changed = !rooms.TryGetValue(room.RoomId, out LocalPvpRoom? old) ||
-                old.HostAddress != room.HostAddress || old.HostName != room.HostName || old.TcpPort != room.TcpPort;
-            rooms[room.RoomId] = room;
-        }
-        if (changed)
-        {
-            IReadOnlyList<LocalPvpRoom> snapshot = DiscoveredRooms;
-            logger.LogInformation("Local PVP room discovered through mDNS. RoomId: {RoomId}, HostName: {HostName}, HostAddress: {HostAddress}, TcpPort: {TcpPort}.", room.RoomId, room.HostName, room.HostAddress, room.TcpPort);
-            RoomsChanged?.Invoke(this, new(snapshot));
-        }
-    }
-
-    private void OnMdnsRoomRemoved(string roomId)
-    {
-        lock (stateLock)
-            rooms.Remove(roomId);
-        RoomsChanged?.Invoke(this, new(DiscoveredRooms));
-    }
-
-    private static async Task<byte[]> ReadExactlyAsync(Stream source, int length, CancellationToken cancellationToken)
-    {
-        byte[] buffer = new byte[length];
-        int offset = 0;
-        while (offset < length)
-        {
-            int read = await source.ReadAsync(buffer.AsMemory(offset, length - offset), cancellationToken);
-            if (read == 0)
-                throw new EndOfStreamException();
-            offset += read;
-        }
-        return buffer;
-    }
+    private void RaiseConnectionChanged(bool connected, string? playerName, string? error = null) =>
+        ConnectionChanged?.Invoke(this, new(connected, playerName, error));
 
     private static string NormalizePlayerName(string value)
     {
         string name = value.Trim();
         if (name.Length is < 1 or > 24)
-            throw new ArgumentException("O nome deve possuir entre 1 e 24 caracteres.", nameof(value));
+            throw new ArgumentException("The player name must contain between 1 and 24 characters.", nameof(value));
         return name;
     }
 
-    private LanInterfaceInfo SelectLanInterface()
-    {
-        try
-        {
-            List<LanInterfaceInfo> candidates = [];
-            foreach (NetworkInterface network in NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (network.OperationalStatus != OperationalStatus.Up ||
-                    network.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel or NetworkInterfaceType.Ppp)
-                    continue;
-
-                foreach (UnicastIPAddressInformation address in network.GetIPProperties().UnicastAddresses)
-                {
-                    IPAddress ipv4Address = address.Address;
-                    IPAddress? subnetMask = address.IPv4Mask;
-                    if (ipv4Address.AddressFamily != AddressFamily.InterNetwork ||
-                        subnetMask is null ||
-                        IPAddress.IsLoopback(ipv4Address) ||
-                        IsLinkLocal(ipv4Address))
-                        continue;
-
-                    IPAddress broadcastAddress = CalculateBroadcastAddress(ipv4Address, subnetMask);
-                    candidates.Add(new LanInterfaceInfo(
-                        network.Name,
-                        network.Description,
-                        network.NetworkInterfaceType,
-                        ipv4Address,
-                        subnetMask,
-                        broadcastAddress));
-                }
-            }
-
-            LanInterfaceInfo? selected = candidates
-                .OrderBy(GetInterfacePriority)
-                .FirstOrDefault();
-            if (selected is null)
-                throw new InvalidOperationException("Nenhuma interface IPv4 LAN operacional foi encontrada.");
-
-            return selected;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Local PVP LAN interface selection failed.");
-            throw;
-        }
-    }
-
-    private void LogLanInterface(LanInterfaceInfo lanInterface) =>
-        logger.LogInformation(
-            "Local PVP LAN interface selected. Interface: {InterfaceName}, InterfaceType: {InterfaceType}, IPv4Address: {IPv4Address}, SubnetMask: {SubnetMask}, BroadcastAddress: {BroadcastAddress}.",
-            lanInterface.Name, lanInterface.InterfaceType, lanInterface.Ipv4Address, lanInterface.SubnetMask, lanInterface.BroadcastAddress);
-
-    private static int GetInterfacePriority(LanInterfaceInfo lanInterface)
-    {
-        int priority = lanInterface.InterfaceType is NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211 ? 0 : 10;
-        if (!IsPrivateAddress(lanInterface.Ipv4Address))
-            priority += 5;
-
-        string description = $"{lanInterface.Name} {lanInterface.Description}";
-        if (description.Contains("vpn", StringComparison.OrdinalIgnoreCase) ||
-            description.Contains("virtual", StringComparison.OrdinalIgnoreCase) ||
-            description.Contains("docker", StringComparison.OrdinalIgnoreCase) ||
-            description.Contains("vmware", StringComparison.OrdinalIgnoreCase) ||
-            description.Contains("emulator", StringComparison.OrdinalIgnoreCase))
-            priority += 20;
-
-        return priority;
-    }
-
-    private static IPAddress CalculateBroadcastAddress(IPAddress address, IPAddress subnetMask)
-    {
-        byte[] addressBytes = address.GetAddressBytes();
-        byte[] maskBytes = subnetMask.GetAddressBytes();
-        if (addressBytes.Length != 4 || maskBytes.Length != 4)
-            throw new InvalidOperationException("A interface LAN precisa ter endereço IPv4 e máscara IPv4.");
-
-        byte[] broadcastBytes = new byte[4];
-        for (int index = 0; index < broadcastBytes.Length; index++)
-            broadcastBytes[index] = (byte)(addressBytes[index] | ~maskBytes[index]);
-
-        return new IPAddress(broadcastBytes);
-    }
-
-    private static bool IsLinkLocal(IPAddress address) =>
-        address.GetAddressBytes() is [169, 254, _, _];
-
-    private static bool IsPrivateAddress(IPAddress address)
-    {
-        byte[] bytes = address.GetAddressBytes();
-        return bytes.Length == 4 &&
-            (bytes[0] == 10 ||
-             (bytes[0] == 172 && bytes[1] is >= 16 and <= 31) ||
-             (bytes[0] == 192 && bytes[1] == 168));
-    }
-
-    private static string GetPlatformDescription() =>
-        OperatingSystem.IsAndroid() ? "Android" :
-        OperatingSystem.IsIOS() ? "iOS" :
-        OperatingSystem.IsWindows() ? "Windows" :
-        OperatingSystem.IsMacCatalyst() ? "MacCatalyst" :
-        Environment.OSVersion.Platform.ToString();
-
-    private void RaiseConnectionChanged(bool connected, string? playerName, string? error = null) =>
-        ConnectionChanged?.Invoke(this, new(connected, playerName, error));
-
-    private static TaskCompletionSource<bool> NewCompletionSource() =>
+    private static TaskCompletionSource<T> NewCompletionSource<T>() =>
         new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    private static async Task AwaitQuietly(Task? task)
-    {
-        if (task is null) return;
-        try { await task; } catch (OperationCanceledException) { } catch (ObjectDisposedException) { }
-    }
-
-    private sealed record LocalPvpWireMessage(
-        string Protocol,
-        int Version,
-        LocalPvpMessageType Type,
-        string RoomId,
-        JsonElement Payload);
-
-    private sealed record LanInterfaceInfo(
-        string Name,
-        string Description,
-        NetworkInterfaceType InterfaceType,
-        IPAddress Ipv4Address,
-        IPAddress SubnetMask,
-        IPAddress BroadcastAddress);
-}
-
-internal static class DictionaryExtensions
-{
-    public static int RemoveWhere<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, Func<KeyValuePair<TKey, TValue>, bool> predicate)
-    {
-        List<TKey> keys = dictionary.Where(predicate).Select(pair => pair.Key).ToList();
-        foreach (TKey key in keys)
-            dictionary.Remove(key);
-        return keys.Count;
-    }
 }
