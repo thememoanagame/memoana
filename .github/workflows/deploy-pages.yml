@@ -23,7 +23,7 @@ jobs:
         dotnet-version: '10.0.x' 
 
     - name: Publish
-      working-directory: ${{ github.workspace }}/src/docs/memoana.github.io/
+      working-directory: ${{ github.workspace }}/src/memoana.github.io/
       run: dotnet publish ./memoana.github.io.csproj -c Release -o ${{ github.workspace }}/release /p:BlazorEnableCompression=false
 
     - name: Setup base path
