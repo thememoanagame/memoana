@@ -1,0 +1,59 @@
+@page "/online"
+@implements IDisposable
+@inject GameSessionCoordinator Session
+@inject NavigationManager Navigation
+
+<div class="online-page">
+    <MudText Typo="Typo.h3">Partida online</MudText>
+    <MudText Typo="Typo.body2">API: a sala e o estado são controlados pelo servidor.</MudText>
+
+    <label>Modo</label>
+    <select @bind="mode">
+        <option value="AI">IA</option>
+        <option value="PVP">PVP</option>
+        <option value="Time">Tempo</option>
+    </select>
+    <label>Dificuldade</label>
+    <select @bind="difficulty">
+        <option value="Easy">Fácil</option>
+        <option value="Medium">Médio</option>
+        <option value="Hard">Difícil</option>
+    </select>
+    <label>Tema (opcional)</label>
+    <select @bind="themeId">
+        <option value="">Tema padrão</option>
+        @foreach (var theme in themes.Where(x => x.Available)) { <option value="@theme.Id">@theme.Name</option> }
+    </select>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@Session.IsBusy" OnClick="CreateAsync">Criar sala</MudButton>
+    <div class="join-row"><input @bind="roomId" placeholder="Código da sala" /><MudButton Disabled="@Session.IsBusy" OnClick="JoinAsync">Entrar</MudButton></div>
+    @if (!string.IsNullOrWhiteSpace(Session.Error)) { <MudAlert Severity="Severity.Error">@Session.Error</MudAlert> }
+</div>
+
+@code {
+    private GameMode mode = GameMode.AI;
+    private GameDifficulty difficulty = GameDifficulty.Easy;
+    private string? themeId;
+    private string roomId = string.Empty;
+    private IReadOnlyList<ThemeSummary> themes = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Session.PropertyChanged += Changed;
+        await Session.InitializeAsync();
+        if (Session.Session is not null) Navigation.NavigateTo("/room");
+        try { themes = await Api.ListThemesAsync(); } catch { }
+    }
+
+    [Inject] private IGameApiClient Api { get; set; } = default!;
+    private async Task CreateAsync() { await Session.CreateAndJoinAsync(mode, difficulty, string.IsNullOrWhiteSpace(themeId) ? null : themeId); if (Session.Session is not null) Navigation.NavigateTo("/room"); }
+    private async Task JoinAsync() { await Session.JoinAsync(roomId); if (Session.Session is not null) Navigation.NavigateTo("/room"); }
+    private void Changed(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => InvokeAsync(StateHasChanged);
+    public void Dispose() => Session.PropertyChanged -= Changed;
+}
+
+<style>
+    .online-page { max-width: 520px; margin: 3rem auto; display: flex; flex-direction: column; gap: .7rem; padding: 1rem; }
+    select, input { min-height: 2.5rem; padding: .4rem; font-size: 1rem; }
+    .join-row { display: flex; gap: .5rem; margin-top: 1rem; } .join-row input { flex: 1; }
+</style>
