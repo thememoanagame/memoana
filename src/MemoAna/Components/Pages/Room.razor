@@ -4,33 +4,71 @@
 @inject NavigationManager Navigation
 
 <div class="room-page">
-    @if (Session.Session is null) { <MudAlert Severity="Severity.Info">Nenhuma sessão ativa.</MudAlert><MudButton Href="/online">Voltar</MudButton> }
-    else if (Session.State is null) { <MudProgressCircular Indeterminate="true" /><MudText>Conectando à sala...</MudText> }
-    else {
+    @if (Session.Session is null)
+    {
+        <MudAlert Severity="Severity.Info">Nenhuma sessão ativa.</MudAlert>
+        <MudButton Href="/online">Voltar</MudButton>
+    }
+    else if (Session.State is null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+        <MudText>Conectando à sala...</MudText>
+    }
+    else
+    {
         <MudText Typo="Typo.h4">Sala @Session.State.RoomId</MudText>
         <MudText>Status: @Session.State.Status | Jogadores: @Session.State.Players.Count</MudText>
         <MudText data-testid="connection-state">Conexão: @Session.ConnectionState</MudText>
-        @if (Session.State.Status == GameStatus.Preparing) { <MudText>Preparando assets e aguardando os participantes...</MudText> }
-        @if (Session.State.Status == GameStatus.Playing) {
-            <MudText data-testid="turn-indicator">Turno: @(Session.State.CurrentTurn == Session.Session.PlayerId ? "Você" : Session.State.CurrentTurn ?? "aguardando")</MudText>
-            <div class="board">
-                @foreach (var card in Session.State.Board) {
-                    var disabled = card.IsMatched || card.IsRevealed || Session.State.CurrentTurn != Session.Session.PlayerId;
-                    <button class="card" disabled="@disabled" data-testid="card-@card.Position" @onclick="() => FlipAsync(card.Position)">
-                        @if (card.IsRevealed || card.IsMatched) { <img class="card-face" src="@GetAsset(card.AssetReference)" alt="carta" /> } else { <span>?</span> }
-                    </button>
-                }
-            </div>
+        @if (Session.State.Status == GameStatus.Preparing)
+        {
+            <MudText>Preparando assets e aguardando os participantes...
+            </MudText>
         }
-        @if (Session.State.Status == GameStatus.Finished) { <MudAlert Severity="Severity.Success">Partida encerrada.</MudAlert> }
-        @if (!string.IsNullOrWhiteSpace(Session.Error)) { <MudAlert Severity="Severity.Error">@Session.Error</MudAlert> }
-        <MudButton Color="Color.Error" OnClick="LeaveAsync">Sair</MudButton>
-    }
-</div>
+        @if (Session.State.Status == GameStatus.Playing)
+        {
+            <MudText data-testid="turn-indicator">Turno: @(Session.State.CurrentTurn == Session.Session.PlayerId ? "Você" :
+                        Session.State.CurrentTurn ?? "aguardando")</MudText>
+                <div class="board">
+                    @foreach (var card in Session.State.Board)
+                    {
+                        var disabled = card.IsMatched || card.IsRevealed || Session.State.CurrentTurn != Session.Session.PlayerId;
+                        <button class="card" disabled="@disabled" data-testid="card-@card.Position"
+                                @onclick="() => FlipAsync(card.Position)">
+                            @if (card.IsRevealed || card.IsMatched)
+                            {
+                                <img class="card-face" src="@GetAsset(card.AssetReference)"
+                                     alt="carta" />
+                            }
+                            else
+                            {
+
+                                <span>?</span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+            @if (Session.State.Status == GameStatus.Finished)
+            {
+                <MudAlert Severity="Severity.Success">Partida encerrada.
+                </MudAlert>
+            }
+            @if (!string.IsNullOrWhiteSpace(Session.Error))
+            {
+                <MudAlert Severity="Severity.Error">@Session.Error</MudAlert>
+            }
+            <MudButton Color="Color.Error" OnClick="LeaveAsync">Sair</MudButton>
+        }
+    </div>
 
 @code {
-    protected override async Task OnInitializedAsync() { Session.PropertyChanged += Changed; await Session.InitializeAsync(); }
-    private string GetAsset(string? reference) => reference is not null && Session.AssetUris.TryGetValue(reference, out var uri) ? uri : "images/empty.png";
+    protected override async Task OnInitializedAsync()
+    {
+        Session.PropertyChanged += Changed; await
+Session.InitializeAsync();
+    }
+    private string GetAsset(string? reference) => reference is not null && Session.AssetUris.TryGetValue(reference, out var
+uri) ? uri : "images/empty.png";
     private async Task FlipAsync(int position) => await Session.FlipAsync(position);
     private async Task LeaveAsync() { await Session.LeaveAsync(); Navigation.NavigateTo("/online"); }
     private void Changed(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => InvokeAsync(StateHasChanged);
@@ -38,7 +76,36 @@
 }
 
 <style>
-    .room-page { padding: 1rem; text-align: center; } .board { display: grid; grid-template-columns: repeat(4, minmax(60px, 1fr)); gap: .5rem; max-width: 620px; margin: 1rem auto; }
-    .card { aspect-ratio: 1; border: 2px solid #8b4513; border-radius: 8px; background: burlywood; font-size: 2rem; padding: 0; overflow: hidden; }
-    .card:disabled { opacity: .9; } .card-face { width: 100%; height: 100%; object-fit: cover; }
+    .room-page {
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .board {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(60px, 1fr));
+        gap: .5rem;
+        max-width: 620px;
+        margin: 1rem auto;
+    }
+
+    .card {
+        aspect-ratio: 1;
+        border: 2px solid #8b4513;
+        border-radius: 8px;
+        background: burlywood;
+        font-size: 2rem;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .card:disabled {
+        opacity: .9;
+    }
+
+    .card-face {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
 </style>

@@ -19,4 +19,9 @@
       <Deploy Solution="Debug|*" />
     </Project>
   </Folder>
+  <Folder Name="/modules/" />
+  <Folder Name="/modules/api/" />
+  <Folder Name="/modules/api/tools/">
+    <Project Path="modules/api/tools/memoana-cli/memoana-cli.csproj" />
+  </Folder>
 </Solution>

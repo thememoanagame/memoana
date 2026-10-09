@@ -3,32 +3,46 @@
 @inject GameSessionCoordinator Session
 @inject NavigationManager Navigation
 
-<div class="online-page">
-    <MudText Typo="Typo.h3">Partida online</MudText>
-    <MudText Typo="Typo.body2">API: a sala e o estado são controlados pelo servidor.</MudText>
-
-    <label>Modo</label>
-    <select @bind="mode">
-        <option value="AI">IA</option>
-        <option value="PVP">PVP</option>
-        <option value="Time">Tempo</option>
-    </select>
-    <label>Dificuldade</label>
-    <select @bind="difficulty">
-        <option value="Easy">Fácil</option>
-        <option value="Medium">Médio</option>
-        <option value="Hard">Difícil</option>
-    </select>
-    <label>Tema (opcional)</label>
+<div class="page">
+    <MudImage Src="images/empty.png" Class="background-image" Alt="" />
+    <MudStack>
+        <MudText>@Localizer["GameMode"].ToUpper()</MudText>
+        <MudToggleGroup T="GameMode" SelectionMode="SelectionMode.ToggleSelection" @bind-Value="mode"
+                        Color="Color.Tertiary" CheckMark>
+            <MudToggleItem Value="@(GameMode.AI)" Text="@Localizer["IA"].ToUpper()" />
+            <MudToggleItem Value="@(GameMode.PVP)" Text="@Localizer["PVP"].ToUpper()" />
+            <MudToggleItem Value="@(GameMode.Time)" Text="@Localizer["Time"].ToUpper()" />
+        </MudToggleGroup>
+    </MudStack>
+    
+    <MudStack>
+        <MudText>@Localizer["GameDifficulty"].ToUpper()</MudText>
+        <MudToggleGroup T="GameDifficulty" SelectionMode="SelectionMode.ToggleSelection" @bind-Value="difficulty"
+                        Color="Color.Tertiary" CheckMark>
+            <MudToggleItem Value="@(GameDifficulty.Easy)" Text="@Localizer["GameEasy"].ToUpper()" />
+            <MudToggleItem Value="@(GameDifficulty.Medium)" Text="@Localizer["GameMedium"].ToUpper()" />
+            <MudToggleItem Value="@(GameDifficulty.Hard)" Text="@Localizer["GameHard"].ToUpper()" />
+        </MudToggleGroup>
+    </MudStack>
+    
+    <MudText>@Localizer["Theme"].ToUpper()</MudText>
     <select @bind="themeId">
-        <option value="">Tema padrão</option>
-        @foreach (var theme in themes.Where(x => x.Available)) { <option value="@theme.Id">@theme.Name</option> }
+        @foreach (var theme in themes.Where(x => x.Available))
+        {
+            <option value="@theme.Id">@theme.Name</option>
+        }
     </select>
 
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@Session.IsBusy" OnClick="CreateAsync">Criar sala</MudButton>
-    <div class="join-row"><input @bind="roomId" placeholder="Código da sala" /><MudButton Disabled="@Session.IsBusy" OnClick="JoinAsync">Entrar</MudButton></div>
-    @if (!string.IsNullOrWhiteSpace(Session.Error)) { <MudAlert Severity="Severity.Error">@Session.Error</MudAlert> }
-</div>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@Session.IsBusy" OnClick="CreateAsync">@Localizer["CreateRoom"]</MudButton>
+        <div class="join-row">
+            <input @bind="roomId" placeholder="@Localizer["RoomCode"]" />
+            <MudButton Disabled="@Session.IsBusy" OnClick="JoinAsync">@Localizer["JoinRoom"]</MudButton>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Session.Error))
+        {
+            <MudAlert Severity="Severity.Error">@Session.Error</MudAlert>
+        }
+    </div>
 
 @code {
     private GameMode mode = GameMode.AI;
@@ -46,14 +60,150 @@
     }
 
     [Inject] private IGameApiClient Api { get; set; } = default!;
-    private async Task CreateAsync() { await Session.CreateAndJoinAsync(mode, difficulty, string.IsNullOrWhiteSpace(themeId) ? null : themeId); if (Session.Session is not null) Navigation.NavigateTo("/room"); }
-    private async Task JoinAsync() { await Session.JoinAsync(roomId); if (Session.Session is not null) Navigation.NavigateTo("/room"); }
+    private async Task CreateAsync()
+    {
+        await Session.CreateAndJoinAsync(
+            mode, 
+            difficulty, 
+            string.IsNullOrWhiteSpace(themeId) ? null : themeId);
+        if (Session.Session is not null) Navigation.NavigateTo("/room");
+    }
+    private async Task JoinAsync()
+    {
+        await Session.JoinAsync(roomId); if (Session.Session is not null)
+            Navigation.NavigateTo("/room");
+    }
     private void Changed(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => InvokeAsync(StateHasChanged);
     public void Dispose() => Session.PropertyChanged -= Changed;
 }
 
 <style>
-    .online-page { max-width: 520px; margin: 3rem auto; display: flex; flex-direction: column; gap: .7rem; padding: 1rem; }
-    select, input { min-height: 2.5rem; padding: .4rem; font-size: 1rem; }
-    .join-row { display: flex; gap: .5rem; margin-top: 1rem; } .join-row input { flex: 1; }
+    .page {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: .7rem;
+        padding: 1rem;
+    }
+
+    .background-image {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: fill;
+        z-index: 0;
+    }
+
+    .page-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 40px;
+        z-index: 1;
+    }
+
+    .container-title {
+        font-family: Bangpop, sans-serif;
+        font-size: 54px;
+        font-weight: bold;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        color: burlywood;
+        text-shadow: 4px 4px 2px rgba(0, 0, 0, 0.8);
+    }
+
+    .menu-button {
+        position: relative;
+        width: 200px;
+        height: 50px;
+        min-height: 50px;
+        padding: 0;
+        border-radius: 25px !important;
+        background-color: burlywood;
+        color: saddlebrown;
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: 4px 4px 2px rgba(189, 63, 21, 1.0);
+        transition: transform 80ms ease, box-shadow 100ms ease;
+    }
+
+    .menu-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 4px 5px 3px rgba(217, 217, 217, 1.0);
+    }
+
+    .menu-button:active {
+        transform: translate(4px, 4px);
+        box-shadow: 2px 2px 2px rgba(127, 127, 127, 1.0);
+    }
+
+    .button-content {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .button-highlight {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        right: 2px;
+        height: 25px;
+        background-color: lightgoldenrodyellow;
+        border-radius: 18px;
+        z-index: 0;
+    }
+
+    .button-text {
+        position: relative;
+        z-index: 1;
+        font-family: Bangpop;
+        font-size: 22px;
+        font-weight: normal;
+        color: saddlebrown;
+        text-shadow: 4px 4px 2px rgba(250, 250, 210, 0.8);
+    }
+
+    select,
+    input {
+        min-height: 2.5rem;
+        padding: .4rem;
+        font-size: 1rem;
+    }
+
+    .join-row {
+        display: flex;
+        gap: .5rem;
+        margin-top: 1rem;
+    }
+
+    .join-row input {
+        flex: 1;
+    }
+
+    @@font-face {
+        font-family: Bangpop;
+        src: url('/fonts/Bangpop.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
+    @@media (max-height: 700px) {
+        .page-container {
+            gap: 12px;
+        }
+    }
 </style>

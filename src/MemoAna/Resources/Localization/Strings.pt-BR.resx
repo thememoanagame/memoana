@@ -123,6 +123,30 @@
   <data name="GameName" xml:space="preserve">
     <value>Memo Ana</value>
   </data>
+  <data name="GameDifficulty" xml:space="preserve">
+    <value>Dificuldade</value>
+  </data>
+  <data name="GameEasy" xml:space="preserve">
+    <value>Iniciante</value>
+  </data>
+  <data name="GameMedium" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="GameHard" xml:space="preserve">
+    <value>Extremo</value>
+  </data>
+  <data name="GameMode" xml:space="preserve">
+    <value>Modo de jogo</value>
+  </data>
+  <data name="IA" xml:space="preserve">
+    <value>Player vs IA</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>Player vs Tempo</value>
+  </data>
+  <data name="PVP" xml:space="preserve">
+    <value>Player vs Player</value>
+  </data>
   <data name="Options" xml:space="preserve">
     <value>Ajustes</value>
   </data>
@@ -134,5 +158,17 @@
   </data>
   <data name="Back" xml:space="preserve">
     <value>Voltar</value>
+  </data>
+  <data name="RoomCode" xml:space="preserve">
+    <value>Código da sala</value>
+  </data>
+  <data name="CreateRoom" xml:space="preserve">
+    <value>Criar sala</value>
+  </data>
+  <data name="JoinRoom" xml:space="preserve">
+    <value>Entrar</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Tema</value>
   </data>
 </root>

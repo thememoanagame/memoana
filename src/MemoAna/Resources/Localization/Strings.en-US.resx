@@ -120,8 +120,32 @@
   <data name="About" xml:space="preserve">
     <value>About</value>
   </data>
+  <data name="GameDifficulty" xml:space="preserve">
+    <value>Dificuldade</value>
+  </data>
+  <data name="GameEasy" xml:space="preserve">
+    <value>Starter</value>
+  </data>
+  <data name="GameMedium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="GameHard" xml:space="preserve">
+    <value>Hard</value>
+  </data>
   <data name="GameName" xml:space="preserve">
     <value>Memo Anne</value>
+  </data>
+  <data name="GameMode" xml:space="preserve">
+    <value>Play Mode</value>
+  </data>
+  <data name="IA" xml:space="preserve">
+    <value>Player vs AI</value>
+  </data>
+  <data name="Time" xml:space="preserve">
+    <value>Player vs Time</value>
+  </data>
+  <data name="PVP" xml:space="preserve">
+    <value>Player vs Player</value>
   </data>
   <data name="Options" xml:space="preserve">
     <value>Settings</value>
@@ -138,6 +162,15 @@
   </data>
   <data name="ConfirmOnExit" type="System.Resources.ResXNullRef, System.Windows.Forms">
     <value />
+  </data>
+  <data name="RoomCode" xml:space="preserve">
+    <value>Room code</value>
+  </data>
+  <data name="CreateRoom" xml:space="preserve">
+    <value>Create room</value>
+  </data>
+  <data name="JoinRoom" xml:space="preserve">
+    <value>Join</value>
   </data>
   <data name="Back" xml:space="preserve">
     <value>Back</value>
