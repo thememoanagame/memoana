@@ -1,17 +1,12 @@
 ﻿@using System.Net.Http
 @using System.Net.Http.Json
 @using MemoAna
-@using MemoAna.Common.Enums
 @using MemoAna.Common.Abstract.Localization
-@using MemoAna.Common.Abstract.Services
+@using MemoAna.Common.Abstract.ExceptionHandler
+@using MemoAna.Common.Enums
 @using MemoAna.Components
 @using MemoAna.Components.Layout
-@using MemoAna.Game.Abstract.Services
-@using MemoAna.Game.Core
-@using MemoAna.Game.Dtos
-@using MemoAna.Game.EventArgs
-@using MemoAna.Game.Enums
-@using MemoAna.Game.Services
+@using MemoAna.Game.Services.Abstract
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
@@ -20,6 +15,4 @@
 @using MudBlazor
 @inject NavigationManager navigation
 @inject IAudioService audio
-@inject IGameService game
 @inject ILocalizer Localizer
-@inject ISettingsService settings

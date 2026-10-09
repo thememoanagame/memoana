@@ -1,9 +1,6 @@
-﻿#pragma warning disable CA1416 // Validar a compatibilidade da plataforma
+﻿using MemoAna.Common.Abstract.ExceptionHandler;
 
-using MemoAna.Common.Abstract.ExceptionHandler;
-using Microsoft.Extensions.Logging;
-
-namespace MemoAna.Common.Services;
+namespace MemoAna.Common.Concrete.Services;
 
 public sealed class ExceptionHandler(ILogger<ExceptionHandler> logger) : IExceptionHandler
 {
@@ -27,5 +24,3 @@ public sealed class ExceptionHandler(ILogger<ExceptionHandler> logger) : IExcept
         });
     }
 }
-
-#pragma warning restore CA1416 // Validar a compatibilidade da plataforma

@@ -12,5 +12,6 @@ public static class MauiProgram
             {
                 builder.Services.AddMauiBlazorWebView();
                 builder.Services.AddMudServices();
-            });
+            })
+            .Build();
 }

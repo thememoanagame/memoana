@@ -1,4 +1,4 @@
-﻿namespace MemoAna.Game.Abstract.Services;
+﻿namespace MemoAna.Game.Services.Abstract;
 
 public interface IAudioService  
 {

@@ -2,7 +2,7 @@
 using MemoAna.Resources.Localization;
 using Microsoft.Extensions.Localization;
 
-namespace MemoAna.Common.Localization;
+namespace MemoAna.Common.Concrete.Localization;
 
 public class Localizer(IStringLocalizerFactory factory) : ILocalizer 
 {
