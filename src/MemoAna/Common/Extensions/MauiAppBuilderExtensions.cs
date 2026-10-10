@@ -16,7 +16,7 @@ public static class MauiAppBuilderExtensions
 {
     extension(MauiAppBuilder builder)
     {
-        public MauiAppBuilder RunMauiApp<TApp>(Action<MauiAppBuilder> configurePresentation)
+        public MauiAppBuilder CreateGame<TApp>(Action<MauiAppBuilder> configurePresentation)
             where TApp : Application
         {
             builder.UseMauiApp<TApp>()
@@ -45,25 +45,24 @@ public static class MauiAppBuilderExtensions
         private  MauiAppBuilder AddInfrastructure()
         {
             builder.Services.AddScoped<IAudioService, AudioService>();
-            builder.Services.AddSingleton(new ApiOptions());
             builder.Services.AddSingleton(sp =>
             {
-                var options = sp.GetRequiredService<ApiOptions>();
-                return new HttpClient { BaseAddress = new Uri(options.BaseUrl, UriKind.Absolute), Timeout = TimeSpan.FromSeconds(30) };
+                var baseUrl = builder.Configuration["ApiOptions:BaseUrl"] ?? "https://memoana.gdhub.xyz";
+                return new HttpClient { BaseAddress = new Uri(baseUrl, UriKind.Absolute), Timeout = TimeSpan.FromSeconds(45) };
             });
             builder.Services.AddSingleton(sp =>
             {
                 var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
                 options.Converters.Add(new JsonStringEnumConverter());
-                return options;
+                 return options;
             });
             builder.Services.AddSingleton<IGameApiClient, GameApiClient>();
             builder.Services.AddSingleton<IGameSessionStore, SecureGameSessionStore>();
             builder.Services.AddSingleton<IGameAssetStore, LocalGameAssetStore>();
             builder.Services.AddSingleton<IGameHubClient>(sp =>
             {
-                var options = sp.GetRequiredService<ApiOptions>();
-                return new GameHubClient(new Uri(options.BaseUrl, UriKind.Absolute), sp.GetRequiredService<JsonSerializerOptions>(), sp.GetRequiredService<ILogger<GameHubClient>>());
+                var baseUrl = builder.Configuration["ApiOptions:BaseUrl"] ?? "https://memoana.gdhub.xyz";
+                return new GameHubClient(new Uri(baseUrl, UriKind.Absolute), sp.GetRequiredService<JsonSerializerOptions>(), sp.GetRequiredService<ILogger<GameHubClient>>());
             });
             builder.Services.AddSingleton<GameSessionCoordinator>(sp =>
             {
