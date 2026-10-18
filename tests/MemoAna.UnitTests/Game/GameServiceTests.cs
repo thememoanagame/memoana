@@ -6,6 +6,7 @@ using MemoAna.Game.Core;
 using MemoAna.Game.Dtos;
 using MemoAna.Game.Entities;
 using MemoAna.Game.Enums;
+using MemoAna.Game.EventArgs;
 using MemoAna.Game.Services;
 using MemoAna.Game.Models;
 using Microsoft.Maui.Dispatching;
@@ -110,7 +111,7 @@ public sealed class GameServiceTests
         var states = new List<bool>();
         game.CardFlipped += (_, _) =>
         {
-            states.Add(game.CurrentCards.Count(card => card.Value.IsFaceUp) > 0);
+            states.Add(game.CurrentCards.Any(card => card.Value.IsFaceUp));
         };
         await game.StartGameAsync(0, "theme", "2");
         var differentCards = game.CurrentCards
@@ -134,7 +135,7 @@ public sealed class GameServiceTests
         var timestamps = new List<long>();
         game.CardFlipped += (_, _) =>
         {
-            if (game.CurrentCards.Count(card => card.Value.IsFaceUp) > 0)
+            if (game.CurrentCards.Any(card => card.Value.IsFaceUp))
                 timestamps.Add(Stopwatch.GetTimestamp());
         };
         await game.StartGameAsync(0, "theme", "0");
@@ -162,7 +163,7 @@ public sealed class GameServiceTests
 
         foreach (var pair in game.CurrentCards.GroupBy(card => card.Value.PairId))
         {
-            KeyValuePair<int, MemoryCard>[] cards = pair.ToArray();
+            KeyValuePair<int, MemoryCard>[] cards = [.. pair];
             await game.FlipCardAsync(cards[0].Key, cards[0].Value);
             await game.FlipCardAsync(cards[1].Key, cards[1].Value);
         }
@@ -221,7 +222,7 @@ public sealed class GameServiceTests
             Task.FromResult<IReadOnlyCollection<CardThemeManifestDto>>([]);
 
         public Task<CardThemeDto> GetThemeAsync(string themeName) =>
-            Task.FromResult(new CardThemeDto(Enumerable.Range(1, 6).Select(i => $"card-{i}").ToList(), "theme", null));
+            Task.FromResult(new CardThemeDto([.. Enumerable.Range(1, 6).Select(i => $"card-{i}")], "theme", null));
     }
 
     private sealed class FakeRepository<TEntity>(TEntity? entity = null) : IRepository<TEntity>
@@ -254,7 +255,7 @@ public sealed class GameServiceTests
         public TimeSpan Interval { get; set; }
         public bool IsRepeating { get; set; }
         public bool IsRunning { get; private set; }
-        public event EventHandler? Tick;
+        public event EventHandler? Tick = default!;
         public void Start() => IsRunning = true;
         public void Stop() => IsRunning = false;
     }
@@ -300,7 +301,7 @@ public sealed class GameServiceTests
 
         public void StartGame(GameDifficulty difficulty, IReadOnlyCollection<KeyValuePair<int, MemoryCard>> cards)
         {
-            KeyValuePair<int, MemoryCard>[] pair = cards.GroupBy(card => card.Value.PairId).ElementAt(2).ToArray();
+            KeyValuePair<int, MemoryCard>[] pair = [.. cards.GroupBy(card => card.Value.PairId).ElementAt(2)];
             FirstPosition = pair[0].Key;
             SecondPosition = pair[1].Key;
         }
@@ -325,7 +326,7 @@ public sealed class GameServiceTests
             turns.Clear();
             foreach (var pair in cards.GroupBy(card => card.Value.PairId))
             {
-                KeyValuePair<int, MemoryCard>[] positions = pair.ToArray();
+                KeyValuePair<int, MemoryCard>[] positions = [.. pair];
                 turns.Enqueue(new AITurn(positions[0].Key, positions[1].Key));
             }
         }

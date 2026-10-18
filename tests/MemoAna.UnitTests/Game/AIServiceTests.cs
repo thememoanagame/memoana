@@ -17,7 +17,7 @@ public sealed class AIServiceTests
         foreach (var card in cards.Take(4))
             Observe(ai, card);
 
-        await ai.GetNextTurnAsync();
+        await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.InRange(ai.RememberedCardCount, 0, 3);
     }
@@ -31,7 +31,7 @@ public sealed class AIServiceTests
         foreach (var card in cards)
             Observe(ai, card);
 
-        await ai.GetNextTurnAsync();
+        await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(6, ai.RememberedCardCount);
     }
@@ -45,7 +45,7 @@ public sealed class AIServiceTests
         Observe(ai, cards[0]);
         Observe(ai, cards[1]);
 
-        AITurn? turn = await ai.GetNextTurnAsync();
+        AITurn? turn = await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(new AITurn(1, 2), turn);
     }
@@ -59,7 +59,7 @@ public sealed class AIServiceTests
         foreach (var card in cards)
             Observe(ai, card);
 
-        await ai.GetNextTurnAsync();
+        await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(6, ai.RememberedCardCount);
     }
@@ -74,7 +74,7 @@ public sealed class AIServiceTests
         Observe(ai, cards[1]);
         ai.StartGame(GameDifficulty.Hard, cards);
 
-        await ai.GetNextTurnAsync();
+        await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(0, ai.RememberedCardCount);
     }
@@ -85,7 +85,7 @@ public sealed class AIServiceTests
         var ai = new AIService(new FixedRandomSource());
         var cards = Cards(4);
         ai.StartGame(GameDifficulty.Hard, cards);
-        Task<AITurn?> pending = ai.GetNextTurnAsync();
+        Task<AITurn?> pending = ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
         ai.CancelPendingTurn();
 
         Assert.Null(await pending);
@@ -101,7 +101,7 @@ public sealed class AIServiceTests
         ai.StartGame(GameDifficulty.Hard, cards);
 
         Assert.Equal(0, ai.RememberedCardCount);
-        AITurn? turn = await ai.GetNextTurnAsync();
+        AITurn? turn = await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.NotEqual(new AITurn(3, 4), turn);
     }
@@ -147,7 +147,7 @@ public sealed class AIServiceTests
         ai.StartGame(GameDifficulty.Hard, cards);
 
         Observe(ai, cards[2]);
-        AITurn? turn = await ai.GetNextTurnAsync();
+        AITurn? turn = await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.NotEqual(new AITurn(3, 4), turn);
     }
@@ -161,7 +161,7 @@ public sealed class AIServiceTests
         Observe(ai, cards[0]);
 
         for (int i = 0; i < 4; i++)
-            await ai.GetNextTurnAsync();
+            await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(0, ai.RememberedCardCount);
     }
@@ -175,7 +175,7 @@ public sealed class AIServiceTests
         cards[1].Value.IsMatched = true;
         ai.StartGame(GameDifficulty.Hard, cards);
 
-        AITurn? turn = await ai.GetNextTurnAsync();
+        AITurn? turn = await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.NotNull(turn);
         Assert.DoesNotContain(1, new[] { turn!.FirstPosition, turn.SecondPosition });
@@ -191,16 +191,15 @@ public sealed class AIServiceTests
         Observe(ai, cards[0]);
         Observe(ai, cards[1]);
 
-        AITurn? turn = await ai.GetNextTurnAsync();
+        AITurn? turn = await ai.GetNextTurnAsync(TestContext.Current.CancellationToken);
 
         Assert.NotEqual(new AITurn(1, 2), turn);
     }
 
     private static List<KeyValuePair<int, MemoryCard>> Cards(int count) =>
-        Enumerable.Range(1, count)
+        [.. Enumerable.Range(1, count)
             .Select(i => new KeyValuePair<int, MemoryCard>(i,
-                new MemoryCard { Id = i, PairId = $"pair-{(i - 1) / 2}" }))
-            .ToList();
+                new MemoryCard { Id = i, PairId = $"pair-{(i - 1) / 2}" }))];
 
     private static void Observe(AIService ai, KeyValuePair<int, MemoryCard> card)
     {

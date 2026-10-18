@@ -24,7 +24,7 @@ public static class MauiAppBuilderExtensions
         {
             builder.UseMauiApp<TApp>().ConfigureFonts(fonts =>
             {
-                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("Bangpop.ttf", "Bangpop");
                 fonts.AddFont("Gwenchana.ttf", "Gwenchana");
             });
 #if DEBUG
@@ -57,6 +57,7 @@ public static class MauiAppBuilderExtensions
         {
             builder.Services.AddSingleton<IGameService, GameService>();
             builder.Services.AddSingleton<IAIService, AIService>();
+            builder.Services.AddSingleton<IPVPService, PVPService>();
             builder.Services.AddSingleton<IRandomSource, RandomSource>();
             builder.Services.AddScoped<IImageConverterService, ImageConverterService>();
             builder.Services.AddScoped<MemoryCard>();

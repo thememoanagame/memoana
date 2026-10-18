@@ -5,13 +5,13 @@ namespace MemoAna.Common.Services;
 
 public sealed class PlatformService(MauiPlatform platform) : IPlatformService
 {
-    public MauiPlatform Platform { get; } = platform;
+    private readonly MauiPlatform _platform = platform;
 
-    public bool IsWindows => platform == MauiPlatform.Windows;
+    public bool IsWindows => _platform == MauiPlatform.Windows;
 
-    public bool IsMacOS => platform == MauiPlatform.MacOS;
+    public bool IsMacOS => _platform == MauiPlatform.MacOS;
 
-    public bool IsAndroid => platform == MauiPlatform.Android;
+    public bool IsAndroid => _platform == MauiPlatform.Android;
 
-    public bool IsIOS => platform == MauiPlatform.IOS;
+    public bool IsIOS => _platform == MauiPlatform.IOS;
 }

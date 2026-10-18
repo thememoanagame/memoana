@@ -3,6 +3,7 @@
 @implements IAsyncDisposable
 @inject ILogger<Game> logger
 @inject IThemeService themeService
+@inject IPVPService pvp
 <div class="game-page">
     <img src="images/empty.png" class="game-background" alt="" />
 
@@ -99,11 +100,37 @@
             }
         </div>
     }
+    else if (IsPvpLobby)
+    {
+        <div class="pvp-lobby">
+            <MudText Class="selection-title">PVP</MudText>
+            <MudButton Class="game-action-button" OnClick="StartPvpHostAsync" Disabled="@PvpBusy">CRIAR SALA</MudButton>
+            <MudButton Class="game-action-button" OnClick="DiscoverPvpHostsAsync" Disabled="@PvpBusy">PROCURAR SALAS</MudButton>
+            @if (pvp.IsHost && pvp.IsConnected)
+            {
+                <MudButton Class="game-action-button" OnClick="StartPvpGameAsync">INICIAR PARTIDA</MudButton>
+            }
+            @if (PvpHosts.Count > 0)
+            {
+                <MudText Class="selection-title">SALAS DISPONÍVEIS</MudText>
+                @foreach (PVPHostInfo host in PvpHosts)
+                {
+                    <MudButton Class="game-action-button" OnClick="() => ConnectPvpAsync(host)">
+                        @host.HostName - @host.ThemeName (@host.ConnectedPlayers/@host.MaxPlayers)
+                    </MudButton>
+                }
+            }
+            @if (!string.IsNullOrWhiteSpace(PvpStatus))
+            {
+                <MudText Class="loading-text">@PvpStatus</MudText>
+            }
+        </div>
+    }
     else if (IsGameActive)
     {
-        @if (game.CurrentMode == GameMode.IA)
+        @if (game.CurrentMode == GameMode.IA || IsPvpMode)
         {
-            <MudText Class="game-turn-indicator" data-testid="turn-indicator">@(game.CurrentTurn == GameTurn.AI ? "TURNO DA IA" : "SEU TURNO")</MudText>
+            <MudText Class="game-turn-indicator" data-testid="turn-indicator">@(IsPvpMode ? (pvp.IsLocalTurn ? "SEU TURNO" : "TURNO DO OPONENTE") : game.CurrentTurn == GameTurn.AI ? "TURNO DA IA" : "SEU TURNO")</MudText>
         }
 
         <div class="game-header">
@@ -119,6 +146,11 @@
                     <MudText Typo="Typo.h4" Class="stat-separator">x</MudText>
                     <MudText Typo="Typo.h4" Class="stat-ai">@game.AISuccessfulMoves</MudText>
                 </div>
+            }
+            else if (IsPvpMode)
+            {
+                <MudText Class="game-header-comparison game-header-score">@pvp.LocalScore.ToString("D3") x @pvp.RemoteScore.ToString("D3")</MudText>
+                <MudText Class="game-header-moves">PVP</MudText>
             }
             else
             {
@@ -265,6 +297,7 @@
 
     private GameStatisticsDto Statistics { get; set; } = GameStatisticsDto.Default;
     private bool _eventsAttached;
+    private bool _pvpEventsAttached;
     private int _renderScheduled;
 
     protected override async Task OnInitializedAsync()
@@ -284,7 +317,16 @@
 
         if (string.IsNullOrWhiteSpace(Difficulty))
             return;
-       
+
+        if (Mode == "2")
+        {
+            IsSelecting = false;
+            IsPvpLobby = true;
+            PvpStatus = "Crie uma sala ou procure salas na rede local.";
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
         await StartSelectedGameAsync();
     }
 
@@ -431,12 +473,19 @@
 
     private async Task FlipCard(int position, MemoryCard card)
     {
-        if (!IsGameActive || game.IsHumanInteractionBlocked || card.IsFaceUp || card.IsMatched)
+        if (!IsGameActive || card.IsFaceUp || card.IsMatched)
             return;
 
-        await game.FlipCardAsync(position, card);
-        MovesCount = game.PlayerSuccessfulMoves.ToString();
-        CurrentScore = game.CurrentScore.ToString("D3");
+        if (IsPvpMode)
+            await pvp.FlipCardAsync(position);
+        else
+        {
+            if (game.IsHumanInteractionBlocked)
+                return;
+            await game.FlipCardAsync(position, card);
+            MovesCount = game.PlayerSuccessfulMoves.ToString();
+            CurrentScore = game.CurrentScore.ToString("D3");
+        }
         RequestRender();
     }
 
@@ -516,7 +565,9 @@
     private void RestartGame()
     {
         game.ForceStopTimer();
+        _ = pvp.StopAsync();
         IsSelecting = true;
+        IsPvpLobby = false;
         IsGameActive = false;
         IsGameFinished = false;
         SelectedTheme = null;
@@ -535,8 +586,20 @@
             _eventsAttached = false;
         }
 
+        if (_pvpEventsAttached)
+        {
+            pvp.SessionStarted -= OnPvpSessionStarted;
+            pvp.CardChanged -= OnPvpCardChanged;
+            pvp.TurnChanged -= OnPvpTurnChanged;
+            pvp.Connected -= OnPvpConnected;
+            pvp.PlayerDisconnected -= OnPvpPlayerDisconnected;
+            pvp.GameFinished -= OnPvpGameFinished;
+            _pvpEventsAttached = false;
+        }
+
         if (game is GameService service)
             service.ForceStopTimer();
+        await pvp.StopAsync();
 
         IsGameActive = false;
         await audio.StopAsync();
@@ -545,6 +608,147 @@
     public async ValueTask DisposeAsync()
     {
         await CleanupGame();
+    }
+
+    private bool IsPvpMode => Mode == "2";
+    private bool IsPvpLobby { get; set; }
+    private bool PvpBusy { get; set; }
+    private string PvpStatus { get; set; } = string.Empty;
+    private ObservableCollection<PVPHostInfo> PvpHosts { get; } = [];
+
+    private async Task StartPvpHostAsync()
+    {
+        if (SelectedTheme is null || !int.TryParse(Difficulty, out int difficulty))
+            return;
+
+        try
+        {
+            PvpBusy = true;
+            PvpStatus = "Sala criada. Aguardando jogador...";
+            AttachPvpEvents();
+            await pvp.StartHostAsync(new PVPGameSettings(difficulty, SelectedTheme.ThemeName, "Player"));
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Could not start PVP host.");
+            PvpStatus = "Não foi possível criar a sala.";
+        }
+        finally
+        {
+            PvpBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task DiscoverPvpHostsAsync()
+    {
+        try
+        {
+            PvpBusy = true;
+            PvpHosts.Clear();
+            PvpStatus = "Procurando salas...";
+            AttachPvpEvents();
+            IReadOnlyList<PVPHostInfo> hosts = await pvp.DiscoverHostsAsync();
+            foreach (PVPHostInfo host in hosts)
+                if (PvpHosts.All(existing => existing.Address != host.Address || existing.Port != host.Port))
+                    PvpHosts.Add(host);
+            PvpStatus = PvpHosts.Count == 0 ? "Nenhuma sala encontrada." : string.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+            PvpStatus = "Busca cancelada.";
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Could not discover PVP hosts.");
+            PvpStatus = "Não foi possível procurar salas.";
+        }
+        finally
+        {
+            PvpBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task ConnectPvpAsync(PVPHostInfo host)
+    {
+        try
+        {
+            PvpBusy = true;
+            PvpStatus = "Conectando...";
+            await pvp.ConnectAsync(host, "Player");
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Could not connect to PVP host.");
+            PvpStatus = "Não foi possível conectar à sala.";
+        }
+        finally
+        {
+            PvpBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task StartPvpGameAsync()
+    {
+        try
+        {
+            await pvp.StartGameAsync();
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Could not start PVP game.");
+            PvpStatus = "Não foi possível iniciar a partida.";
+        }
+    }
+
+    private void AttachPvpEvents()
+    {
+        if (_pvpEventsAttached)
+            return;
+        pvp.SessionStarted += OnPvpSessionStarted;
+        pvp.CardChanged += OnPvpCardChanged;
+        pvp.TurnChanged += OnPvpTurnChanged;
+        pvp.Connected += OnPvpConnected;
+        pvp.PlayerDisconnected += OnPvpPlayerDisconnected;
+        pvp.GameFinished += OnPvpGameFinished;
+        _pvpEventsAttached = true;
+    }
+
+    private void OnPvpConnected(object? sender, System.EventArgs e)
+    {
+        PvpStatus = pvp.IsHost ? "Jogador conectado. Você pode iniciar." : "Conectado. Aguardando o host iniciar.";
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPvpSessionStarted(object? sender, PVPStateChangedEventArgs e)
+    {
+        IsPvpLobby = false;
+        IsGameActive = true;
+        Cards.Clear();
+        foreach (KeyValuePair<int, MemoryCard> card in pvp.CurrentCards)
+            Cards.Add(card);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPvpCardChanged(object? sender, PVPCardEventArgs e) => RequestRender();
+    private void OnPvpTurnChanged(object? sender, PVPStateChangedEventArgs e) => RequestRender();
+
+    private void OnPvpPlayerDisconnected(object? sender, System.EventArgs e)
+    {
+        IsGameActive = false;
+        IsPvpLobby = true;
+        PvpStatus = "O outro jogador desconectou.";
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPvpGameFinished(object? sender, PVPGameFinishedEventArgs e)
+    {
+        IsGameActive = false;
+        IsGameFinished = true;
+        IsVictory = (e.Result.Winner == pvp.LocalRole) ? "+1 CONQUISTA!" : "DERROTA!";
+        _ = InvokeAsync(StateHasChanged);
     }
 }
 
@@ -743,6 +947,19 @@
         font-size: 20px;
         color: saddlebrown;
         text-shadow: 2px 2px 1px rgba(250, 250, 210, 0.9);
+    }
+
+    .pvp-lobby {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding: 24px;
+        overflow-y: auto;
     }
 
     .game-header {
