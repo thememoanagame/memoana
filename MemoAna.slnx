@@ -20,6 +20,8 @@
       <Deploy Solution="Debug|*" />
     </Project>
   </Folder>
-  <Folder Name="/MemoAna/tests/" />
-  <Folder Name="/MemoAna/tests/app/" />
+  <Folder Name="/MemoAna/tests/">
+    <Project Path="tests/MemoAna.UITests/MemoAna.UITests.csproj" />
+    <Project Path="tests/MemoAna.UnitTests/MemoAna.UnitTests.csproj" />
+  </Folder>
 </Solution>
