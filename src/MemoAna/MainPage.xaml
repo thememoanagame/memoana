@@ -4,8 +4,8 @@
              xmlns:local="clr-namespace:MemoAna"
              xmlns:components="clr-namespace:MemoAna.Components"
              x:Class="MemoAna.MainPage"
-            Shell.FlyoutItemIsVisible="false"
-            Shell.FlyoutBehavior="Disabled">
+             Shell.FlyoutItemIsVisible="false"
+             Shell.FlyoutBehavior="Disabled">
 
    <BlazorWebView x:Name="blazorWebView" 
                     HostPage="wwwroot/index.html" 

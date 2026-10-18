@@ -8,7 +8,7 @@
             "name": "MAUI: MemoAna Debug",
             "type": "dotnet",
             "request": "launch",
-            "projectPath": "${workspaceFolder}/src/app/MemoAna/MemoAna.csproj"
+            "projectPath": "${workspaceFolder}/src/MemoAna/MemoAna.csproj"
         },
         {
             "name": "ASPNET: MemoAna Debug",

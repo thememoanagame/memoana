@@ -11,6 +11,7 @@ using MemoAna.Game.Services;
 using MemoAna.Game.Models;
 using MemoAna.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
+using MemoAna.Common.Enums;
 
 namespace MemoAna.Common.Extensions;
 
@@ -21,18 +22,30 @@ public static class MauiAppBuilderExtensions
         public MauiApp RunMauiApp<TApp>(Action<MauiAppBuilder> configurePresentation)
             where TApp : Application
         {
-            builder.UseMauiApp<TApp>()
-                .ConfigureFonts(fonts =>
+            builder.UseMauiApp<TApp>().ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("Gwenchana.ttf", "Gwenchana");
             });
-            
 #if DEBUG
             builder.Logging.AddDebug();
 #endif
+#if ANDROID
+            builder.Services.AddTransient<IPlatformService, PlatformService>((sp) => new PlatformService(MauiPlatform.Android));
+#endif
+#if MACCATALYST
+
+            builder.Services.AddTransient<IPlatformService, PlatformService>((sp) => new PlatformService(MauiPlatform.MacOS));
+#endif
+#if IOS
+            builder.Services.AddTransient<IPlatformService, PlatformService>((sp) => new PlatformService(MauiPlatform.IOS));
+#endif
+#if WINDOWS
+            builder.Services.AddTransient<IPlatformService, PlatformService>((sp) => new PlatformService(MauiPlatform.Windows));
+#endif
             builder.Services.AddLocalization(options => options.ResourcesPath = "Resources/Localization");
             builder.Services.AddSingleton<ILocalizer, Localizer>();
+            
             return builder.AddInfrastructure()
                 .AddApplication()
                 .AddPresentation(configurePresentation)

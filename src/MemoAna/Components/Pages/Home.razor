@@ -1,49 +1,6 @@
 ﻿@page "/"
-
-<div class="page">
-    <MudImage Src="images/empty.png"
-              Class="background-image"
-              Alt="" />
-    <div class="page-container">
-        <MudText Class="container-title">
-            @Localizer["GameName"].ToUpper()
-        </MudText>
-        <MudButton Href="/game" Class="menu-button">
-            <div class="button-content">
-                <div class="button-highlight"></div>
-                <MudText Class="button-text">@Localizer["Play"]</MudText>
-            </div>
-        </MudButton>
-        <MudButton Href="/options" Class="menu-button">
-            <div class="button-content">
-                <div class="button-highlight"></div>
-                <MudText Class="button-text">@Localizer["Options"]</MudText>
-            </div>
-        </MudButton>
-        <MudButton Href="/content" Class="menu-button">
-            <div class="button-content">
-                <div class="button-highlight"></div>
-                <MudText Class="button-text">@Localizer["Content"]</MudText>
-            </div>
-        </MudButton>
-        <MudButton Href="/about" Class="menu-button">
-            <div class="button-content">
-                <div class="button-highlight"></div>
-                <MudText Class="button-text">@Localizer["About"]</MudText>
-            </div>
-        </MudButton>
-    </div>
-</div>
-
-@code {
-    protected override async Task OnInitializedAsync()
-    {
-        await audio.PlayMainTitleAsync();
-        await base.OnInitializedAsync();
-    }
-}
 <style>
-    
+
     .page {
         position: relative;
         width: 100%;
@@ -99,15 +56,15 @@
         transition: transform 80ms ease, box-shadow 100ms ease;
     }
 
-    .menu-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 4px 5px 3px rgba(217, 217, 217, 1.0);
-    }
+        .menu-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 4px 5px 3px rgba(217, 217, 217, 1.0);
+        }
 
-    .menu-button:active {
-        transform: translate(4px, 4px);
-        box-shadow: 2px 2px 2px rgba(127, 127, 127, 1.0);
-    }
+        .menu-button:active {
+            transform: translate(4px, 4px);
+            box-shadow: 2px 2px 2px rgba(127, 127, 127, 1.0);
+        }
 
     .button-content {
         position: relative;
@@ -139,16 +96,73 @@
         text-shadow: 4px 4px 2px rgba(250, 250, 210, 0.8);
     }
 
-    @@font-face 
-    {
+    @@font-face {
         font-family: Bangpop;
         src: url('/fonts/Bangpop.ttf') format('truetype');
         font-weight: normal;
         font-style: normal;
     }
+
     @@media (max-height: 700px) {
         .page-container {
             gap: 12px;
         }
     }
 </style>
+<div class="page">
+    <MudImage Src="images/empty.png"
+              Class="background-image"
+              Alt="" />
+    <div class="page-container">
+        <MudText Class="container-title">
+            @Localizer["GameName"].ToUpper()
+        </MudText>
+        <MudButton Href="/game" Class="menu-button">
+            <div class="button-content">
+                <div class="button-highlight"></div>
+                <MudText Class="button-text">@Localizer["Play"]</MudText>
+            </div>
+        </MudButton>
+        <MudButton Href="/options" Class="menu-button">
+            <div class="button-content">
+                <div class="button-highlight"></div>
+                <MudText Class="button-text">@Localizer["Options"]</MudText>
+            </div>
+        </MudButton>
+        <MudButton Href="/content" Class="menu-button">
+            <div class="button-content">
+                <div class="button-highlight"></div>
+                <MudText Class="button-text">@Localizer["Content"]</MudText>
+            </div>
+        </MudButton>
+        <MudButton Href="/about" Class="menu-button">
+            <div class="button-content">
+                <div class="button-highlight"></div>
+                <MudText Class="button-text">@Localizer["About"]</MudText>
+            </div>
+        </MudButton>
+        @if (platform.IsWindows || platform.IsMacOS)
+        {
+            <MudButton OnClick="ExitApp" Class="menu-button">
+                <div class="button-content">
+                    <div class="button-highlight"></div>
+                    <MudText Class="button-text">@Localizer["Exit"]</MudText>
+                </div>
+            </MudButton>
+        }
+
+    </div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await audio.PlayMainTitleAsync();
+        await base.OnInitializedAsync();
+    }
+
+    private void ExitApp(MouseEventArgs args)
+    {
+        App.Current?.Quit();
+    }
+}

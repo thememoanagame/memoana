@@ -16,12 +16,7 @@
   </Folder>
   <Folder Name="/MemoAna/src/">
     <Folder Name="/MemoAna/src/app/" />
-    <Project Path="docker-compose.dcproj">
-      <Build />
-    </Project>
-  </Folder>
-  <Folder Name="/MemoAna/src/app/">
-    <Project Path="src/app/MemoAna/MemoAna.csproj" Id="7d268e1d-f67e-4041-9e69-dfe645313218">
+    <Project Path="src/MemoAna/MemoAna.csproj">
       <Deploy Solution="Debug|*" />
     </Project>
   </Folder>

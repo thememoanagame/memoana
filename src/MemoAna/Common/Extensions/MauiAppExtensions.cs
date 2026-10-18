@@ -78,7 +78,7 @@ internal static class MauiAppExtensions
                     });
                     context.SaveChanges();
                 }
-                var defaultThemes = new[] { "disney", "marvel", "pokemon", "cars" };
+                var defaultThemes = new[] { "cars", "disney", "lion_king", "marvel", "pokemon" };
 
                 var existingThemesCount = context.CardThemeManifests
                     .Where(ct => defaultThemes.Contains(ct.ThemeName.ToLower()))
@@ -100,6 +100,7 @@ internal static class MauiAppExtensions
 
                 var pixarResources = resourceNames.Where(name => name.Contains("carros") && name.EndsWith(".png", StringComparison.OrdinalIgnoreCase)).ToList();
                 var disneyResources = resourceNames.Where(name => name.Contains("disney") && name.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)).ToList();
+                var lionKingResources = resourceNames.Where(name => name.Contains("lion_king") && name.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)).ToList();
                 var marvelResources = resourceNames.Where(name => name.Contains("marvel") && name.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)).ToList();
                 var pokemonResources = resourceNames.Where(name => name.Contains("pokemon") && name.EndsWith(".png", StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -116,6 +117,12 @@ internal static class MauiAppExtensions
                     ProcessAndAddTheme(context, assembly, "Disney", disneyResources, "jpeg");
                     hasChanges = true;
                 }
+
+                if (!existingThemes.Contains("lion_king") && lionKingResources.Any())
+                {
+                    ProcessAndAddTheme(context, assembly, "Lion King", lionKingResources, "webp");
+                    hasChanges = true;
+                }   
 
                 if (!existingThemes.Contains("marvel") && marvelResources.Any())
                 {

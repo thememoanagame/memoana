@@ -16,13 +16,13 @@
     else if (IsSelecting)
     {
 
-        <div class="difficulty-section">
+        <MudStack Class="difficulty-section">
             <MudText Class="selection-title">
                 @Localizer["Difficulty"]
             </MudText>
 
-            <MudToggleGroup T="string" Class="selection-options" Value="@Difficulty" ValueChanged="OnDifficultyChanged"
-                            CheckMark="true" Vertical="false" Outlined Color="Color.Surface">
+            <MudToggleGroup T="string" Class="selection-options" SelectedClass="selection-striped" Value="@Difficulty" ValueChanged="OnDifficultyChanged"
+                            CheckMark="true" Delimiters="true" Vertical="false" Outlined Color="Color.Surface" SelectionMode="SelectionMode.ToggleSelection">
                 <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-easy"
                                SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("0")">
                     @Localizer["Starter"]
@@ -41,8 +41,8 @@
                 @Localizer["GameMode"]
             </MudText>
 
-            <MudToggleGroup T="string" Class="selection-options" @bind-Value="Mode" CheckMark="true" Vertical="false"
-                            Outlined Color="Color.Surface">
+            <MudToggleGroup T="string" Class="selection-options" SelectedClass="selection-striped" @bind-Value="Mode" CheckMark="true" Delimiters="true" Vertical="false"
+                            Outlined Color="Color.Surface" SelectionMode="SelectionMode.ToggleSelection">
                 <MudToggleItem T="string" Class="selection-button" data-testid="mode-ai"
                                SelectedIcon="@Icons.Material.Filled.Computer" UnselectedIcon="@Icons.Material.TwoTone.Computer"
                                Value="@("0")">
@@ -65,7 +65,7 @@
                     </MudText>
                 </MudToggleItem>
             </MudToggleGroup>
-        </div>
+        </MudStack >
 
         <div class="theme-section">
             <MudText Class="theme-title">
@@ -599,13 +599,20 @@
         display: inline-flex;
         flex-direction: row;
         align-items: center;
-        gap: 25px;
-        width: 150px;
+        gap: 10px;
+        width: 100%;
         margin-top: 20px;
+    }
+
+    .selection-striped {
+        background: repeating-linear-gradient( 45deg, #8b4513, #deb887 10px, #8b4513 10px, #deb887 20px );
+        color: white !important;
+        font-weight: bold;
     }
 
     .selection-button {
         position: relative;
+        flex: 1 1 auto;
         background-color: burlywood;
         color: saddlebrown;
         box-shadow: 4px 4px 2px rgba(139, 69, 19, 0.8);

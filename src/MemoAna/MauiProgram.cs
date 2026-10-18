@@ -10,6 +10,9 @@ public static class MauiProgram
         .RunMauiApp<App>(
             builder =>
             {
+#if DEBUG
+                builder.Services.AddBlazorWebViewDeveloperTools();
+#endif
                 builder.Services.AddMauiBlazorWebView();
                 builder.Services.AddMudServices();
             });
