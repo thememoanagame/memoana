@@ -28,11 +28,10 @@ public static class MauiProgram
 			Retries = 3,
 			RetryTimeout = TimeSpan.FromSeconds(5),
 			Timeout = TimeSpan.FromSeconds(30)
-		}) 
+		})
 		.AddConsoleResultChannel()
 		.AddXunit3()
-		.AddTestAssembly(typeof(MemoAna.UnitTests.Game.GameServiceTests).Assembly)
-		.AddConsoleResultChannel());
+		.AddTestAssembly(typeof(MemoAna.UnitTests.Game.GameServiceTests).Assembly));
 #if DEBUG
 		builder.Logging.AddDebug();
 #else

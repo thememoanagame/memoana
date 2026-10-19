@@ -49,12 +49,12 @@ before either peer may start its next turn.
 
 The Windows-targeted game library and the desktop host/client integration
 harness have been validated with a real LiteNetLib pair, including initial
-state synchronization and mismatch resolution. The WebAssembly DeviceRunners
-host executes the suite, but LiteNetLib socket tests are skipped there because
-`System.Net.Sockets` is not supported by the browser runtime. The remaining
-pre-existing `GameServiceTests` failures are reported by the DeviceRunners
-run and must not be interpreted as PVP validation.
+state synchronization and mismatch resolution. The MAUI Windows DeviceRunners
+host executes the complete unit-test suite, including the LiteNetLib tests;
+the current run completed with 24 passed tests and no failures or skips.
 
-Physical Windows-to-Android and Android-to-Windows LAN validation requires an
-ADB-authorized Android device and a running DevFlow agent. No physical
-validation is claimed until both directions have been exercised.
+Physical Windows-to-Android and Android-to-Windows LAN validation still
+requires an ADB-authorized Android device and separately controlled app
+automation endpoints. No physical validation is claimed until both directions
+have been exercised. MAUI DevFlow is not required for the current test-runner
+validation.

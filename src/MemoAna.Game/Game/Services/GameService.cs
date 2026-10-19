@@ -415,11 +415,10 @@ public sealed class GameService : IGameService, IAsyncDisposable
                 // The first reveal is a separate visual phase. Yield to the
                 // renderer; CardFlipDelayMs belongs to the mismatch visible phase.
                 await Task.Yield();
-                MemoryCard second = CurrentCards.Single(c => c.Key == turn.SecondPosition).Value;
-                await ExecuteCardFlipAsync(turn.SecondPosition, second, true, gameGeneration, cancellationToken);
-                // This delay is deliberately inside the AI turn transaction. It must
-                // never transfer ownership or enable human interaction.
                 await Task.Delay(aiService.VisualRevealDelayMs, cancellationToken);
+                MemoryCard second = CurrentCards.Single(c => c.Key == turn.SecondPosition).Value;
+                if (!await ExecuteCardFlipAsync(turn.SecondPosition, second, true, gameGeneration, cancellationToken))
+                    return;
 
                 if (!_lastTurnMatched)
                     return;

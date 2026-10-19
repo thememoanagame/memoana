@@ -13,9 +13,9 @@ The `tests/MemoAna.UnitTests` project is a MAUI test application integrated with
 The canonical validation sequence is:
 
 1. Write or update unit tests in `tests/MemoAna.UnitTests`.
-2. From the repository root, publish `tests/MemoAna.UnitTests/MemoAna.UnitTests.csproj` using the `Release` configuration and `net10.0-windows10.0.19041.0`as target framework to a temporary directory under the repository root, such as `tests/publish`.
+2. From the repository root, publish `tests/MemoAna.UnitTests/MemoAna.UnitTests.csproj` using the `Release` configuration and `net10.0-windows10.0.19041.0` as the target framework to a temporary directory under the repository root, such as `tests/publish`.
 3. Restore the repository-local .NET tools from the root `dotnet-tools.json` with `dotnet tool restore`.
-4. Execute the published WebAssembly test application with DeviceRunners:
+4. Execute the published Windows MAUI test application with DeviceRunners:
 
    ```powershell
    dotnet device-runners windows test --app .\tests\publish\MemoAna.UnitTests.exe
@@ -23,7 +23,7 @@ The canonical validation sequence is:
 
 5. Inspect the DeviceRunners result. Publishing alone does not constitute test execution or validation.
 
-All commands in this workflow must be executed outside a sandbox/container environment. The WebAssembly test host and DeviceRunners runtime require the normal host environment, so agents must not substitute sandboxed execution for the canonical workflow.
+All commands in this workflow must be executed outside a sandbox/container environment. The MAUI test host and DeviceRunners runtime require the normal host environment, so agents must not substitute sandboxed execution for the canonical workflow.
 
 The `tests/publish` directory is temporary generated output. This directory should not  be committed unless a task explicitly requires checked-in artifacts.
 

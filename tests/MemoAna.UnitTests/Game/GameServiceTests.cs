@@ -135,7 +135,8 @@ public sealed class GameServiceTests
         var timestamps = new List<long>();
         game.CardFlipped += (_, _) =>
         {
-            if (game.CurrentCards.Any(card => card.Value.IsFaceUp))
+            if (game.CurrentTurn == GameTurn.AI &&
+                game.CurrentCards.Any(card => card.Value.IsFaceUp))
                 timestamps.Add(Stopwatch.GetTimestamp());
         };
         await game.StartGameAsync(0, "theme", "0");
@@ -148,8 +149,8 @@ public sealed class GameServiceTests
         await game.FlipCardAsync(differentCards[0].Key, differentCards[0].Value);
         await game.FlipCardAsync(differentCards[1].Key, differentCards[1].Value);
 
-        Assert.True(timestamps.Count >= 4);
-        double intervalMs = (timestamps[^2] - timestamps[^3]) * 1000d / Stopwatch.Frequency;
+        Assert.True(timestamps.Count >= 2);
+        double intervalMs = (timestamps[1] - timestamps[0]) * 1000d / Stopwatch.Frequency;
         Assert.True(intervalMs >= 20, $"AI reveal interval was {intervalMs:0.0}ms.");
     }
 

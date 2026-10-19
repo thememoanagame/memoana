@@ -35,7 +35,9 @@ Use the applicable repository skills when working on their corresponding areas:
 
 ## Testing strategy
 
-For unit-test work in this repository, use the `MemoAna.UnitTests` Blazor WebAssembly test project with DeviceRunners. The test project is the executable test application that is published and then executed by the DeviceRunners CLI.
+For unit-test work in this repository, use the `MemoAna.UnitTests` MAUI test
+application with DeviceRunners. The test project is the executable test
+application that is published and then executed by the DeviceRunners CLI.
 
 ### Required test workflow
 
@@ -56,10 +58,10 @@ From the repository root:
    dotnet tool restore
    ```
 
-4. Execute the published Blazor WebAssembly tests with `device-runners`:
+4. Execute the published Windows MAUI tests with `device-runners`:
 
    ```powershell
-   dotnet device-runners wasm test --app .\tests\publish\wwwroot\ --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
+   dotnet device-runners windows test --app .\tests\publish\MemoAna.UnitTests.exe
    ```
 
 5. Inspect the generated TRX and command output. A test task is not complete merely because the project publishes successfully; the DeviceRunners execution must be performed and its result evaluated.
@@ -67,7 +69,7 @@ From the repository root:
 ### Test-output hygiene
 
 - `tests/publish` is a temporary publish directory and must not be treated as source code.
-- `TestResults` contains generated test artifacts and must not be committed unless a task explicitly requires checked-in results.
+- `artifacts` contains generated test logs and must not be committed unless a task explicitly requires checked-in results.
 - Do not change the test execution strategy to `dotnet test` when the task requires validation through DeviceRunners.
 - If DeviceRunners fails because of an environment or infrastructure problem, report the failure separately from product/test failures and preserve the exact command and relevant diagnostics.
 
