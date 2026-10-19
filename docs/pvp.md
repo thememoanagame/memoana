@@ -28,9 +28,9 @@ contain only card positions and authoritative state changes.
 5. Use **INICIO**, **REPETIR**, or navigation away from the page to stop the
    session and release the network manager.
 
-Discovery uses LiteNetLib broadcast on UDP port `35679`; game traffic defaults
-to UDP port `35678`. The ports can be supplied through `PVPGameSettings` for
-tests or custom deployments.
+Discovery uses a dedicated LiteNetLib unconnected manager and broadcast on UDP
+port `35679`; game traffic uses a separate manager on UDP port `35678`. The
+ports can be supplied through `PVPGameSettings` for tests or custom deployments.
 
 ## Platform requirements
 
@@ -40,18 +40,19 @@ Android may require the network permission prompt to be accepted.
 
 ## Runtime and validation notes
 
-`PVPService` owns a polling loop for every running `NetManager`; without
-`PollEvents`, LiteNetLib callbacks do not process discovery, connection or game
-messages. The host advertises the first operational non-loopback IPv4 address
-available on the machine and falls back to the request endpoint only when no
-such interface exists. A mismatch remains visible for 500 ms on both peers
-before either peer may start its next turn.
+`PVPService` owns one polling loop that calls `PollEvents` for every running
+`NetManager`; without it, LiteNetLib callbacks do not process discovery,
+connection or game messages. A host chooses the IPv4 address selected by the
+local routing table for the discovery requester when possible, then uses a
+deterministically ordered operational non-loopback address as fallback. A
+mismatch remains visible for 500 ms on both peers before either peer may start
+its next turn.
 
 The Windows-targeted game library and the desktop host/client integration
 harness have been validated with a real LiteNetLib pair, including initial
 state synchronization and mismatch resolution. The MAUI Windows DeviceRunners
 host executes the complete unit-test suite, including the LiteNetLib tests;
-the current run completed with 24 passed tests and no failures or skips.
+the current run completed with 26 passed tests and no failures or skips.
 
 Physical Windows-to-Android and Android-to-Windows LAN validation still
 requires an ADB-authorized Android device and separately controlled app

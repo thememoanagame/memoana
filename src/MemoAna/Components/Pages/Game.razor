@@ -710,6 +710,7 @@
         if (_pvpEventsAttached)
             return;
         pvp.SessionStarted += OnPvpSessionStarted;
+        pvp.HostStarted += OnHostStarted;
         pvp.HostDiscovered += OnHostDiscovered;
         pvp.CardChanged += OnPvpCardChanged;
         pvp.Error += OnPvpError;
@@ -720,14 +721,37 @@
         _pvpEventsAttached = true;
     }
 
-    private void OnPvpError(object? sender, PVPErrorEventArgs e)
+    private void OnHostStarted(object sender, EventArgs e)
     {
         
     }
 
+    private void OnPvpError(object? sender, PVPErrorEventArgs e)
+    {
+        logger.LogError(e.Exception, "PVP error: {Message}", e.Message);
+        _ = InvokeAsync(() =>
+        {
+            PvpStatus = e.Exception is null ? e.Message : $"{e.Message} ({e.Exception.Message})";
+            StateHasChanged();
+        });
+    }
+
     private void OnHostDiscovered(object? sender, PVPHostDiscoveredEventArgs e)
     {
-        
+        _ = InvokeAsync(() =>
+        {
+            if (PvpHosts.All(existing => existing.Address != e.Host.Address || existing.Port != e.Host.Port))
+                PvpHosts.Add(e.Host);
+            else
+            {
+                int index = PvpHosts.IndexOf(PvpHosts.First(existing =>
+                    existing.Address == e.Host.Address && existing.Port == e.Host.Port));
+                PvpHosts[index] = e.Host;
+            }
+
+            PvpStatus = $"{PvpHosts.Count} sala(s) encontrada(s).";
+            StateHasChanged();
+        });
     }
 
     private void OnPvpConnected(object? sender, System.EventArgs e)

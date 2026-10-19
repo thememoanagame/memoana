@@ -3,6 +3,8 @@ using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Dtos;
 using MemoAna.Game.Models;
 using MemoAna.Game.Services;
+using System.Net;
+using System.Net.Sockets;
 using Xunit;
 
 namespace MemoAna.UnitTests.Game;
@@ -13,12 +15,12 @@ public sealed class PVPServiceTests
     public async Task HostAndClientSynchronizeGameAndAuthoritativeMatch()
     {
         SkipIfBrowser();
-        int port = 38000 + Random.Shared.Next(500);
+        (int port, int discoveryPort) = GetFreePortPair();
         await using var host = CreateService();
         await using var client = CreateService();
 
-        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, port + 1), TestContext.Current.CancellationToken);
-        var hostInfo = new PVPHostInfo("Host", "127.0.0.1", port, port + 1, 0, "theme", 1, 2, "memoana-pvp-1");
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort), TestContext.Current.CancellationToken);
+        var hostInfo = new PVPHostInfo("Host", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1");
 
         TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         client.SessionStarted += (_, _) => started.TrySetResult(true);
@@ -34,16 +36,80 @@ public sealed class PVPServiceTests
         Assert.True(host.IsLocalTurn);
         Assert.False(client.IsLocalTurn);
 
+        TaskCompletionSource<bool> resolved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> clientResolved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.TurnChanged += OnTurnChanged;
+        client.TurnChanged += OnClientTurnChanged;
         KeyValuePair<int, MemoAna.Game.Core.MemoryCard>[] pair = [.. host.CurrentCards
             .GroupBy(card => card.Value.PairId).First()];
         await host.FlipCardAsync(pair[0].Key, TestContext.Current.CancellationToken);
         await host.FlipCardAsync(pair[1].Key, TestContext.Current.CancellationToken);
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await resolved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await clientResolved.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        host.TurnChanged -= OnTurnChanged;
+        client.TurnChanged -= OnClientTurnChanged;
 
         Assert.True(host.CurrentCards.First(card => card.Key == pair[0].Key).Value.IsMatched);
         Assert.True(client.CurrentCards.First(card => card.Key == pair[1].Key).Value.IsMatched);
         Assert.Equal(host.LocalScore, client.RemoteScore);
         Assert.True(host.IsLocalTurn);
+
+        void OnTurnChanged(object? sender, PVPStateChangedEventArgs args) => resolved.TrySetResult(true);
+        void OnClientTurnChanged(object? sender, PVPStateChangedEventArgs args) => clientResolved.TrySetResult(true);
+    }
+
+    [Fact]
+    public async Task HostCanBeDiscoveredByClientWithoutAConnection()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        await using var host = CreateService();
+        await using var client = CreateService();
+        TaskCompletionSource<PVPHostInfo> discovered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.HostDiscovered += (_, args) => discovered.TrySetResult(args.Host);
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort), TestContext.Current.CancellationToken);
+        IReadOnlyList<PVPHostInfo> hosts = await client.DiscoverHostsAsync(
+            discoveryPort, TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+
+        PVPHostInfo result = Assert.Single(hosts);
+        Assert.Equal("Host", result.HostName);
+        Assert.False(string.IsNullOrWhiteSpace(result.Address));
+        Assert.Equal(port, result.Port);
+        Assert.Equal(discoveryPort, result.DiscoveryPort);
+        Assert.Equal("theme", result.ThemeName);
+        Assert.Equal(0, result.Difficulty);
+        Assert.Equal("memoana-pvp-1", result.ProtocolVersion);
+        Assert.Equal(1, result.ConnectedPlayers);
+        Assert.Equal(2, result.MaxPlayers);
+        Assert.Equal(result, await discovered.Task.WaitAsync(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken));
+        Assert.False(client.IsConnected);
+
+        await client.ConnectAsync(result, "Client", TestContext.Current.CancellationToken);
+        Assert.True(client.IsConnected);
+        Assert.True(host.IsConnected);
+    }
+
+    [Fact]
+    public async Task HostCanStopAndStartAgainWithFreshSessionAndDiscovery()
+    {
+        SkipIfBrowser();
+        (int firstPort, int firstDiscoveryPort) = GetFreePortPair();
+        (int secondPort, int secondDiscoveryPort) = GetFreePortPair();
+        await using var host = CreateService();
+        await using var client = CreateService();
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", firstPort, firstDiscoveryPort), TestContext.Current.CancellationToken);
+        Guid firstSession = Assert.IsType<Guid>(host.SessionId);
+        await host.StopAsync(TestContext.Current.CancellationToken);
+        Assert.Null(host.SessionId);
+        Assert.Empty(host.CurrentCards);
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", secondPort, secondDiscoveryPort), TestContext.Current.CancellationToken);
+        Assert.NotEqual(firstSession, host.SessionId);
+        IReadOnlyList<PVPHostInfo> hosts = await client.DiscoverHostsAsync(
+            secondDiscoveryPort, TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.Equal(secondPort, Assert.Single(hosts).Port);
     }
 
     [Fact]
@@ -66,6 +132,15 @@ public sealed class PVPServiceTests
 
     private static PVPService CreateService() =>
         new(new FakeThemeService(), NullLogger<PVPService>.Instance);
+
+    private static (int Port, int DiscoveryPort) GetFreePortPair()
+    {
+        using var game = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        using var discovery = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        int gamePort = ((IPEndPoint)game.Client.LocalEndPoint!).Port;
+        int discoveryPort = ((IPEndPoint)discovery.Client.LocalEndPoint!).Port;
+        return gamePort == discoveryPort ? GetFreePortPair() : (gamePort, discoveryPort);
+    }
 
     private static void SkipIfBrowser()
     {
