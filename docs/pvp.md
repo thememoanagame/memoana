@@ -58,3 +58,10 @@ requires an ADB-authorized Android device and separately controlled app
 automation endpoints. No physical validation is claimed until both directions
 have been exercised. MAUI DevFlow is not required for the current test-runner
 validation.
+
+The native UI harness starts the Windows EXE and installs the Android APK
+itself. Windows uses Playwright over an app-owned WebView2 debugging port;
+Android uses Appium UiAutomator2 and the WebView context. PVP UI scenarios use
+separate `WindowsPlayerSession` and `AndroidPlayerSession` instances and do
+not use `MEMOANA_NATIVE_CDP_ENDPOINT`. The harness requires Appium and an
+authorized physical Android device; it does not substitute an emulator.

@@ -29,6 +29,32 @@ The `tests/publish` directory is temporary generated output. This directory shou
 
 Do not replace the DeviceRunners execution with `dotnet test` when validating this test suite. If DeviceRunners cannot run because of an environment/infrastructure problem, preserve the exact command and diagnostics and distinguish that infrastructure failure from test or product failures.
 
+## Native UI automation
+
+`tests/MemoAna.UITests` owns the lifecycle of native UI sessions. Windows
+sessions start the discovered `MemoAna.exe` and connect Playwright to a
+WebView2 debugging port configured through the process environment; Android
+sessions select an authorized ADB device, install the discovered APK, start a
+local Appium server with UiAutomator2, and switch to the application's WebView
+context. No pre-started application or `MEMOANA_NATIVE_CDP_ENDPOINT` is used.
+
+The Windows and Android sessions are independent. PVP tests start both sessions
+before configuring the host and client and compare the card collections after
+the host starts the real LAN session. Set `MEMOANA_WINDOWS_EXECUTABLE`,
+`MEMOANA_ANDROID_APK`, `MEMOANA_ANDROID_DEVICE`, or `MEMOANA_APPIUM_URL` only
+when the default artifact paths or local Appium endpoint do not apply.
+
+Run the local UI suite with:
+
+```powershell
+dotnet test .\tests\MemoAna.UITests\MemoAna.UITests.csproj -c Release
+```
+
+Native UI failures are infrastructure failures when the EXE/APK, authorized
+device, Appium server, or WebView automation context is unavailable. The
+exception identifies the failed preparation stage; these failures must not be
+reported as passing UI or PVP coverage.
+
 ## Cancellation
 
 Include cancellation tests where cancellation is part of the provider/application contract. A cancellation request should propagate rather than being converted into a generic authentication failure.

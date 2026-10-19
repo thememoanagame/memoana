@@ -14,6 +14,9 @@ using Microsoft.EntityFrameworkCore;
 using MemoAna.Common.Enums;
 using Plugin.Maui.Audio;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Sinks.ILogger;
+using Microsoft.Extensions.Hosting;
 
 namespace MemoAna.Common.Extensions;
 
@@ -29,10 +32,25 @@ public static class MauiAppBuilderExtensions
                 fonts.AddFont("Bangpop.ttf", "Bangpop");
                 fonts.AddFont("Gwenchana.ttf", "Gwenchana");
             });
+            string path = System.IO.Path.Combine(FileSystem.AppDataDirectory, "logs", "log-.txt");
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel
+                .Is(Serilog.Events.LogEventLevel.Verbose) // Define o nível mínimo de log
+                .WriteTo
+                .Console(Serilog.Events.LogEventLevel.Verbose, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo
+                .File(
+                    path: path,
+                    rollingInterval: RollingInterval.Day, // Cria um arquivo por dia
+                    retainedFileCountLimit: 7,            // Mantém apenas os últimos 7 dias
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+                )
+                .CreateLogger();
+
+            builder.Logging.AddSerilog(Log.Logger, dispose: true);
+            builder.Logging.AddConsole();
 #if DEBUG
             builder.Logging.AddDebug();
-#else
-            builder.Logging.AddConsole();
 #endif
 #if ANDROID
             builder.Services.AddTransient<IPlatformService, PlatformService>((sp) => new PlatformService(MauiPlatform.Android));
@@ -144,3 +162,4 @@ public static class MauiAppBuilderExtensions
         } 
     }
 }
+

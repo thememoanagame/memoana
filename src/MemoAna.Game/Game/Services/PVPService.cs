@@ -99,14 +99,27 @@ public sealed class PVPService : IPVPService
         {
             if (reader.AvailableBytes <= 0)
                 return;
-
+            logger.LogInformation("Discover Host starting");
             try
             {
                 PVPWireMessage? message = JsonSerializer.Deserialize<PVPWireMessage>(reader.GetString());
-                if (message?.Type != PVPMessageType.DiscoveryResponse ||
-                    message.ProtocolVersion != ProtocolVersion ||
-                    message.Host is null)
+                if (message?.Type != PVPMessageType.DiscoveryResponse)
+                {
+                    logger.LogWarning($"Discover Host Failed. Reason: message type is not discovery response");
                     return;
+                }
+
+                if (message.ProtocolVersion != ProtocolVersion)
+                {
+                    logger.LogWarning($"Discover Host Failed. Reason: protocol version mismatch");
+                    return;
+                }
+
+                if (message.Host is null)
+                {
+                    logger.LogWarning($"Discover Host Failed. Reason: host is null");
+                    return;
+                }
 
                 lock (discoveredHosts)
                 {

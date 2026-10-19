@@ -104,18 +104,18 @@
     {
         <div class="pvp-lobby">
             <MudText Class="selection-title">PVP</MudText>
-            <MudButton Class="game-action-button" OnClick="StartPvpHostAsync" Disabled="@PvpBusy">CRIAR SALA</MudButton>
-            <MudButton Class="game-action-button" OnClick="DiscoverPvpHostsAsync" Disabled="@PvpBusy">PROCURAR SALAS</MudButton>
+            <MudButton Class="game-action-button" data-testid="create-pvp-room" OnClick="StartPvpHostAsync" Disabled="@PvpBusy">CRIAR SALA</MudButton>
+            <MudButton Class="game-action-button" data-testid="discover-pvp-rooms" OnClick="DiscoverPvpHostsAsync" Disabled="@PvpBusy">PROCURAR SALAS</MudButton>
             @if (pvp.IsHost && pvp.IsConnected)
             {
-                <MudButton Class="game-action-button" OnClick="StartPvpGameAsync">INICIAR PARTIDA</MudButton>
+                <MudButton Class="game-action-button" data-testid="start-pvp-game" OnClick="StartPvpGameAsync">INICIAR PARTIDA</MudButton>
             }
             @if (PvpHosts.Count > 0)
             {
                 <MudText Class="selection-title">SALAS DISPONÍVEIS</MudText>
                 @foreach (PVPHostInfo host in PvpHosts)
                 {
-                    <MudButton Class="game-action-button" OnClick="() => ConnectPvpAsync(host)">
+                    <MudButton Class="game-action-button" data-testid="pvp-room" OnClick="() => ConnectPvpAsync(host)">
                         @host.HostName - @host.ThemeName (@host.ConnectedPlayers/@host.MaxPlayers)
                     </MudButton>
                 }
@@ -377,7 +377,7 @@
     {
         if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level) || Mode == "2")
             return Task.CompletedTask;
-        
+
         logger.LogInformation("Preparing game for start...");
         IsSelecting = false;
         IsGameActive = false;
@@ -387,14 +387,14 @@
         Cards.Clear();
         IsBusy = true;
         // The event handler will complete here, and Blazor will implicitly trigger StateHasChanged()
-        
+
         _ = Task.Run(async () =>
         {
             try
             {
                 ConfigureGridGeometry(level);
                 string themeName = SelectedTheme.ThemeName;
-                
+
                 // Do the heavy background loading off the UI thread
                 await game.StartGameAsync(level, themeName, Mode);
 
@@ -411,15 +411,15 @@
                     CurrentScore = game.CurrentScore.ToString("D3");
                     MovesCount = game.PlayerSuccessfulMoves.ToString();
                 });
-                
+
                 await audio.StopAsync();
                 await audio.PlayMainGameAsync();
-                
+
                 await InvokeAsync(() =>
                 {
                     IsGameActive = true;
                 });
-                
+
                 logger.LogInformation(
                     "Game initialized. Theme: {Theme}, Difficulty: {Difficulty}, Mode: {Mode}, Cards: {CardCount}",
                     themeName, level, Mode, Cards.Count);
@@ -592,6 +592,8 @@
             pvp.CardChanged -= OnPvpCardChanged;
             pvp.TurnChanged -= OnPvpTurnChanged;
             pvp.Connected -= OnPvpConnected;
+            pvp.Error -= OnPvpError;
+            pvp.HostDiscovered -= OnHostDiscovered;
             pvp.PlayerDisconnected -= OnPvpPlayerDisconnected;
             pvp.GameFinished -= OnPvpGameFinished;
             _pvpEventsAttached = false;
@@ -708,12 +710,24 @@
         if (_pvpEventsAttached)
             return;
         pvp.SessionStarted += OnPvpSessionStarted;
+        pvp.HostDiscovered += OnHostDiscovered;
         pvp.CardChanged += OnPvpCardChanged;
+        pvp.Error += OnPvpError;
         pvp.TurnChanged += OnPvpTurnChanged;
         pvp.Connected += OnPvpConnected;
         pvp.PlayerDisconnected += OnPvpPlayerDisconnected;
         pvp.GameFinished += OnPvpGameFinished;
         _pvpEventsAttached = true;
+    }
+
+    private void OnPvpError(object? sender, PVPErrorEventArgs e)
+    {
+        
+    }
+
+    private void OnHostDiscovered(object? sender, PVPHostDiscoveredEventArgs e)
+    {
+        
     }
 
     private void OnPvpConnected(object? sender, System.EventArgs e)
