@@ -59,7 +59,10 @@
             : using a System.ComponentModel.TypeConverter
             : and then encoded with base64 encoding.
     -->
-  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+  <xsd:schema id="root"
+    xmlns=""
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
       <xsd:complexType>
@@ -172,5 +175,140 @@
   <data name="Back" xml:space="preserve">
     <value>Voltar</value>
     <comment>Botao voltar</comment>
+  </data>
+  <data name="PlayerName" xml:space="preserve">
+    <value>Nome do jogador</value>
+  </data>
+  <data name="PlayerNameRequired" xml:space="preserve">
+    <value>Informe o nome do jogador.</value>
+  </data>
+  <data name="Player" xml:space="preserve">
+    <value>Jogador</value>
+  </data>
+  <data name="Score" xml:space="preserve">
+    <value>Pontos</value>
+  </data>
+  <data name="Hits" xml:space="preserve">
+    <value>Acertos</value>
+  </data>
+  <data name="Misses" xml:space="preserve">
+    <value>Erros</value>
+  </data>
+  <data name="Moves" xml:space="preserve">
+    <value>Movimentos</value>
+  </data>
+  <data name="DeveloperInfo" xml:space="preserve">
+    <value>Informações do desenvolvedor</value>
+  </data>
+  <data name="Credits" xml:space="preserve">
+    <value>Créditos</value>
+  </data>
+  <data name="License" xml:space="preserve">
+    <value>Licença</value>
+  </data>
+  <data name="Content" xml:space="preserve">
+    <value>Conteúdo</value>
+  </data>
+  <data name="Exit" xml:space="preserve">
+    <value>Sair</value>
+  </data>
+  <data name="GameMode" xml:space="preserve">
+    <value>Modo de jogo</value>
+  </data>
+  <data name="IA" xml:space="preserve">
+    <value>IA</value>
+  </data>
+  <data name="TimeAttack" xml:space="preserve">
+    <value>Contra o tempo</value>
+  </data>
+  <data name="PVP" xml:space="preserve">
+    <value>PVP</value>
+  </data>
+  <data name="LoadingBoard" xml:space="preserve">
+    <value>Preparando tabuleiro...</value>
+  </data>
+  <data name="CreateRoom" xml:space="preserve">
+    <value>Criar sala</value>
+  </data>
+  <data name="DiscoverRooms" xml:space="preserve">
+    <value>Procurar salas</value>
+  </data>
+  <data name="StartMatch" xml:space="preserve">
+    <value>Iniciar partida</value>
+  </data>
+  <data name="AvailableRooms" xml:space="preserve">
+    <value>Salas disponíveis</value>
+  </data>
+  <data name="YourTurn" xml:space="preserve">
+    <value>Seu turno</value>
+  </data>
+  <data name="OpponentTurn" xml:space="preserve">
+    <value>Turno do oponente</value>
+  </data>
+  <data name="AITurn" xml:space="preserve">
+    <value>Turno da IA</value>
+  </data>
+  <data name="Home" xml:space="preserve">
+    <value>Início</value>
+  </data>
+  <data name="Repeat" xml:space="preserve">
+    <value>Repetir</value>
+  </data>
+  <data name="Victory" xml:space="preserve">
+    <value>Você venceu!</value>
+  </data>
+  <data name="Defeat" xml:space="preserve">
+    <value>Você perdeu!</value>
+  </data>
+  <data name="VictoryShort" xml:space="preserve">
+    <value>+1 conquista!</value>
+  </data>
+  <data name="DefeatShort" xml:space="preserve">
+    <value>Derrota!</value>
+  </data>
+  <data name="YouDefeatedAI" xml:space="preserve">
+    <value>Você derrotou a IA.</value>
+  </data>
+  <data name="AIWonMatch" xml:space="preserve">
+    <value>A IA venceu esta partida.</value>
+  </data>
+  <data name="Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="RoomsFound" xml:space="preserve">
+    <value>{0} sala(s) encontrada(s).</value>
+  </data>
+  <data name="PvpLobbyInstructions" xml:space="preserve">
+    <value>Crie uma sala ou procure salas na rede local.</value>
+  </data>
+  <data name="PvpRoomWaiting" xml:space="preserve">
+    <value>Sala criada. Aguardando jogador...</value>
+  </data>
+  <data name="PvpSearching" xml:space="preserve">
+    <value>Procurando salas...</value>
+  </data>
+  <data name="PvpNoRooms" xml:space="preserve">
+    <value>Nenhuma sala encontrada.</value>
+  </data>
+  <data name="PvpSearchCancelled" xml:space="preserve">
+    <value>Busca cancelada.</value>
+  </data>
+  <data name="PvpConnecting" xml:space="preserve">
+    <value>Conectando...</value>
+  </data>
+  <data name="PvpPlayerConnected" xml:space="preserve">
+    <value>Jogador conectado. Você pode iniciar.</value>
+  </data>
+  <data name="PvpConnectedWaiting" xml:space="preserve">
+    <value>Conectado. Aguardando o host iniciar.</value>
+  </data>
+  <data name="PvpPlayerDisconnected" xml:space="preserve">
+    <value>O outro jogador desconectou.</value>
+  </data>
+  <data name="NotFoundTitle" xml:space="preserve">
+    <value>Não encontrado</value>
+  </data>
+  <data name="NotFoundMessage" xml:space="preserve">
+    <value>O conteúdo solicitado não existe.</value>
   </data>
 </root>

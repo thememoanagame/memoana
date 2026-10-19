@@ -1,5 +1,27 @@
 {
   "version": 1,
   "isRoot": true,
-  "tools": {}
+  "tools": {
+    "dotnet-reportgenerator-globaltool": {
+      "version": "5.5.11",
+      "commands": [
+        "reportgenerator"
+      ],
+      "rollForward": false
+    },
+    "androidsdk.tool": {
+      "version": "0.36.0",
+      "commands": [
+        "android"
+      ],
+      "rollForward": false
+    },
+    "devicerunners.cli": {
+      "version": "0.1.0-preview.12",
+      "commands": [
+        "device-runners"
+      ],
+      "rollForward": false
+    }
+  }
 }

@@ -486,3 +486,4 @@ src/app/MemoAna/undefined
 .infisical.json
 **/.certs/*
 **/.vsdbg/
+**/.maui/

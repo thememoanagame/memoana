@@ -11,6 +11,7 @@
 @using MemoAna.Game.Dtos
 @using MemoAna.Game.EventArgs
 @using MemoAna.Game.Enums
+@using MemoAna.Game.Models
 @using MemoAna.Game.Services
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
@@ -21,6 +22,6 @@
 @inject NavigationManager navigation
 @inject IAudioService audio
 @inject IGameService game
-@inject ILocalizer Localizer
+@inject ILocalizer<MemoAna.Resources.Localization.Strings> Localizer
 @inject ISettingsService settings
 @inject MemoAna.Common.Abstract.Services.IPlatformService platform
