@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -9,19 +9,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DeviceRunners.VisualRunners.Blazor" Version="0.1.0-preview.12" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.13" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.11" PrivateAssets="all" />
     <PackageReference Include="DeviceRunners.Core" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.Testing.Targets" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.UITesting" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.UITesting.Maui" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.UITesting.Xunit3" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.VisualRunners" Version="0.1.0-preview.12" />
+    <PackageReference Include="DeviceRunners.VisualRunners.Blazor" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.VisualRunners.Core" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.VisualRunners.Maui" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.VisualRunners.Xunit3" Version="0.1.0-preview.12" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.11" />
     <PackageReference Include="xunit.v3.assert" Version="3.2.2" />
     <PackageReference Include="xunit.v3.common" Version="3.2.2" />
     <PackageReference Include="xunit.v3.extensibility.core" Version="3.2.2" />
