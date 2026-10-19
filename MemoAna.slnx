@@ -16,6 +16,7 @@
   </Folder>
   <Folder Name="/MemoAna/src/">
     <Folder Name="/MemoAna/src/app/" />
+    <Project Path="src/MemoAna.Game/MemoAna.Game.csproj" />
     <Project Path="src/MemoAna/MemoAna.csproj">
       <Deploy Solution="Debug|*" />
     </Project>
@@ -23,8 +24,5 @@
   <Folder Name="/MemoAna/tests/">
     <Project Path="tests/MemoAna.UITests/MemoAna.UITests.csproj" />
     <Project Path="tests/MemoAna.UnitTests/MemoAna.UnitTests.csproj" />
-  </Folder>
-  <Folder Name="/src/">
-    <Project Path="src/MemoAna.Game/MemoAna.Game.csproj" />
   </Folder>
 </Solution>
