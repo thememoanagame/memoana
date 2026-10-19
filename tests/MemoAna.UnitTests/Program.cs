@@ -7,9 +7,32 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
 builder.RootComponents.Add<TestRunnerApp>("#app");
 
-builder.UseVisualTestRunner(conf => conf
-    .AddXunit3()
-    .AddTestAssembly(typeof(MemoAna.UnitTests.Game.GameServiceTests).Assembly)
-    .AddConsoleResultChannel());
+builder
+    .UseVisualTestRunner(conf => conf
+		.AddCliConfiguration()
+#if EXCLUDE_FAILING_TESTS
+		// Exclude the intentionally-failing demo tests on CI device runs, which
+		// auto-start without a runtime filter. Enabled only when built with
+		// -p:IncludeFailingTests=false (the TCP and XHarness CI runs); local and
+		// interactive runs leave it undefined so the failure demos stay visible.
+		.SetTestCaseFilter("Category!=ExpectedFailure")
+#endif
+#if MODE_NON_INTERACTIVE_VISUAL
+		.EnableAutoStart(true)
+		.AddTcpResultChannel(new TcpResultChannelOptions
+		{
+			HostNames = ["localhost", "10.0.2.2"],
+			Port = 16384,
+			Formatter = new EventStreamFormatter(),
+			Required = false,
+			Retries = 3,
+			RetryTimeout = TimeSpan.FromSeconds(5),
+			Timeout = TimeSpan.FromSeconds(30)
+		})
+#endif
+		.AddConsoleResultChannel()
+		.AddXunit3()
+		.AddTestAssembly(typeof(MemoAna.UnitTests.Game.GameServiceTests).Assembly)
+		.AddConsoleResultChannel());
 
 await builder.Build().RunAsync();
