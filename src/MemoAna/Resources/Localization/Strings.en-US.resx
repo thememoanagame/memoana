@@ -59,7 +59,10 @@
             : using a System.ComponentModel.TypeConverter
             : and then encoded with base64 encoding.
     -->
-  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+  <xsd:schema id="root"
+    xmlns=""
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
       <xsd:complexType>
@@ -139,20 +142,160 @@
   <data name="Back" xml:space="preserve">
     <value>Back</value>
   </data>
-  <data name="PlayerName" xml:space="preserve"><value>Player name</value></data>
-  <data name="PlayerNameRequired" xml:space="preserve"><value>Enter the player name.</value></data>
-  <data name="Player" xml:space="preserve"><value>Player</value></data>
-  <data name="Score" xml:space="preserve"><value>Score</value></data>
-  <data name="Hits" xml:space="preserve"><value>Hits</value></data>
-  <data name="Misses" xml:space="preserve"><value>Misses</value></data>
-  <data name="Moves" xml:space="preserve"><value>Moves</value></data>
-  <data name="Difficulty" xml:space="preserve"><value>Difficulty</value></data>
-  <data name="Starter" xml:space="preserve"><value>Easy</value></data><data name="Medium" xml:space="preserve"><value>Medium</value></data><data name="Hard" xml:space="preserve"><value>Hard</value></data>
-  <data name="ThemeSelection" xml:space="preserve"><value>Select a theme</value></data><data name="Music" xml:space="preserve"><value>Music: </value></data><data name="Sfx" xml:space="preserve"><value>Effects: </value></data>
-  <data name="DeveloperInfo" xml:space="preserve"><value>Developer information</value></data><data name="Credits" xml:space="preserve"><value>Credits</value></data><data name="License" xml:space="preserve"><value>License</value></data><data name="Content" xml:space="preserve"><value>Content</value></data><data name="Exit" xml:space="preserve"><value>Exit</value></data>
-  <data name="GameMode" xml:space="preserve"><value>Game mode</value></data><data name="IA" xml:space="preserve"><value>AI</value></data><data name="TimeAttack" xml:space="preserve"><value>Time attack</value></data><data name="PVP" xml:space="preserve"><value>PVP</value></data><data name="LoadingBoard" xml:space="preserve"><value>Preparing board...</value></data>
-  <data name="CreateRoom" xml:space="preserve"><value>Create room</value></data><data name="DiscoverRooms" xml:space="preserve"><value>Find rooms</value></data><data name="StartMatch" xml:space="preserve"><value>Start match</value></data><data name="AvailableRooms" xml:space="preserve"><value>Available rooms</value></data><data name="YourTurn" xml:space="preserve"><value>Your turn</value></data><data name="OpponentTurn" xml:space="preserve"><value>Opponent's turn</value></data><data name="AITurn" xml:space="preserve"><value>AI's turn</value></data><data name="Home" xml:space="preserve"><value>Home</value></data><data name="Repeat" xml:space="preserve"><value>Play again</value></data>
-  <data name="Victory" xml:space="preserve"><value>You won!</value></data><data name="Defeat" xml:space="preserve"><value>You lost!</value></data><data name="VictoryShort" xml:space="preserve"><value>+1 achievement!</value></data><data name="DefeatShort" xml:space="preserve"><value>Defeat!</value></data><data name="YouDefeatedAI" xml:space="preserve"><value>You defeated the AI.</value></data><data name="AIWonMatch" xml:space="preserve"><value>The AI won this match.</value></data><data name="Total" xml:space="preserve"><value>Total</value></data><data name="RoomsFound" xml:space="preserve"><value>{0} room(s) found.</value></data>
-  <data name="PvpLobbyInstructions" xml:space="preserve"><value>Create a room or find rooms on the local network.</value></data><data name="PvpRoomWaiting" xml:space="preserve"><value>Room created. Waiting for a player...</value></data><data name="PvpSearching" xml:space="preserve"><value>Finding rooms...</value></data><data name="PvpNoRooms" xml:space="preserve"><value>No rooms found.</value></data><data name="PvpSearchCancelled" xml:space="preserve"><value>Search cancelled.</value></data><data name="PvpConnecting" xml:space="preserve"><value>Connecting...</value></data><data name="PvpPlayerConnected" xml:space="preserve"><value>Player connected. You can start.</value></data><data name="PvpConnectedWaiting" xml:space="preserve"><value>Connected. Waiting for the host to start.</value></data><data name="PvpPlayerDisconnected" xml:space="preserve"><value>The other player disconnected.</value></data>
-  <data name="NotFoundTitle" xml:space="preserve"><value>Not found</value></data><data name="NotFoundMessage" xml:space="preserve"><value>Sorry, the content you are looking for does not exist.</value></data>
+  <data name="PlayerName" xml:space="preserve">
+    <value>Player name</value>
+  </data>
+  <data name="PlayerNameRequired" xml:space="preserve">
+    <value>Enter the player name.</value>
+  </data>
+  <data name="Player" xml:space="preserve">
+    <value>Player</value>
+  </data>
+  <data name="Score" xml:space="preserve">
+    <value>Score</value>
+  </data>
+  <data name="Hits" xml:space="preserve">
+    <value>Hits</value>
+  </data>
+  <data name="Misses" xml:space="preserve">
+    <value>Misses</value>
+  </data>
+  <data name="Moves" xml:space="preserve">
+    <value>Moves</value>
+  </data>
+  <data name="Difficulty" xml:space="preserve">
+    <value>Difficulty</value>
+  </data>
+  <data name="Starter" xml:space="preserve">
+    <value>Easy</value>
+  </data>
+  <data name="Medium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="Hard" xml:space="preserve">
+    <value>Hard</value>
+  </data>
+  <data name="ThemeSelection" xml:space="preserve">
+    <value>Select a theme</value>
+  </data>
+  <data name="Music" xml:space="preserve">
+    <value>Music: </value>
+  </data>
+  <data name="Sfx" xml:space="preserve">
+    <value>Effects: </value>
+  </data>
+  <data name="DeveloperInfo" xml:space="preserve">
+    <value>Developer information</value>
+  </data>
+  <data name="Credits" xml:space="preserve">
+    <value>Credits</value>
+  </data>
+  <data name="License" xml:space="preserve">
+    <value>License</value>
+  </data>
+  <data name="Content" xml:space="preserve">
+    <value>Content</value>
+  </data>
+  <data name="Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="GameMode" xml:space="preserve">
+    <value>Game mode</value>
+  </data>
+  <data name="IA" xml:space="preserve">
+    <value>AI</value>
+  </data>
+  <data name="TimeAttack" xml:space="preserve">
+    <value>Time attack</value>
+  </data>
+  <data name="PVP" xml:space="preserve">
+    <value>PVP</value>
+  </data>
+  <data name="LoadingBoard" xml:space="preserve">
+    <value>Preparing board...</value>
+  </data>
+  <data name="CreateRoom" xml:space="preserve">
+    <value>Create room</value>
+  </data>
+  <data name="DiscoverRooms" xml:space="preserve">
+    <value>Find rooms</value>
+  </data>
+  <data name="StartMatch" xml:space="preserve">
+    <value>Start match</value>
+  </data>
+  <data name="AvailableRooms" xml:space="preserve">
+    <value>Available rooms</value>
+  </data>
+  <data name="YourTurn" xml:space="preserve">
+    <value>Your turn</value>
+  </data>
+  <data name="OpponentTurn" xml:space="preserve">
+    <value>Opponent's turn</value>
+  </data>
+  <data name="AITurn" xml:space="preserve">
+    <value>AI's turn</value>
+  </data>
+  <data name="Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="Repeat" xml:space="preserve">
+    <value>Play again</value>
+  </data>
+  <data name="Victory" xml:space="preserve">
+    <value>You won!</value>
+  </data>
+  <data name="Defeat" xml:space="preserve">
+    <value>You lost!</value>
+  </data>
+  <data name="VictoryShort" xml:space="preserve">
+    <value>+1 achievement!</value>
+  </data>
+  <data name="DefeatShort" xml:space="preserve">
+    <value>Defeat!</value>
+  </data>
+  <data name="YouDefeatedAI" xml:space="preserve">
+    <value>You defeated the AI.</value>
+  </data>
+  <data name="AIWonMatch" xml:space="preserve">
+    <value>The AI won this match.</value>
+  </data>
+  <data name="Total" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="RoomsFound" xml:space="preserve">
+    <value>{0} room(s) found.</value>
+  </data>
+  <data name="PvpLobbyInstructions" xml:space="preserve">
+    <value>Create a room or find rooms on the local network.</value>
+  </data>
+  <data name="PvpRoomWaiting" xml:space="preserve">
+    <value>Room created. Waiting for a player...</value>
+  </data>
+  <data name="PvpSearching" xml:space="preserve">
+    <value>Finding rooms...</value>
+  </data>
+  <data name="PvpNoRooms" xml:space="preserve">
+    <value>No rooms found.</value>
+  </data>
+  <data name="PvpSearchCancelled" xml:space="preserve">
+    <value>Search cancelled.</value>
+  </data>
+  <data name="PvpConnecting" xml:space="preserve">
+    <value>Connecting...</value>
+  </data>
+  <data name="PvpPlayerConnected" xml:space="preserve">
+    <value>Player connected. You can start.</value>
+  </data>
+  <data name="PvpConnectedWaiting" xml:space="preserve">
+    <value>Connected. Waiting for the host to start.</value>
+  </data>
+  <data name="PvpPlayerDisconnected" xml:space="preserve">
+    <value>The other player disconnected.</value>
+  </data>
+  <data name="NotFoundTitle" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="NotFoundMessage" xml:space="preserve">
+    <value>Sorry, the content you are looking for does not exist.</value>
+  </data>
 </root>
