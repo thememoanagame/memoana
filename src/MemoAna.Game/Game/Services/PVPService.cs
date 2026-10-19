@@ -84,7 +84,9 @@ public sealed class PVPService : IPVPService
         await CreateBoardAsync(settings, cancellationToken);
         StartGameManager(settings.Port);
         StartDiscoveryManager(settings.DiscoveryPort);
-        logger.LogInformation("PVP host '{Host}' started on port {Port} for session {SessionId}", gameManager?.FirstPeer.Address.MapToIPv4().ToString(), settings.Port, sessionId);
+        logger.LogInformation(
+            "PVP host '{PlayerName}' started. GamePort={GamePort}, DiscoveryPort={DiscoveryPort}, SessionId={SessionId}, ProtocolVersion={ProtocolVersion}",
+            settings.PlayerName, settings.Port, settings.DiscoveryPort, sessionId, ProtocolVersion);
         HostStarted?.Invoke(this, System.EventArgs.Empty);
     }
 
@@ -128,11 +130,16 @@ public sealed class PVPService : IPVPService
                     return;
                 }
 
+                string hostKey = $"{message.Host.HostName}:{message.Host.Port}:{message.Host.DiscoveryPort}:{message.SessionId}";
+                bool firstResponse;
                 lock (discoveredHosts)
                 {
-                    discoveredHosts[message.Host.Address + ":" + message.Host.Port] = message.Host;
+                    firstResponse = !discoveredHosts.ContainsKey(hostKey);
+                    if (firstResponse)
+                        discoveredHosts[hostKey] = message.Host;
                 }
-                HostDiscovered?.Invoke(this, new(message.Host));
+                if (firstResponse)
+                    HostDiscovered?.Invoke(this, new(message.Host));
             }
             catch (JsonException exception)
             {
@@ -145,11 +152,13 @@ public sealed class PVPService : IPVPService
 
         var request = new PVPWireMessage(ProtocolVersion, PVPMessageType.DiscoveryRequest, null, null, null);
         SendBroadcast(clientDiscoveryManager, request, discoveryPort);
-        // Broadcast is the production path. Loopback also makes an in-process
-        // host/client pair behave like two endpoints on the same machine.
-        SendUnconnected(clientDiscoveryManager, request,
-            new IPEndPoint(IPAddress.Loopback, discoveryPort));
-        logger.LogInformation("PVP discovery started on discovery port {DiscoveryPort}", discoveryPort);
+        foreach (IPAddress broadcastAddress in GetDirectedBroadcastAddresses())
+            SendUnconnected(clientDiscoveryManager, request, new IPEndPoint(broadcastAddress, discoveryPort));
+        // LiteNetLib's broadcast socket does not loop a broadcast back into a
+        // second manager in the same process. This extra endpoint is only for
+        // the in-process protocol test; LAN discovery uses the broadcasts above.
+        SendUnconnected(clientDiscoveryManager, request, new IPEndPoint(IPAddress.Loopback, discoveryPort));
+        logger.LogInformation("PVP discovery started. DiscoveryPort={DiscoveryPort}", discoveryPort);
 
         try
         {
@@ -181,10 +190,19 @@ public sealed class PVPService : IPVPService
         StartGameManager(0);
         StartNetworkLoop();
         logger.LogInformation("PVP client connecting to {Address}:{Port}", host.Address, host.Port);
-        if (gameManager!.Connect(host.Address, host.Port, ProtocolVersion) is null)
-            throw new InvalidOperationException($"Could not connect to PVP host {host.Address}:{host.Port}.");
+        try
+        {
+            if (gameManager!.Connect(host.Address, host.Port, ProtocolVersion) is null)
+                throw new InvalidOperationException($"Could not connect to PVP host {host.Address}:{host.Port}.");
 
-        await WaitForConnectionAsync(cancellationToken);
+            await WaitForConnectionAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            RaiseError($"Could not connect to PVP host {host.Address}:{host.Port}.", exception);
+            await StopAsync();
+            throw;
+        }
     }
 
     public async Task StartGameAsync(CancellationToken cancellationToken = default)
@@ -379,6 +397,17 @@ public sealed class PVPService : IPVPService
         if (peer == disconnectedPeer)
             peer = null;
         IsGameActive = false;
+        if (!IsHost)
+        {
+            sessionId = Guid.Empty;
+            cards.Clear();
+            hostScore = 0;
+            clientScore = 0;
+            currentTurn = default;
+            firstPosition = -1;
+            secondPosition = -1;
+            mismatchPending = false;
+        }
         logger.LogInformation("PVP player disconnected from {Address}:{Port}", disconnectedPeer.Address, disconnectedPeer.Port);
         PlayerDisconnected?.Invoke(this, System.EventArgs.Empty);
     }
@@ -392,8 +421,10 @@ public sealed class PVPService : IPVPService
         {
             string payload = reader.GetString();
             PVPWireMessage? message = JsonSerializer.Deserialize<PVPWireMessage>(payload);
-            if (message is null || message.ProtocolVersion != ProtocolVersion)
-                return;
+            if (message is null)
+                throw new InvalidOperationException("The received PVP message was empty.");
+            if (message.ProtocolVersion != ProtocolVersion)
+                throw new InvalidOperationException($"Unsupported PVP protocol version '{message.ProtocolVersion}'.");
             await HandleMessageAsync(message);
         }
         catch (JsonException exception)
@@ -414,14 +445,16 @@ public sealed class PVPService : IPVPService
             if (message?.Type != PVPMessageType.DiscoveryRequest || !IsHost || settings is null)
                 return;
 
+            logger.LogInformation("DiscoveryRequest received from {Address}:{Port}; DiscoveryPort={DiscoveryPort}",
+                endpoint.Address, endpoint.Port, settings.DiscoveryPort);
             string advertisedAddress = GetAdvertisedAddress(endpoint);
             var host = new PVPHostInfo(settings.PlayerName, advertisedAddress, settings.Port,
                 settings.DiscoveryPort, settings.Difficulty, settings.ThemeName, peer is null ? 1 : 2, 2, ProtocolVersion);
             var response = new PVPWireMessage(ProtocolVersion, PVPMessageType.DiscoveryResponse, sessionId, null, host);
             SendUnconnected(discoveryManager!, response, endpoint);
             logger.LogInformation(
-                "PVP discovery response {SourceEndpoint} -> {DestinationEndpoint}; DiscoveryPort={DiscoveryPort}, AdvertisedAddress={AdvertisedAddress}, GamePort={GamePort}, SessionId={SessionId}, ProtocolVersion={ProtocolVersion}",
-                endpoint, endpoint, settings.DiscoveryPort, advertisedAddress, settings.Port, sessionId, ProtocolVersion);
+                "DiscoveryResponse sent to {Address}:{Port}; DiscoveryPort={DiscoveryPort}, AdvertisingHost={AdvertisedAddress}:{GamePort}, SessionId={SessionId}, ProtocolVersion={ProtocolVersion}",
+                endpoint.Address, endpoint.Port, settings.DiscoveryPort, advertisedAddress, settings.Port, sessionId, ProtocolVersion);
         }
         catch (JsonException exception)
         {
@@ -440,12 +473,17 @@ public sealed class PVPService : IPVPService
             switch (message.Type)
             {
                 case PVPMessageType.ConnectionHello when IsHost:
+                    if (message.Player?.Role != PVPPlayerRole.Client ||
+                        string.IsNullOrWhiteSpace(message.Player.Name))
+                        throw new InvalidOperationException("The PVP client handshake is invalid.");
                     break;
                 case PVPMessageType.ConnectionAccepted when !IsHost &&
                     message.SessionId is Guid acceptedSession &&
                     message.Player?.Role == PVPPlayerRole.Host:
                     sessionId = acceptedSession;
                     break;
+                case PVPMessageType.ConnectionAccepted when !IsHost:
+                    throw new InvalidOperationException("The PVP host handshake is invalid.");
                 case PVPMessageType.GameStart when !IsHost && message.GameState is not null:
                     if (message.GameState.SessionId != sessionId)
                         return;
@@ -687,6 +725,32 @@ public sealed class PVPService : IPVPService
         networkManager.SendUnconnectedMessage(writer, endpoint);
     }
 
+    private static IEnumerable<IPAddress> GetDirectedBroadcastAddresses()
+    {
+        foreach (NetworkInterface networkInterface in NetworkInterface.GetAllNetworkInterfaces()
+                     .Where(item => item.OperationalStatus == OperationalStatus.Up &&
+                                    item.NetworkInterfaceType != NetworkInterfaceType.Loopback))
+        {
+            foreach (UnicastIPAddressInformation address in networkInterface.GetIPProperties().UnicastAddresses)
+            {
+                if (address.Address.AddressFamily != AddressFamily.InterNetwork ||
+                    address.IPv4Mask is null ||
+                    IPAddress.IsLoopback(address.Address))
+                    continue;
+
+                byte[] ip = address.Address.GetAddressBytes();
+                byte[] mask = address.IPv4Mask.GetAddressBytes();
+                byte[] broadcast = new byte[4];
+                for (int index = 0; index < broadcast.Length; index++)
+                    broadcast[index] = (byte)(ip[index] | ~mask[index]);
+
+                IPAddress endpoint = new(broadcast);
+                if (!endpoint.Equals(IPAddress.Broadcast))
+                    yield return endpoint;
+            }
+        }
+    }
+
     private async Task WaitForConnectionAsync(CancellationToken cancellationToken)
     {
         DateTime deadline = DateTime.UtcNow.AddSeconds(10);
@@ -731,15 +795,36 @@ public sealed class PVPService : IPVPService
         }
 
         string? fallback = NetworkInterface.GetAllNetworkInterfaces()
-            .Where(networkInterface => networkInterface.OperationalStatus == OperationalStatus.Up)
-            .SelectMany(networkInterface => networkInterface.GetIPProperties().UnicastAddresses)
-            .Select(address => address.Address)
-            .Where(address => address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(address))
-            .OrderBy(address => address.ToString(), StringComparer.Ordinal)
-            .Select(address => address.ToString())
-            .FirstOrDefault();
+            .Where(networkInterface => networkInterface.OperationalStatus == OperationalStatus.Up &&
+                                       networkInterface.NetworkInterfaceType is NetworkInterfaceType.Ethernet or
+                                       NetworkInterfaceType.Wireless80211)
+            .SelectMany(networkInterface => networkInterface.GetIPProperties().UnicastAddresses
+                .Where(address => IsUsableLanAddress(address.Address))
+                .Select(address => (Priority: networkInterface.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ? 0 : 1,
+                                    Address: address.Address)))
+            .OrderBy(item => item.Priority)
+            .ThenBy(item => item.Address.ToString(), StringComparer.Ordinal)
+            .Select(item => item.Address.ToString())
+            .FirstOrDefault()
+            ?? NetworkInterface.GetAllNetworkInterfaces()
+                .Where(networkInterface => networkInterface.OperationalStatus == OperationalStatus.Up)
+                .SelectMany(networkInterface => networkInterface.GetIPProperties().UnicastAddresses)
+                .Select(address => address.Address)
+                .Where(IsUsableLanAddress)
+                .OrderBy(address => address.ToString(), StringComparer.Ordinal)
+                .Select(address => address.ToString())
+                .FirstOrDefault();
 
         return fallback ?? endpoint.Address.ToString();
+    }
+
+    private static bool IsUsableLanAddress(IPAddress address)
+    {
+        if (address.AddressFamily != AddressFamily.InterNetwork || IPAddress.IsLoopback(address))
+            return false;
+
+        byte[] bytes = address.GetAddressBytes();
+        return bytes[0] != 169 || bytes[1] != 254;
     }
 
     private sealed record PVPWireMessage(

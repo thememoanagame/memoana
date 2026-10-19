@@ -12,6 +12,28 @@ namespace MemoAna.UnitTests.Game;
 public sealed class PVPServiceTests
 {
     [Fact]
+    public async Task StartHostRaisesHostStartedOnceAndStartsBothManagers()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        await using var host = CreateService();
+        await using var client = CreateService();
+        int eventCount = 0;
+        host.HostStarted += (_, _) => eventCount++;
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, eventCount);
+        Assert.True(host.IsHost);
+        Assert.NotNull(host.SessionId);
+        Assert.NotEmpty(host.CurrentCards);
+        Assert.False(host.IsConnected);
+        Assert.Equal(port, Assert.Single(await client.DiscoverHostsAsync(
+            discoveryPort, TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken)).Port);
+    }
+
+    [Fact]
     public async Task HostAndClientSynchronizeGameAndAuthoritativeMatch()
     {
         SkipIfBrowser();
@@ -110,6 +132,35 @@ public sealed class PVPServiceTests
         IReadOnlyList<PVPHostInfo> hosts = await client.DiscoverHostsAsync(
             secondDiscoveryPort, TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
         Assert.Equal(secondPort, Assert.Single(hosts).Port);
+    }
+
+    [Fact]
+    public async Task HostStopRaisesPlayerDisconnectedAndClientClearsSession()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        await using var host = CreateService();
+        await using var client = CreateService();
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort),
+            TestContext.Current.CancellationToken);
+        PVPHostInfo discovered = Assert.Single(await client.DiscoverHostsAsync(
+            discoveryPort, TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
+        await client.ConnectAsync(discovered, "Client", TestContext.Current.CancellationToken);
+
+        TaskCompletionSource<bool> disconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.PlayerDisconnected += (_, _) => disconnected.TrySetResult(true);
+        TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.SessionStarted += (_, _) => started.TrySetResult(true);
+        await host.StartGameAsync(TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await host.StopAsync(TestContext.Current.CancellationToken);
+        await disconnected.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.False(client.IsConnected);
+        Assert.False(client.IsGameActive);
+        Assert.Null(client.SessionId);
+        Assert.Empty(client.CurrentCards);
     }
 
     [Fact]

@@ -52,7 +52,7 @@ The Windows-targeted game library and the desktop host/client integration
 harness have been validated with a real LiteNetLib pair, including initial
 state synchronization and mismatch resolution. The MAUI Windows DeviceRunners
 host executes the complete unit-test suite, including the LiteNetLib tests;
-the current run completed with 26 passed tests and no failures or skips.
+the current run completed with 28 passed tests and no failures or skips.
 
 Physical Windows-to-Android and Android-to-Windows LAN validation still
 requires an ADB-authorized Android device and separately controlled app
