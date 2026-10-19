@@ -12,6 +12,8 @@ using MemoAna.Game.Models;
 using MemoAna.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using MemoAna.Common.Enums;
+using Plugin.Maui.Audio;
+using Microsoft.Extensions.Logging;
 
 namespace MemoAna.Common.Extensions;
 
@@ -29,6 +31,8 @@ public static class MauiAppBuilderExtensions
             });
 #if DEBUG
             builder.Logging.AddDebug();
+#else
+            builder.Logging.AddConsole();
 #endif
 #if ANDROID
             builder.Services.AddTransient<IPlatformService, PlatformService>((sp) => new PlatformService(MauiPlatform.Android));
@@ -44,7 +48,7 @@ public static class MauiAppBuilderExtensions
             builder.Services.AddTransient<IPlatformService, PlatformService>((sp) => new PlatformService(MauiPlatform.Windows));
 #endif
             builder.Services.AddLocalization(options => options.ResourcesPath = "Resources/Localization");
-            builder.Services.AddSingleton<ILocalizer, Localizer>();
+            builder.Services.AddSingleton(typeof(ILocalizer<>), typeof(Localizer<>));
             
             return builder.AddInfrastructure()
                 .AddApplication()

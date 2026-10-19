@@ -54,7 +54,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
     public int AISuccessfulMoves => _aiPairs;
     public int PlayerMistakes => _mistakes;
     public int AIMistakes => _aiMistakes;
-    public ObservableCollection<KeyValuePair<int, MemoryCard>> CurrentCards { get; } = [];
+    public System.Collections.ObjectModel.ObservableCollection<KeyValuePair<int, MemoryCard>> CurrentCards { get; } = [];
     public TimeSpan RemainingTime { get; private set; }
     public bool IsGameActive { get; private set; }
     public event EventHandler<GameStatisticsEventArgs>? GameFinished;

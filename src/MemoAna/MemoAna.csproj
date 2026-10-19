@@ -80,7 +80,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LiteNetLib" Version="2.1.4" />
+    <ProjectReference Include="..\MemoAna.Game\MemoAna.Game.csproj" />
+   
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.90" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.90" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.11" />
@@ -109,6 +110,8 @@
     <Using Include="Plugin.Maui.Audio" />
     <Using Include="System.Collections.ObjectModel" />
   </ItemGroup>
+
+
 
   <ItemGroup>
     <MauiImage Include="wwwroot\images\back.png">

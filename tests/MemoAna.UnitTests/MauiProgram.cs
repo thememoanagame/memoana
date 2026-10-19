@@ -14,6 +14,12 @@ public static class MauiProgram
 			.UseVisualTestRunner(conf => conf
 				.AddCliConfiguration()     // Reads config from DeviceRunners CLI or dotnet test
 				.AddConsoleResultChannel()
+				.AddTcpResultChannel(new TcpResultChannelOptions()
+				{
+					HostName = "127.0.0.1",
+					Port = 9090,
+					Timeout = TimeSpan.FromSeconds(150)
+				})
 				.AddTestAssembly(typeof(MauiProgram).Assembly)
 				.AddXunit3());
 #if DEBUG

@@ -85,7 +85,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\src\MemoAna\MemoAna.csproj" />
+	  <!-- <ProjectReference Include="..\..\src\MemoAna\MemoAna.csproj" /> -->
+	  <ProjectReference Include="..\..\src\MemoAna.Game\MemoAna.Game.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 ﻿namespace MemoAna.Common.Abstract.Localization;
 
-public interface ILocalizer
+public interface ILocalizer<T>
 {
     string this[string key] { get; }
 }

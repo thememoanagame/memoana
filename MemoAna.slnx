@@ -24,4 +24,7 @@
     <Project Path="tests/MemoAna.UITests/MemoAna.UITests.csproj" />
     <Project Path="tests/MemoAna.UnitTests/MemoAna.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/MemoAna.Game/MemoAna.Game.csproj" />
+  </Folder>
 </Solution>
