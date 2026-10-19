@@ -53,5 +53,7 @@
 	</dict>
 	<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>MemoAna precisa de acesso à rede local para encontrar salas e permitir partidas multijogador PVP entre dispositivos na mesma rede.</string>
 </dict>
 </plist>

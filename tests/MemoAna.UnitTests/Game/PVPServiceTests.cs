@@ -1,7 +1,11 @@
 using System.Linq.Expressions;
 using MemoAna.Common.Abstract.Repositories;
+using MemoAna.Common.Abstract.Services;
 using MemoAna.Common.Entities;
+using MemoAna.Common.Enums;
+using MemoAna.Common.Exceptions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Maui.ApplicationModel;
 using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Dtos;
 using MemoAna.Game.Entities;
@@ -218,8 +222,186 @@ public sealed class PVPServiceTests
         Assert.All(repository.Items, item => Assert.Equal(MemoAna.Game.Enums.GameMode.PVP, item.GameMode));
     }
 
-    private static PVPService CreateService(IRepository<GameStatisticsEntity>? repository = null) =>
-        new(new FakeThemeService(), NullLogger<PVPService>.Instance, repository);
+    [Fact]
+    public async Task StartHostAsync_RequestsAndEnsuresLocalNetworkBeforeSocket()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        var permission = new FakePermissionService { StatusToReturn = PermissionStatus.Granted };
+        await using var host = CreateService(permissionService: permission);
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort), TestContext.Current.CancellationToken);
+
+        Assert.Contains(AppPermission.LocalNetwork, permission.EnsureGrantedCalls);
+        Assert.True(host.IsHost);
+    }
+
+    [Fact]
+    public async Task DiscoverHostsAsync_RequestsAndEnsuresLocalNetworkBeforeDiscovery()
+    {
+        SkipIfBrowser();
+        (int _, int discoveryPort) = GetFreePortPair();
+        var permission = new FakePermissionService { StatusToReturn = PermissionStatus.Granted };
+        await using var client = CreateService(permissionService: permission);
+
+        IReadOnlyList<PVPHostInfo> hosts = await client.DiscoverHostsAsync(
+            discoveryPort, TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
+
+        Assert.Contains(AppPermission.LocalNetwork, permission.EnsureGrantedCalls);
+        Assert.NotNull(hosts);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_RequestsAndEnsuresLocalNetworkBeforeConnection()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        await using var host = CreateService();
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort), TestContext.Current.CancellationToken);
+
+        var permission = new FakePermissionService { StatusToReturn = PermissionStatus.Granted };
+        await using var client = CreateService(permissionService: permission);
+        var hostInfo = new PVPHostInfo("Host", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1");
+
+        await client.ConnectAsync(hostInfo, "Client", TestContext.Current.CancellationToken);
+
+        Assert.Contains(AppPermission.LocalNetwork, permission.EnsureGrantedCalls);
+        Assert.True(client.IsConnected);
+    }
+
+    [Fact]
+    public async Task StartHostAsync_WhenPermissionDenied_DoesNotStartSocketAndThrowsException()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        var permission = new FakePermissionService
+        {
+            StatusToReturn = PermissionStatus.Denied,
+            RequestStatusToReturn = PermissionStatus.Denied
+        };
+        await using var host = CreateService(permissionService: permission);
+
+        PVPErrorEventArgs? errorEvent = null;
+        host.Error += (_, e) => errorEvent = e;
+
+        var ex = await Assert.ThrowsAsync<PermissionDeniedException>(() =>
+            host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort), TestContext.Current.CancellationToken));
+
+        Assert.Equal(AppPermission.LocalNetwork, ex.Permission);
+        Assert.Equal(PermissionStatus.Denied, ex.Status);
+        Assert.Null(host.SessionId);
+        Assert.False(host.IsGameActive);
+        Assert.False(host.IsConnected);
+        Assert.Empty(host.CurrentCards);
+        Assert.NotNull(errorEvent);
+    }
+
+    [Fact]
+    public async Task DiscoverHostsAsync_WhenPermissionDenied_DoesNotStartDiscoveryAndThrowsException()
+    {
+        SkipIfBrowser();
+        (int _, int discoveryPort) = GetFreePortPair();
+        var permission = new FakePermissionService
+        {
+            StatusToReturn = PermissionStatus.Denied,
+            RequestStatusToReturn = PermissionStatus.Denied
+        };
+        await using var client = CreateService(permissionService: permission);
+
+        PVPErrorEventArgs? errorEvent = null;
+        client.Error += (_, e) => errorEvent = e;
+
+        var ex = await Assert.ThrowsAsync<PermissionDeniedException>(() =>
+            client.DiscoverHostsAsync(discoveryPort, TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken));
+
+        Assert.Equal(AppPermission.LocalNetwork, ex.Permission);
+        Assert.Equal(PermissionStatus.Denied, ex.Status);
+        Assert.NotNull(errorEvent);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenPermissionDenied_DoesNotStartConnectionAndThrowsException()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        var permission = new FakePermissionService
+        {
+            StatusToReturn = PermissionStatus.Denied,
+            RequestStatusToReturn = PermissionStatus.Denied
+        };
+        await using var client = CreateService(permissionService: permission);
+        var hostInfo = new PVPHostInfo("Host", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1");
+
+        PVPErrorEventArgs? errorEvent = null;
+        client.Error += (_, e) => errorEvent = e;
+
+        var ex = await Assert.ThrowsAsync<PermissionDeniedException>(() =>
+            client.ConnectAsync(hostInfo, "Client", TestContext.Current.CancellationToken));
+
+        Assert.Equal(AppPermission.LocalNetwork, ex.Permission);
+        Assert.Equal(PermissionStatus.Denied, ex.Status);
+        Assert.False(client.IsConnected);
+        Assert.NotNull(errorEvent);
+    }
+
+    [Fact]
+    public async Task Pvp_WhenPermissionAlreadyGranted_DoesNotRequestAgain()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        var permission = new FakePermissionService
+        {
+            StatusToReturn = PermissionStatus.Granted,
+            RequestStatusToReturn = PermissionStatus.Granted
+        };
+        await using var host = CreateService(permissionService: permission);
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort), TestContext.Current.CancellationToken);
+
+        Assert.Contains(AppPermission.LocalNetwork, permission.EnsureGrantedCalls);
+        Assert.Empty(permission.RequestCalls);
+    }
+
+    private static PVPService CreateService(
+        IRepository<GameStatisticsEntity>? repository = null,
+        IPermissionService? permissionService = null) =>
+        new(new FakeThemeService(), NullLogger<PVPService>.Instance, permissionService ?? new FakePermissionService(), repository);
+
+    private sealed class FakePermissionService : IPermissionService
+    {
+        public PermissionStatus StatusToReturn { get; set; } = PermissionStatus.Granted;
+        public PermissionStatus RequestStatusToReturn { get; set; } = PermissionStatus.Granted;
+        public List<AppPermission> EnsureGrantedCalls { get; } = [];
+        public List<AppPermission> CheckStatusCalls { get; } = [];
+        public List<AppPermission> RequestCalls { get; } = [];
+
+        public Task<PermissionStatus> CheckStatusAsync(AppPermission permission, CancellationToken cancellationToken = default)
+        {
+            CheckStatusCalls.Add(permission);
+            return Task.FromResult(StatusToReturn);
+        }
+
+        public Task<PermissionStatus> RequestAsync(AppPermission permission, CancellationToken cancellationToken = default)
+        {
+            RequestCalls.Add(permission);
+            return Task.FromResult(RequestStatusToReturn);
+        }
+
+        public Task<PermissionStatus> EnsureGrantedAsync(AppPermission permission, CancellationToken cancellationToken = default)
+        {
+            EnsureGrantedCalls.Add(permission);
+            if (StatusToReturn == PermissionStatus.Granted)
+                return Task.FromResult(PermissionStatus.Granted);
+
+            RequestCalls.Add(permission);
+            return Task.FromResult(RequestStatusToReturn);
+        }
+
+        public Task<bool> IsGrantedAsync(AppPermission permission, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(StatusToReturn == PermissionStatus.Granted);
+        }
+    }
 
     private static (int Port, int DiscoveryPort) GetFreePortPair()
     {
@@ -238,7 +420,7 @@ public sealed class PVPServiceTests
 
     private sealed class FakeThemeService : IThemeService
     {
-        public Task<IReadOnlyCollection<CardThemeManifestDto>> GetThemesAsync() =>
+        public Task<IReadOnlyCollection<CardThemeManifestDto>> GetThemesAsync(bool include = false) =>
             Task.FromResult<IReadOnlyCollection<CardThemeManifestDto>>([]);
 
         public Task<CardThemeDto> GetThemeAsync(string themeName) =>
