@@ -591,6 +591,7 @@
             pvp.SessionStarted -= OnPvpSessionStarted;
             pvp.CardChanged -= OnPvpCardChanged;
             pvp.TurnChanged -= OnPvpTurnChanged;
+        pvp.HostStarted -= OnHostStarted;
             pvp.Connected -= OnPvpConnected;
             pvp.Error -= OnPvpError;
             pvp.HostDiscovered -= OnHostDiscovered;
@@ -721,7 +722,7 @@
         _pvpEventsAttached = true;
     }
 
-    private void OnHostStarted(object sender, EventArgs e)
+    private void OnHostStarted(object? sender, EventArgs e)
     {
         
     }
