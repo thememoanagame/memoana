@@ -1,0 +1,10 @@
+{
+  "contentHash": "87884bb867b0575e6abc1cddfd30ab13cf244388cc14c1f996b2e6c7567c14fc",
+  "resolvedCommit": "6fc5fbca95489c6ac01f281795324fefb0746304",
+  "name": "maui-accessibility",
+  "commit": "a90865a2da0513b3f16c5317e455af7c12566d5c",
+  "branch": "main",
+  "updatedAt": "2026-10-19T01:34:12.8671914Z",
+  "source": "dotnet/maui-labs",
+  "pluginPath": "plugins/dotnet-maui/skills/maui-accessibility"
+}
