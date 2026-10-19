@@ -40,6 +40,8 @@ public partial class GameDbContext(DbContextOptions<GameDbContext> options) : Db
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.ThemeName).IsRequired();
+            entity.Property(e => e.PlayerName).IsRequired();
+            entity.Property(e => e.GameMode).IsRequired();
             entity.Property(e => e.Difficulty).IsRequired();
             entity.Property(e => e.PlayedAt).IsRequired();
             entity.Property(e => e.IsVictory).IsRequired();

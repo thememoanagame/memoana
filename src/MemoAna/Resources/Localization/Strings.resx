@@ -173,4 +173,11 @@
     <value>Voltar</value>
     <comment>Botao voltar</comment>
   </data>
+  <data name="PlayerName" xml:space="preserve"><value>Nome do jogador</value></data>
+  <data name="PlayerNameRequired" xml:space="preserve"><value>Informe o nome do jogador.</value></data>
+  <data name="Player" xml:space="preserve"><value>Jogador</value></data>
+  <data name="Score" xml:space="preserve"><value>Pontos</value></data>
+  <data name="Hits" xml:space="preserve"><value>Acertos</value></data>
+  <data name="Misses" xml:space="preserve"><value>Erros</value></data>
+  <data name="Moves" xml:space="preserve"><value>Movimentos</value></data>
 </root>

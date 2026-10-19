@@ -104,7 +104,11 @@
     {
         <div class="pvp-lobby">
             <MudText Class="selection-title">PVP</MudText>
-            <MudButton Class="game-action-button" data-testid="create-pvp-room" OnClick="StartPvpHostAsync" Disabled="@PvpBusy">CRIAR SALA</MudButton>
+            <MudTextField T="string" Label='@Localizer["PlayerName"]' @bind-Value="PlayerName"
+                          Required="true" RequiredError='@Localizer["PlayerNameRequired"]'
+                          Immediate="true" Variant="Variant.Outlined" Class="pvp-player-name"
+                          data-testid="pvp-player-name" />
+            <MudButton Class="game-action-button" data-testid="create-pvp-room" OnClick="StartPvpHostAsync" Disabled="@(PvpBusy || string.IsNullOrWhiteSpace(PlayerName))">CRIAR SALA</MudButton>
             <MudButton Class="game-action-button" data-testid="discover-pvp-rooms" OnClick="DiscoverPvpHostsAsync" Disabled="@PvpBusy">PROCURAR SALAS</MudButton>
             @if (pvp.IsHost && pvp.IsConnected)
             {
@@ -179,6 +183,27 @@
             }
         </div>
     }
+    else if (IsGameFinished && IsPvpMode)
+    {
+        <div class="statistics-container pvp-statistics-container">
+            <MudText Class="victory-text">@IsVictory</MudText>
+            <table class="pvp-statistics-table" data-testid="pvp-statistics">
+                <thead>
+                    <tr><th>@Localizer["Player"]</th><th>@Localizer["Score"]</th><th>@Localizer["Hits"]</th><th>@Localizer["Misses"]</th><th>@Localizer["Moves"]</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (PVPPlayerStatistics player in PvpStatistics)
+                    {
+                        <tr data-testid="pvp-statistics-row"><td>@player.Name</td><td>@player.Score</td><td>@player.Hits</td><td>@player.Misses</td><td>@player.TotalMoves</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="game-actions">
+            <MudButton Class="game-action-button" OnClick="GoToMain">INICIO</MudButton>
+            <MudButton Class="game-action-button game-action-repeat" OnClick="RestartGame">REPETIR</MudButton>
+        </div>
+    }
     else if (IsGameFinished)
     {
         <div class="statistics-container">
@@ -206,7 +231,7 @@
                 }
                 else
                 {
-                    <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
+                    <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.TotalMoves</MudText>
                 }
                 <MudText Class="statistic-label">ERROS</MudText>
                 @if (game.CurrentMode == GameMode.IA)
@@ -290,12 +315,14 @@
 
     private string? Difficulty { get; set; }
     private string Mode { get; set; } = "1";
+    private string PlayerName { get; set; } = string.Empty;
 
     private CardThemeManifestDto? SelectedTheme { get; set; }
     private ObservableCollection<CardThemeManifestDto> Themes { get; } = [];
     private ObservableCollection<KeyValuePair<int, MemoryCard>> Cards { get; } = [];
 
     private GameStatisticsDto Statistics { get; set; } = GameStatisticsDto.Default;
+    private IReadOnlyList<PVPPlayerStatistics> PvpStatistics { get; set; } = [];
     private bool _eventsAttached;
     private bool _pvpEventsAttached;
     private int _renderScheduled;
@@ -384,6 +411,7 @@
         IsGameFinished = false;
         IsVictory = string.Empty;
         Statistics = GameStatisticsDto.Default;
+        PvpStatistics = [];
         Cards.Clear();
         IsBusy = true;
         // The event handler will complete here, and Blazor will implicitly trigger StateHasChanged()
@@ -621,7 +649,7 @@
 
     private async Task StartPvpHostAsync()
     {
-        if (SelectedTheme is null || !int.TryParse(Difficulty, out int difficulty))
+        if (SelectedTheme is null || !int.TryParse(Difficulty, out int difficulty) || string.IsNullOrWhiteSpace(PlayerName))
             return;
 
         try
@@ -629,7 +657,7 @@
             PvpBusy = true;
             PvpStatus = "Sala criada. Aguardando jogador...";
             AttachPvpEvents();
-            await pvp.StartHostAsync(new PVPGameSettings(difficulty, SelectedTheme.ThemeName, "Player"));
+            await pvp.StartHostAsync(new PVPGameSettings(difficulty, SelectedTheme.ThemeName, PlayerName.Trim()));
         }
         catch (Exception exception)
         {
@@ -679,7 +707,12 @@
         {
             PvpBusy = true;
             PvpStatus = "Conectando...";
-            await pvp.ConnectAsync(host, "Player");
+            if (string.IsNullOrWhiteSpace(PlayerName))
+            {
+                PvpStatus = Localizer["PlayerNameRequired"];
+                return;
+            }
+            await pvp.ConnectAsync(host, PlayerName.Trim());
         }
         catch (Exception exception)
         {
@@ -800,6 +833,7 @@
     {
         IsGameActive = false;
         IsGameFinished = true;
+        PvpStatistics = e.Result.Statistics ?? [pvp.LocalStatistics, pvp.RemoteStatistics];
         IsVictory = (e.Result.Winner == pvp.LocalRole) ? "+1 CONQUISTA!" : "DERROTA!";
         _ = InvokeAsync(StateHasChanged);
     }
@@ -1013,6 +1047,34 @@
         gap: 14px;
         padding: 24px;
         overflow-y: auto;
+    }
+
+    .pvp-player-name {
+        width: min(360px, 80vw);
+    }
+
+    .pvp-statistics-container {
+        min-width: min(760px, 90vw);
+    }
+
+    .pvp-statistics-table {
+        width: 100%;
+        margin-top: 24px;
+        border-collapse: collapse;
+        font-family: Bangpop;
+        color: saddlebrown;
+    }
+
+    .pvp-statistics-table th,
+    .pvp-statistics-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(139, 69, 19, 0.35);
+        text-align: right;
+    }
+
+    .pvp-statistics-table th:first-child,
+    .pvp-statistics-table td:first-child {
+        text-align: left;
     }
 
     .game-header {

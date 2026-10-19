@@ -5,9 +5,12 @@ using System.Net.Sockets;
 using System.Text.Json;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using MemoAna.Common.Abstract.Repositories;
+using MemoAna.Game.Entities;
 using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Core;
 using MemoAna.Game.Dtos;
+using MemoAna.Game.Enums;
 using MemoAna.Game.Models;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +22,7 @@ public sealed class PVPService : IPVPService
     private const int DefaultPort = 35678;
     private const int DefaultDiscoveryPort = 35679;
     private readonly IThemeService themeService;
+    private readonly IRepository<GameStatisticsEntity>? statisticsRepository;
     private readonly ILogger<PVPService> logger;
     private readonly SemaphoreSlim stateGate = new(1, 1);
     private CancellationTokenSource operationCts = new();
@@ -37,14 +41,30 @@ public sealed class PVPService : IPVPService
     private PVPPlayerRole currentTurn;
     private int hostScore;
     private int clientScore;
+    private string hostPlayerName = "Host";
+    private string clientPlayerName = "Client";
+    private int hostHits;
+    private int hostMisses;
+    private int hostMoves;
+    private int clientHits;
+    private int clientMisses;
+    private int clientMoves;
+    private int hostStreak;
+    private int clientStreak;
+    private Guid? finishedSessionId;
     private int firstPosition = -1;
     private int secondPosition = -1;
     private bool mismatchPending;
+    private PVPPlayerRole currentMovePlayer;
 
-    public PVPService(IThemeService themeService, ILogger<PVPService> logger)
+    public PVPService(
+        IThemeService themeService,
+        ILogger<PVPService> logger,
+        IRepository<GameStatisticsEntity>? statisticsRepository = null)
     {
         this.themeService = themeService;
         this.logger = logger;
+        this.statisticsRepository = statisticsRepository;
     }
 
     public IReadOnlyList<KeyValuePair<int, MemoryCard>> CurrentCards => cards;
@@ -55,8 +75,12 @@ public sealed class PVPService : IPVPService
     public bool IsConnected => peer?.ConnectionState == ConnectionState.Connected;
     public bool IsGameActive { get; private set; }
     public bool IsLocalTurn => IsGameActive && CurrentTurn == LocalRole;
+    public string LocalPlayerName => IsHost ? hostPlayerName : clientPlayerName;
+    public string RemotePlayerName => IsHost ? clientPlayerName : hostPlayerName;
     public int LocalScore => IsHost ? hostScore : clientScore;
     public int RemoteScore => IsHost ? clientScore : hostScore;
+    public PVPPlayerStatistics LocalStatistics => GetStatistics(LocalRole);
+    public PVPPlayerStatistics RemoteStatistics => GetStatistics(IsHost ? PVPPlayerRole.Client : PVPPlayerRole.Host);
 
     public event EventHandler? HostStarted;
     public event EventHandler? Connected;
@@ -71,6 +95,7 @@ public sealed class PVPService : IPVPService
     public async Task StartHostAsync(PVPGameSettings hostSettings, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(hostSettings.ThemeName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(hostSettings.PlayerName);
         await StopAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -80,6 +105,9 @@ public sealed class PVPService : IPVPService
             DiscoveryPort = hostSettings.DiscoveryPort == 0 ? DefaultDiscoveryPort : hostSettings.DiscoveryPort
         };
         localRole = PVPPlayerRole.Host;
+        hostPlayerName = hostSettings.PlayerName.Trim();
+        clientPlayerName = "Client";
+        ResetStatistics();
         sessionId = Guid.NewGuid();
         await CreateBoardAsync(settings, cancellationToken);
         StartGameManager(settings.Port);
@@ -183,9 +211,13 @@ public sealed class PVPService : IPVPService
     public async Task ConnectAsync(PVPHostInfo host, string playerName, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(host.Address);
+        ArgumentException.ThrowIfNullOrWhiteSpace(playerName);
         await StopAsync(cancellationToken);
         settings = new PVPGameSettings(host.Difficulty, host.ThemeName, playerName, host.Port, host.DiscoveryPort);
         localRole = PVPPlayerRole.Client;
+        clientPlayerName = playerName.Trim();
+        hostPlayerName = string.IsNullOrWhiteSpace(host.HostName) ? "Host" : host.HostName;
+        ResetStatistics();
         sessionId = Guid.Empty;
         StartGameManager(0);
         StartNetworkLoop();
@@ -243,7 +275,7 @@ public sealed class PVPService : IPVPService
                 return;
 
             if (IsHost)
-                ApplyAuthoritativeFlip(position, PVPPlayerRole.Host);
+                await ApplyAuthoritativeFlipAsync(position, PVPPlayerRole.Host);
             else
                 Send(new PVPWireMessage(ProtocolVersion, PVPMessageType.CardFlipRequest, sessionId, null,
                     new PVPCardMove(position, CurrentTurn)));
@@ -294,10 +326,15 @@ public sealed class PVPService : IPVPService
         cards.Clear();
         hostScore = 0;
         clientScore = 0;
+        hostPlayerName = "Host";
+        clientPlayerName = "Client";
+        ResetStatistics();
+        finishedSessionId = null;
         currentTurn = default;
         firstPosition = -1;
         secondPosition = -1;
         mismatchPending = false;
+        currentMovePlayer = default;
     }
 
     public async ValueTask DisposeAsync()
@@ -476,11 +513,13 @@ public sealed class PVPService : IPVPService
                     if (message.Player?.Role != PVPPlayerRole.Client ||
                         string.IsNullOrWhiteSpace(message.Player.Name))
                         throw new InvalidOperationException("The PVP client handshake is invalid.");
+                    clientPlayerName = message.Player.Name.Trim();
                     break;
                 case PVPMessageType.ConnectionAccepted when !IsHost &&
                     message.SessionId is Guid acceptedSession &&
                     message.Player?.Role == PVPPlayerRole.Host:
                     sessionId = acceptedSession;
+                    hostPlayerName = message.Player.Name.Trim();
                     break;
                 case PVPMessageType.ConnectionAccepted when !IsHost:
                     throw new InvalidOperationException("The PVP host handshake is invalid.");
@@ -493,7 +532,7 @@ public sealed class PVPService : IPVPService
                 case PVPMessageType.CardFlipRequest when IsHost && message.CardMove is not null:
                     if (message.CardMove.Player == PVPPlayerRole.Client &&
                         currentTurn == PVPPlayerRole.Client)
-                        ApplyAuthoritativeFlip(message.CardMove.Position, PVPPlayerRole.Client);
+                        await ApplyAuthoritativeFlipAsync(message.CardMove.Position, PVPPlayerRole.Client);
                     break;
                 case PVPMessageType.CardFlipped when !IsHost && message.CardMove is not null:
                     ApplyRemoteFlip(message.CardMove.Position, message.CardMove.Player);
@@ -504,6 +543,7 @@ public sealed class PVPService : IPVPService
                 case PVPMessageType.GameFinished when !IsHost && message.Result is not null &&
                     message.Result.SessionId == sessionId:
                     IsGameActive = false;
+                    ApplyResultStatistics(message.Result);
                     GameFinished?.Invoke(this, new(message.Result));
                     break;
             }
@@ -514,7 +554,7 @@ public sealed class PVPService : IPVPService
         }
     }
 
-    private void ApplyAuthoritativeFlip(int position, PVPPlayerRole player)
+    private async Task ApplyAuthoritativeFlipAsync(int position, PVPPlayerRole player)
     {
         KeyValuePair<int, MemoryCard>? entry = cards.FirstOrDefault(card => card.Key == position);
         if (entry is null || entry.Value.Value.IsMatched || entry.Value.Value.IsFaceUp)
@@ -522,30 +562,35 @@ public sealed class PVPService : IPVPService
 
         entry.Value.Value.IsFaceUp = true;
         if (firstPosition < 0)
+        {
             firstPosition = position;
+            currentMovePlayer = player;
+        }
         else
             secondPosition = position;
         var move = new PVPCardMove(position, player);
         Send(new PVPWireMessage(ProtocolVersion, PVPMessageType.CardFlipped, sessionId, null, move));
         CardChanged?.Invoke(this, new(position, player, false));
         if (secondPosition >= 0)
-            ResolveAuthoritativeTurn(player);
+            await ResolveAuthoritativeTurnAsync(player);
     }
 
-    private void ResolveAuthoritativeTurn(PVPPlayerRole player)
+    private async Task ResolveAuthoritativeTurnAsync(PVPPlayerRole player)
     {
         MemoryCard first = cards.First(card => card.Key == firstPosition).Value;
         MemoryCard second = cards.First(card => card.Key == secondPosition).Value;
         bool matched = first.PairId == second.PairId;
+        IncrementMove(player);
         if (matched)
         {
             first.IsMatched = true;
             second.IsMatched = true;
-            if (player == PVPPlayerRole.Host) hostScore++; else clientScore++;
+            IncrementHit(player);
         }
         else
         {
             mismatchPending = true;
+            IncrementMiss(player);
         }
 
         CardChanged?.Invoke(this, new(firstPosition, player, matched));
@@ -563,8 +608,10 @@ public sealed class PVPService : IPVPService
             IsGameActive = false;
             var result = new PVPGameResult(sessionId,
                 hostScore == clientScore ? player : hostScore > clientScore ? PVPPlayerRole.Host : PVPPlayerRole.Client,
-                hostScore, clientScore);
+                hostScore, clientScore, settings?.ThemeName ?? string.Empty,
+                settings?.Difficulty ?? 0, DateTime.UtcNow, [GetStatistics(PVPPlayerRole.Host), GetStatistics(PVPPlayerRole.Client)]);
             Send(new PVPWireMessage(ProtocolVersion, PVPMessageType.GameFinished, sessionId, null, result));
+            await PersistStatisticsAsync(result);
             GameFinished?.Invoke(this, new(result));
         }
         else if (!matched)
@@ -583,7 +630,10 @@ public sealed class PVPService : IPVPService
             return;
         cards.First(card => card.Key == position).Value.IsFaceUp = true;
         if (firstPosition < 0)
+        {
             firstPosition = position;
+            currentMovePlayer = player;
+        }
         else
             secondPosition = position;
         CardChanged?.Invoke(this, new(position, player, false));
@@ -603,11 +653,17 @@ public sealed class PVPService : IPVPService
         second.IsMatched = resolution.Matched;
         if (!resolution.Matched)
             mismatchPending = true;
+        IncrementMove(currentMovePlayer);
+        if (resolution.Matched)
+            IncrementHit(currentMovePlayer);
+        else
+            IncrementMiss(currentMovePlayer);
         hostScore = resolution.HostScore;
         clientScore = resolution.ClientScore;
         currentTurn = resolution.NextTurn;
         firstPosition = -1;
         secondPosition = -1;
+        currentMovePlayer = default;
         PublishState(TurnChanged);
         if (!resolution.Matched)
             _ = HideMismatchAsync(resolution.FirstPosition, resolution.SecondPosition, sessionId);
@@ -701,6 +757,113 @@ public sealed class PVPService : IPVPService
             int.TryParse(card.Value.PairId, out int imageIndex) ? imageIndex : card.Value.Id,
             card.Value.IsFaceUp,
             card.Value.IsMatched)).ToList();
+
+    private void ResetStatistics()
+    {
+        hostScore = 0;
+        clientScore = 0;
+        hostHits = 0;
+        hostMisses = 0;
+        hostMoves = 0;
+        clientHits = 0;
+        clientMisses = 0;
+        clientMoves = 0;
+        hostStreak = 0;
+        clientStreak = 0;
+        finishedSessionId = null;
+    }
+
+    private void IncrementMove(PVPPlayerRole player)
+    {
+        if (player == PVPPlayerRole.Host)
+            hostMoves++;
+        else
+            clientMoves++;
+    }
+
+    private void IncrementHit(PVPPlayerRole player)
+    {
+        if (player == PVPPlayerRole.Host)
+        {
+            hostHits++;
+            hostStreak++;
+            hostScore = (hostScore + 1) * hostStreak;
+        }
+        else
+        {
+            clientHits++;
+            clientStreak++;
+            clientScore = (clientScore + 1) * clientStreak;
+        }
+    }
+
+    private void IncrementMiss(PVPPlayerRole player)
+    {
+        if (player == PVPPlayerRole.Host)
+        {
+            hostMisses++;
+            hostStreak = 0;
+        }
+        else
+        {
+            clientMisses++;
+            clientStreak = 0;
+        }
+    }
+
+    private PVPPlayerStatistics GetStatistics(PVPPlayerRole role) => role == PVPPlayerRole.Host
+        ? new(role, hostPlayerName, hostScore, hostHits, hostMisses, hostMoves)
+        : new(role, clientPlayerName, clientScore, clientHits, clientMisses, clientMoves);
+
+    private void ApplyResultStatistics(PVPGameResult result)
+    {
+        if (result.Statistics is null)
+            return;
+
+        foreach (PVPPlayerStatistics statistics in result.Statistics)
+        {
+            if (statistics.Role == PVPPlayerRole.Host)
+            {
+                hostPlayerName = statistics.Name;
+                hostScore = statistics.Score;
+                hostHits = statistics.Hits;
+                hostMisses = statistics.Misses;
+                hostMoves = statistics.TotalMoves;
+            }
+            else
+            {
+                clientPlayerName = statistics.Name;
+                clientScore = statistics.Score;
+                clientHits = statistics.Hits;
+                clientMisses = statistics.Misses;
+                clientMoves = statistics.TotalMoves;
+            }
+        }
+    }
+
+    private async Task PersistStatisticsAsync(PVPGameResult result)
+    {
+        if (statisticsRepository is null || finishedSessionId == result.SessionId || result.Statistics is null)
+            return;
+
+        finishedSessionId = result.SessionId;
+        foreach (PVPPlayerStatistics player in result.Statistics)
+        {
+            await statisticsRepository.AddAsync(new GameStatisticsEntity
+            {
+                ThemeName = result.ThemeName,
+                Difficulty = (GameDifficulty)result.Difficulty,
+                GameMode = GameMode.PVP,
+                PlayerName = player.Name,
+                IsVictory = player.Role == result.Winner,
+                TotalMoves = player.TotalMoves,
+                SuccessfulMoves = player.Hits,
+                Mistakes = player.Misses,
+                FinalScore = player.FinalScore,
+                PlayedAt = result.PlayedAt == default ? DateTime.UtcNow : result.PlayedAt
+            }, CancellationToken.None);
+        }
+    }
 
     private void Send(PVPWireMessage message)
     {

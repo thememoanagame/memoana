@@ -142,4 +142,11 @@
   <data name="Back" xml:space="preserve">
     <value>Back</value>
   </data>
+  <data name="PlayerName" xml:space="preserve"><value>Player name</value></data>
+  <data name="PlayerNameRequired" xml:space="preserve"><value>Enter the player name.</value></data>
+  <data name="Player" xml:space="preserve"><value>Player</value></data>
+  <data name="Score" xml:space="preserve"><value>Score</value></data>
+  <data name="Hits" xml:space="preserve"><value>Hits</value></data>
+  <data name="Misses" xml:space="preserve"><value>Misses</value></data>
+  <data name="Moves" xml:space="preserve"><value>Moves</value></data>
 </root>

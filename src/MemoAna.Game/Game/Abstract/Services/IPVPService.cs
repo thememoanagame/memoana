@@ -13,8 +13,12 @@ public interface IPVPService : IAsyncDisposable
     bool IsConnected { get; }
     bool IsGameActive { get; }
     bool IsLocalTurn { get; }
+    string LocalPlayerName { get; }
+    string RemotePlayerName { get; }
     int LocalScore { get; }
     int RemoteScore { get; }
+    PVPPlayerStatistics LocalStatistics { get; }
+    PVPPlayerStatistics RemoteStatistics { get; }
 
     event EventHandler? HostStarted;
     event EventHandler? Connected;

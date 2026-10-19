@@ -60,7 +60,22 @@ public sealed record PVPGameResult(
     Guid SessionId,
     PVPPlayerRole Winner,
     int HostScore,
-    int ClientScore);
+    int ClientScore,
+    string ThemeName = "",
+    int Difficulty = 0,
+    DateTime PlayedAt = default,
+    IReadOnlyList<PVPPlayerStatistics>? Statistics = null);
+
+public sealed record PVPPlayerStatistics(
+    PVPPlayerRole Role,
+    string Name,
+    int Score,
+    int Hits,
+    int Misses,
+    int TotalMoves)
+{
+    public int FinalScore => Score;
+}
 
 public sealed class PVPStateChangedEventArgs : System.EventArgs
 {

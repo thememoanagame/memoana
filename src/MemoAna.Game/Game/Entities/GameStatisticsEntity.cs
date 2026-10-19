@@ -7,6 +7,8 @@ namespace MemoAna.Game.Entities;
 public sealed class GameStatisticsEntity : EntityBase
 {
     public string ThemeName { get; set; } = string.Empty;
+    public string PlayerName { get; set; } = "Player";
+    public GameMode GameMode { get; set; } = GameMode.TimeAttack;
     public GameDifficulty Difficulty { get; set; }
     public DateTime PlayedAt { get; set; }
     public bool IsVictory { get; set; }

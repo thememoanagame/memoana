@@ -1,6 +1,10 @@
+using System.Linq.Expressions;
+using MemoAna.Common.Abstract.Repositories;
+using MemoAna.Common.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Dtos;
+using MemoAna.Game.Entities;
 using MemoAna.Game.Models;
 using MemoAna.Game.Services;
 using System.Net;
@@ -41,13 +45,13 @@ public sealed class PVPServiceTests
         await using var host = CreateService();
         await using var client = CreateService();
 
-        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Host", port, discoveryPort), TestContext.Current.CancellationToken);
-        var hostInfo = new PVPHostInfo("Host", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1");
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Alice", port, discoveryPort), TestContext.Current.CancellationToken);
+        var hostInfo = new PVPHostInfo("Alice", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1");
 
         TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
         client.SessionStarted += (_, _) => started.TrySetResult(true);
 
-        await client.ConnectAsync(hostInfo, "Client", TestContext.Current.CancellationToken);
+        await client.ConnectAsync(hostInfo, "Bob", TestContext.Current.CancellationToken);
         Assert.True(host.IsConnected);
         await host.StartGameAsync(TestContext.Current.CancellationToken);
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
@@ -74,6 +78,9 @@ public sealed class PVPServiceTests
         Assert.True(host.CurrentCards.First(card => card.Key == pair[0].Key).Value.IsMatched);
         Assert.True(client.CurrentCards.First(card => card.Key == pair[1].Key).Value.IsMatched);
         Assert.Equal(host.LocalScore, client.RemoteScore);
+        Assert.Equal(new PVPPlayerStatistics(PVPPlayerRole.Host, "Alice", 1, 1, 0, 1), host.LocalStatistics);
+        Assert.Equal("Bob", host.RemotePlayerName);
+        Assert.Equal("Alice", client.RemotePlayerName);
         Assert.True(host.IsLocalTurn);
 
         void OnTurnChanged(object? sender, PVPStateChangedEventArgs args) => resolved.TrySetResult(true);
@@ -181,8 +188,38 @@ public sealed class PVPServiceTests
         Assert.Empty(service.CurrentCards);
     }
 
-    private static PVPService CreateService() =>
-        new(new FakeThemeService(), NullLogger<PVPService>.Instance);
+    [Fact]
+    public async Task GameCompletionPersistsBothPlayersExactlyOnce()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        var repository = new RecordingStatisticsRepository();
+        await using var host = CreateService(repository);
+        await using var client = CreateService();
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Alice", port, discoveryPort), TestContext.Current.CancellationToken);
+        await client.ConnectAsync(new PVPHostInfo("Alice", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1"), "Bob", TestContext.Current.CancellationToken);
+        TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.SessionStarted += (_, _) => started.TrySetResult(true);
+        TaskCompletionSource<bool> finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.GameFinished += (_, _) => finished.TrySetResult(true);
+        await host.StartGameAsync(TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        foreach (KeyValuePair<int, MemoAna.Game.Core.MemoryCard>[] pair in host.CurrentCards.GroupBy(card => card.Value.PairId).Select(group => group.ToArray()))
+        {
+            await host.FlipCardAsync(pair[0].Key, TestContext.Current.CancellationToken);
+            await host.FlipCardAsync(pair[1].Key, TestContext.Current.CancellationToken);
+        }
+
+        await finished.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.Equal(2, repository.Items.Count);
+        Assert.Equal(["Alice", "Bob"], repository.Items.Select(item => item.PlayerName).OrderBy(name => name));
+        Assert.All(repository.Items, item => Assert.Equal(MemoAna.Game.Enums.GameMode.PVP, item.GameMode));
+    }
+
+    private static PVPService CreateService(IRepository<GameStatisticsEntity>? repository = null) =>
+        new(new FakeThemeService(), NullLogger<PVPService>.Instance, repository);
 
     private static (int Port, int DiscoveryPort) GetFreePortPair()
     {
@@ -209,5 +246,20 @@ public sealed class PVPServiceTests
                 [.. Enumerable.Range(1, 6).Select(index => $"image-{index}")],
                 themeName,
                 null));
+    }
+
+    private sealed class RecordingStatisticsRepository : IRepository<GameStatisticsEntity>
+    {
+        public List<GameStatisticsEntity> Items { get; } = [];
+        public Task AddAsync(GameStatisticsEntity value, CancellationToken cancellationToken) { Items.Add(value); return Task.CompletedTask; }
+        public Task<GameStatisticsEntity?> GetByIdAsync(string id, Expression<Func<GameStatisticsEntity, object?>>[] includes, CancellationToken cancellationToken) => Task.FromResult<GameStatisticsEntity?>(null);
+        public Task<GameStatisticsEntity?> GetTrackedByIdAsync(string id, Expression<Func<GameStatisticsEntity, object?>>[] includes, CancellationToken cancellationToken) => Task.FromResult<GameStatisticsEntity?>(null);
+        public Task<IReadOnlyCollection<GameStatisticsEntity?>> ListTrackedAsync(Expression<Func<GameStatisticsEntity, bool>>? predicate, Expression<Func<GameStatisticsEntity, object?>>[] includes, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyCollection<GameStatisticsEntity?>>([]);
+        public Task<GameStatisticsEntity?> FirstOrDefaultAsync(Expression<Func<GameStatisticsEntity, bool>> predicate, Expression<Func<GameStatisticsEntity, object?>>[] includes, CancellationToken cancellationToken) => Task.FromResult<GameStatisticsEntity?>(null);
+        public Task<IReadOnlyList<GameStatisticsEntity>> ListAsync(Expression<Func<GameStatisticsEntity, bool>>? predicate, Expression<Func<GameStatisticsEntity, object?>>[] includes, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<GameStatisticsEntity>>([]);
+        public Task<bool> ExistsAsync(Expression<Func<GameStatisticsEntity, bool>> predicate, CancellationToken cancellationToken) => Task.FromResult(false);
+        public Task UpdateAsync(GameStatisticsEntity value, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task RemoveAsync(GameStatisticsEntity value, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task RemoveRangeAsync(IEnumerable<GameStatisticsEntity> values, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

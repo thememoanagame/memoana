@@ -508,6 +508,8 @@ public sealed class GameService : IGameService, IAsyncDisposable
         var stats = new GameStatisticsEntity
         {
             ThemeName = _currentTheme,
+            PlayerName = "Player",
+            GameMode = CurrentMode,
             Difficulty = _currentDifficulty,
             IsVictory = won,
             TotalMoves = _totalMoves,
