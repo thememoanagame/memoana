@@ -7,8 +7,8 @@ namespace MemoAna.Game.Services;
 
 public sealed class ThemeService(IRepository<CardThemeManifestEntity> repository) : IThemeService
 {
-    public async Task<IReadOnlyCollection<CardThemeManifestDto>> GetThemesAsync()
-        => [.. (await repository.ListAsync(x => true, null!, CancellationToken.None))
+    public async Task<IReadOnlyCollection<CardThemeManifestDto>> GetThemesAsync(bool include = false)
+        => [.. (await repository.ListAsync(x => true, include ? [x => x.CardTheme]: null!, CancellationToken.None))
             .Select(theme => new CardThemeManifestDto(theme) )];
 
     public async Task<CardThemeDto> GetThemeAsync(string themeName)

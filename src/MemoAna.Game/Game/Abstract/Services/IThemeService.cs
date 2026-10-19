@@ -4,6 +4,6 @@ namespace MemoAna.Game.Abstract.Services;
 
 public interface IThemeService
 {
-    Task<IReadOnlyCollection<CardThemeManifestDto>> GetThemesAsync();
+    Task<IReadOnlyCollection<CardThemeManifestDto>> GetThemesAsync(bool include = false);
     Task<CardThemeDto> GetThemeAsync(string themeName);
 }

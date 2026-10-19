@@ -108,7 +108,7 @@
                           Required="true" RequiredError='@Localizer["PlayerNameRequired"]'
                           Immediate="true" Variant="Variant.Outlined" Class="pvp-player-name"
                           data-testid="pvp-player-name" />
-            <MudButton Class="game-action-button" data-testid="create-pvp-room" OnClick="StartPvpHostAsync" Disabled="@(PvpBusy || string.IsNullOrWhiteSpace(PlayerName))">@Localizer["CreateRoom"]</MudButton>
+            <MudButton Class="game-action-button" Style="top: 0;" data-testid="create-pvp-room" OnClick="StartPvpHostAsync" Disabled="@(PvpBusy || string.IsNullOrWhiteSpace(PlayerName))">@Localizer["CreateRoom"]</MudButton>
             <MudButton Class="game-action-button" data-testid="discover-pvp-rooms" OnClick="DiscoverPvpHostsAsync" Disabled="@PvpBusy">@Localizer["DiscoverRooms"]</MudButton>
             @if (pvp.IsHost && pvp.IsConnected)
             {
@@ -1051,6 +1051,7 @@
 
     .pvp-player-name {
         width: min(360px, 80vw);
+        top: min(100px, 10vh);
     }
 
     .pvp-statistics-container {
