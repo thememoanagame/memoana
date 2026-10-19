@@ -225,7 +225,7 @@ public sealed class GameServiceTests
             Task.FromResult(new CardThemeDto([.. Enumerable.Range(1, 6).Select(i => $"card-{i}")], "theme", null));
     }
 
-    private sealed class FakeRepository<TEntity>(TEntity? entity = null) : IRepository<TEntity>
+    private sealed class FakeRepository<TEntity>(TEntity? entity = default) : IRepository<TEntity>
         where TEntity : EntityBase
     {
         private readonly TEntity? entity = entity;

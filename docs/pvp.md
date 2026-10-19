@@ -38,11 +38,23 @@ Android declares `INTERNET` and `ACCESS_NETWORK_STATE`. Both devices must be on
 the same LAN. Windows firewall rules must allow the configured UDP ports, and
 Android may require the network permission prompt to be accepted.
 
-## Validation status
+## Runtime and validation notes
 
-The Windows target builds successfully. Unit-test compilation is covered by
-`PVPServiceTests`, including a real LiteNetLib host/client pair in one process.
-The repository's current Microsoft Testing Platform test executable reports a
-handshake failure and executes zero tests in this environment. Physical
-Windows-to-Android and Android-to-Windows LAN validation requires an available,
-ADB-authorized Android device and has not been claimed here.
+`PVPService` owns a polling loop for every running `NetManager`; without
+`PollEvents`, LiteNetLib callbacks do not process discovery, connection or game
+messages. The host advertises the first operational non-loopback IPv4 address
+available on the machine and falls back to the request endpoint only when no
+such interface exists. A mismatch remains visible for 500 ms on both peers
+before either peer may start its next turn.
+
+The Windows-targeted game library and the desktop host/client integration
+harness have been validated with a real LiteNetLib pair, including initial
+state synchronization and mismatch resolution. The WebAssembly DeviceRunners
+host executes the suite, but LiteNetLib socket tests are skipped there because
+`System.Net.Sockets` is not supported by the browser runtime. The remaining
+pre-existing `GameServiceTests` failures are reported by the DeviceRunners
+run and must not be interpreted as PVP validation.
+
+Physical Windows-to-Android and Android-to-Windows LAN validation requires an
+ADB-authorized Android device and a running DevFlow agent. No physical
+validation is claimed until both directions have been exercised.

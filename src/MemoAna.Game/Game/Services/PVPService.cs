@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Text.Json;
 using LiteNetLib;
 using LiteNetLib.Utils;
@@ -19,11 +20,14 @@ public sealed class PVPService : IPVPService
     private readonly IThemeService themeService;
     private readonly ILogger<PVPService> logger;
     private readonly SemaphoreSlim stateGate = new(1, 1);
+    private CancellationTokenSource operationCts = new();
     private readonly Dictionary<string, PVPHostInfo> discoveredHosts = new(StringComparer.Ordinal);
     private readonly ObservableCollection<KeyValuePair<int, MemoryCard>> cards = [];
     private NetManager? manager;
     private EventBasedNetListener? listener;
     private NetPeer? peer;
+    private CancellationTokenSource? networkLoopCts;
+    private Task? networkLoopTask;
     private PVPGameSettings? settings;
     private PVPPlayerRole localRole;
     private Guid sessionId;
@@ -32,6 +36,7 @@ public sealed class PVPService : IPVPService
     private int clientScore;
     private int firstPosition = -1;
     private int secondPosition = -1;
+    private bool mismatchPending;
 
     public PVPService(IThemeService themeService, ILogger<PVPService> logger)
     {
@@ -128,6 +133,7 @@ public sealed class PVPService : IPVPService
             while (DateTime.UtcNow < deadline)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                discoveryManager.PollEvents();
                 await Task.Delay(50, cancellationToken);
             }
         }
@@ -185,7 +191,8 @@ public sealed class PVPService : IPVPService
         await stateGate.WaitAsync(cancellationToken);
         try
         {
-            if (!IsGameActive || !IsLocalTurn || firstPosition >= 0 && secondPosition >= 0)
+            if (!IsGameActive || !IsLocalTurn || mismatchPending ||
+                firstPosition >= 0 && secondPosition >= 0)
                 return;
             if (cards.All(card => card.Key != position) ||
                 cards.First(card => card.Key == position).Value.IsMatched ||
@@ -213,6 +220,24 @@ public sealed class PVPService : IPVPService
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        operationCts.Cancel();
+        operationCts.Dispose();
+        operationCts = new CancellationTokenSource();
+        networkLoopCts?.Cancel();
+        if (networkLoopTask is not null)
+        {
+            try
+            {
+                await networkLoopTask;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        networkLoopCts?.Dispose();
+        networkLoopCts = null;
+        networkLoopTask = null;
         peer?.Disconnect();
         manager?.Stop();
         manager = null;
@@ -221,14 +246,18 @@ public sealed class PVPService : IPVPService
         IsGameActive = false;
         sessionId = Guid.Empty;
         cards.Clear();
+        hostScore = 0;
+        clientScore = 0;
+        currentTurn = default;
         firstPosition = -1;
         secondPosition = -1;
-        await Task.CompletedTask;
+        mismatchPending = false;
     }
 
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
+        operationCts.Dispose();
         stateGate.Dispose();
     }
 
@@ -242,7 +271,26 @@ public sealed class PVPService : IPVPService
         listener.ConnectionRequestEvent += OnConnectionRequest;
         listener.NetworkErrorEvent += (_, error) => RaiseError($"PVP network error: {error}");
         manager = new NetManager(listener) { AutoRecycle = true };
-        manager.Start(port);
+        if (!manager.Start(port))
+            throw new InvalidOperationException($"Could not start the PVP socket on port {port}.");
+
+        networkLoopCts = new CancellationTokenSource();
+        networkLoopTask = RunNetworkLoopAsync(manager, networkLoopCts.Token);
+    }
+
+    private static async Task RunNetworkLoopAsync(NetManager networkManager, CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested && networkManager.IsRunning)
+            {
+                networkManager.PollEvents();
+                await Task.Delay(10, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
     }
 
     private void OnConnectionRequest(ConnectionRequest request)
@@ -263,7 +311,7 @@ public sealed class PVPService : IPVPService
         if (IsHost)
         {
             Send(new PVPWireMessage(ProtocolVersion, PVPMessageType.ConnectionAccepted, sessionId, null,
-                new PVPPlayerInfo(settings!.PlayerName, PVPPlayerRole.Client)));
+                new PVPPlayerInfo(settings!.PlayerName, PVPPlayerRole.Host)));
         }
         else
         {
@@ -283,6 +331,9 @@ public sealed class PVPService : IPVPService
 
     private async void OnNetworkReceive(NetPeer sourcePeer, NetPacketReader reader, byte channel, DeliveryMethod deliveryMethod)
     {
+        if (sourcePeer != peer)
+            return;
+
         try
         {
             string payload = reader.GetString();
@@ -325,29 +376,37 @@ public sealed class PVPService : IPVPService
         await stateGate.WaitAsync();
         try
         {
-            if (message.SessionId is not null && IsGameActive && message.SessionId != sessionId)
+            if (message.SessionId is not null && message.SessionId != sessionId &&
+                (IsGameActive || message.Type != PVPMessageType.ConnectionAccepted))
                 return;
             switch (message.Type)
             {
                 case PVPMessageType.ConnectionHello when IsHost:
                     break;
-                case PVPMessageType.ConnectionAccepted:
+                case PVPMessageType.ConnectionAccepted when !IsHost &&
+                    message.SessionId is Guid acceptedSession &&
+                    message.Player?.Role == PVPPlayerRole.Host:
+                    sessionId = acceptedSession;
                     break;
                 case PVPMessageType.GameStart when !IsHost && message.GameState is not null:
+                    if (message.GameState.SessionId != sessionId)
+                        return;
                     await ApplyGameStateAsync(message.GameState);
                     PublishState(SessionStarted);
                     break;
                 case PVPMessageType.CardFlipRequest when IsHost && message.CardMove is not null:
-                    if (message.CardMove.Player == currentTurn)
+                    if (message.CardMove.Player == PVPPlayerRole.Client &&
+                        currentTurn == PVPPlayerRole.Client)
                         ApplyAuthoritativeFlip(message.CardMove.Position, PVPPlayerRole.Client);
                     break;
-                case PVPMessageType.CardFlipped when message.CardMove is not null:
+                case PVPMessageType.CardFlipped when !IsHost && message.CardMove is not null:
                     ApplyRemoteFlip(message.CardMove.Position, message.CardMove.Player);
                     break;
-                case PVPMessageType.TurnResolved when message.Resolution is not null:
+                case PVPMessageType.TurnResolved when !IsHost && message.Resolution is not null:
                     ApplyResolution(message.Resolution);
                     break;
-                case PVPMessageType.GameFinished when message.Result is not null:
+                case PVPMessageType.GameFinished when !IsHost && message.Result is not null &&
+                    message.Result.SessionId == sessionId:
                     IsGameActive = false;
                     GameFinished?.Invoke(this, new(message.Result));
                     break;
@@ -361,8 +420,11 @@ public sealed class PVPService : IPVPService
 
     private void ApplyAuthoritativeFlip(int position, PVPPlayerRole player)
     {
-        KeyValuePair<int, MemoryCard> entry = cards.First(card => card.Key == position);
-        entry.Value.IsFaceUp = true;
+        KeyValuePair<int, MemoryCard>? entry = cards.FirstOrDefault(card => card.Key == position);
+        if (entry is null || entry.Value.Value.IsMatched || entry.Value.Value.IsFaceUp)
+            return;
+
+        entry.Value.Value.IsFaceUp = true;
         if (firstPosition < 0)
             firstPosition = position;
         else
@@ -387,12 +449,13 @@ public sealed class PVPService : IPVPService
         }
         else
         {
-            first.IsFaceUp = false;
-            second.IsFaceUp = false;
+            mismatchPending = true;
         }
 
         CardChanged?.Invoke(this, new(firstPosition, player, matched));
         CardChanged?.Invoke(this, new(secondPosition, player, matched));
+        int resolvedFirstPosition = firstPosition;
+        int resolvedSecondPosition = secondPosition;
         currentTurn = matched ? player : player == PVPPlayerRole.Host ? PVPPlayerRole.Client : PVPPlayerRole.Host;
         var resolution = new PVPResolution(firstPosition, secondPosition, matched, currentTurn, hostScore, clientScore);
         Send(new PVPWireMessage(ProtocolVersion, PVPMessageType.TurnResolved, sessionId, null, resolution));
@@ -408,19 +471,34 @@ public sealed class PVPService : IPVPService
             Send(new PVPWireMessage(ProtocolVersion, PVPMessageType.GameFinished, sessionId, null, result));
             GameFinished?.Invoke(this, new(result));
         }
+        else if (!matched)
+        {
+            _ = HideMismatchAsync(resolvedFirstPosition, resolvedSecondPosition, sessionId);
+        }
     }
 
     private void ApplyRemoteFlip(int position, PVPPlayerRole player)
     {
-        if (cards.All(card => card.Key != position))
+        if (!IsGameActive || mismatchPending || player != currentTurn ||
+            cards.All(card => card.Key != position) ||
+            cards.First(card => card.Key == position).Value.IsMatched ||
+            cards.First(card => card.Key == position).Value.IsFaceUp ||
+            secondPosition >= 0)
             return;
         cards.First(card => card.Key == position).Value.IsFaceUp = true;
+        if (firstPosition < 0)
+            firstPosition = position;
+        else
+            secondPosition = position;
         CardChanged?.Invoke(this, new(position, player, false));
     }
 
     private void ApplyResolution(PVPResolution resolution)
     {
-        if (cards.All(card => card.Key != resolution.FirstPosition) ||
+        if (!IsGameActive ||
+            firstPosition != resolution.FirstPosition ||
+            secondPosition != resolution.SecondPosition ||
+            cards.All(card => card.Key != resolution.FirstPosition) ||
             cards.All(card => card.Key != resolution.SecondPosition))
             return;
         MemoryCard first = cards.First(card => card.Key == resolution.FirstPosition).Value;
@@ -428,16 +506,48 @@ public sealed class PVPService : IPVPService
         first.IsMatched = resolution.Matched;
         second.IsMatched = resolution.Matched;
         if (!resolution.Matched)
-        {
-            first.IsFaceUp = false;
-            second.IsFaceUp = false;
-        }
+            mismatchPending = true;
         hostScore = resolution.HostScore;
         clientScore = resolution.ClientScore;
         currentTurn = resolution.NextTurn;
         firstPosition = -1;
         secondPosition = -1;
         PublishState(TurnChanged);
+        if (!resolution.Matched)
+            _ = HideMismatchAsync(resolution.FirstPosition, resolution.SecondPosition, sessionId);
+    }
+
+    private async Task HideMismatchAsync(int firstCardPosition, int secondCardPosition, Guid expectedSessionId)
+    {
+        CancellationToken cancellationToken = operationCts.Token;
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            await stateGate.WaitAsync(cancellationToken);
+            try
+            {
+                if (!IsGameActive || sessionId != expectedSessionId || !mismatchPending)
+                    return;
+
+                MemoryCard? first = cards.FirstOrDefault(card => card.Key == firstCardPosition).Value;
+                MemoryCard? second = cards.FirstOrDefault(card => card.Key == secondCardPosition).Value;
+                if (first is null || second is null)
+                    return;
+
+                first.IsFaceUp = false;
+                second.IsFaceUp = false;
+                mismatchPending = false;
+                CardChanged?.Invoke(this, new(firstCardPosition, LocalRole, false));
+                CardChanged?.Invoke(this, new(secondCardPosition, LocalRole, false));
+            }
+            finally
+            {
+                stateGate.Release();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     private async Task CreateBoardAsync(PVPGameSettings gameSettings, CancellationToken cancellationToken)
@@ -455,8 +565,17 @@ public sealed class PVPService : IPVPService
 
     private async Task ApplyGameStateAsync(PVPGameState state)
     {
+        if (state.SessionId == Guid.Empty || state.Cards.Count == 0 ||
+            state.Cards.Count % 2 != 0 ||
+            state.Cards.Select(card => card.Position).Distinct().Count() != state.Cards.Count ||
+            state.Cards.Any(card => card.Position <= 0 || card.ImageIndex < 0 ||
+                string.IsNullOrWhiteSpace(card.PairId)))
+            throw new InvalidOperationException("The host sent an invalid initial PVP board.");
+
         CardThemeDto theme = await themeService.GetThemeAsync(state.ThemeName)
             ?? throw new KeyNotFoundException($"Theme '{state.ThemeName}' was not found.");
+        if (state.Cards.Any(card => card.ImageIndex >= theme.Base64Images.Count))
+            throw new InvalidOperationException("The selected theme cannot render the PVP board.");
         sessionId = state.SessionId;
         cards.Clear();
         foreach (PVPCardState card in state.Cards)
@@ -523,8 +642,23 @@ public sealed class PVPService : IPVPService
         Error?.Invoke(this, new(message, exception));
     }
 
-    private static string GetAdvertisedAddress(IPEndPoint endpoint) =>
-        endpoint.Address.Equals(IPAddress.Loopback) ? "127.0.0.1" : endpoint.Address.ToString();
+    private static string GetAdvertisedAddress(IPEndPoint endpoint)
+    {
+        foreach (NetworkInterface networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (networkInterface.OperationalStatus != OperationalStatus.Up)
+                continue;
+
+            foreach (UnicastIPAddressInformation address in networkInterface.GetIPProperties().UnicastAddresses)
+            {
+                if (address.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                    !IPAddress.IsLoopback(address.Address))
+                    return address.Address.ToString();
+            }
+        }
+
+        return endpoint.Address.ToString();
+    }
 
     private sealed record PVPWireMessage(
         string ProtocolVersion,

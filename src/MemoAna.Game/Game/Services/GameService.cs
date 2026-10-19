@@ -251,6 +251,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
 
         if (_firstSelectedCard == null)
         {
+            aiService.ObserveCard(position, selectedCard);
             _firstSelectedCard = selectedCard;
             _firstPosition = position;
             return false;
@@ -301,8 +302,8 @@ public sealed class GameService : IGameService, IAsyncDisposable
 
             await Task.Delay(gameSettings.Options.CardFlipDelayMs, cancellationToken);
             _firstSelectedCard?.IsFaceUp = false;
-            _secondSelectedCard?.IsFaceUp = false;
             NotifyCardFlipped(_firstPosition, _firstSelectedCard!);
+            _secondSelectedCard?.IsFaceUp = false;
             NotifyCardFlipped(_secondPosition, _secondSelectedCard!);
             await Task.Yield();
             ResetTurn();
@@ -402,20 +403,27 @@ public sealed class GameService : IGameService, IAsyncDisposable
         SetTurn(GameTurn.AI);
         try
         {
-            AITurn? turn = await aiService.GetNextTurnAsync(cancellationToken);
-            if (turn is null || !IsGameActive || gameGeneration != _gameGeneration)
-                return;
+            while (IsGameActive && gameGeneration == _gameGeneration &&
+                   !cancellationToken.IsCancellationRequested)
+            {
+                AITurn? turn = await aiService.GetNextTurnAsync(cancellationToken);
+                if (turn is null)
+                    return;
 
-            MemoryCard first = CurrentCards.Single(c => c.Key == turn.FirstPosition).Value;
-            await ExecuteCardFlipAsync(turn.FirstPosition, first, true, gameGeneration, cancellationToken);
-            // The first reveal is a separate visual phase. Yield to the
-            // renderer; CardFlipDelayMs belongs to the mismatch visible phase.
-            await Task.Yield();
-            MemoryCard second = CurrentCards.Single(c => c.Key == turn.SecondPosition).Value;
-            await ExecuteCardFlipAsync(turn.SecondPosition, second, true, gameGeneration, cancellationToken);
-            // This delay is deliberately inside the AI turn transaction. It must
-            // never transfer ownership or enable human interaction.
-            await Task.Delay(aiService.VisualRevealDelayMs, cancellationToken);
+                MemoryCard first = CurrentCards.Single(c => c.Key == turn.FirstPosition).Value;
+                await ExecuteCardFlipAsync(turn.FirstPosition, first, true, gameGeneration, cancellationToken);
+                // The first reveal is a separate visual phase. Yield to the
+                // renderer; CardFlipDelayMs belongs to the mismatch visible phase.
+                await Task.Yield();
+                MemoryCard second = CurrentCards.Single(c => c.Key == turn.SecondPosition).Value;
+                await ExecuteCardFlipAsync(turn.SecondPosition, second, true, gameGeneration, cancellationToken);
+                // This delay is deliberately inside the AI turn transaction. It must
+                // never transfer ownership or enable human interaction.
+                await Task.Delay(aiService.VisualRevealDelayMs, cancellationToken);
+
+                if (!_lastTurnMatched)
+                    return;
+            }
 
         }
         catch (OperationCanceledException)

@@ -12,6 +12,7 @@ public sealed class PVPServiceTests
     [Fact]
     public async Task HostAndClientSynchronizeGameAndAuthoritativeMatch()
     {
+        SkipIfBrowser();
         int port = 38000 + Random.Shared.Next(500);
         await using var host = CreateService();
         await using var client = CreateService();
@@ -48,6 +49,7 @@ public sealed class PVPServiceTests
     [Fact]
     public async Task StopDisconnectsAndClearsSession()
     {
+        SkipIfBrowser();
         await using var service = CreateService();
         await service.StartHostAsync(new PVPGameSettings(0, "theme", "Host", 0, 0), TestContext.Current.CancellationToken);
 
@@ -64,6 +66,12 @@ public sealed class PVPServiceTests
 
     private static PVPService CreateService() =>
         new(new FakeThemeService(), NullLogger<PVPService>.Instance);
+
+    private static void SkipIfBrowser()
+    {
+        if (OperatingSystem.IsBrowser())
+            Assert.Skip("LiteNetLib requires System.Net.Sockets and cannot run in the WebAssembly test host.");
+    }
 
     private sealed class FakeThemeService : IThemeService
     {

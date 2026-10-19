@@ -1,14 +1,15 @@
+﻿using Microsoft.Extensions.Logging;
+using DeviceRunners;
 using DeviceRunners.VisualRunners;
-using DeviceRunners.VisualRunners.Blazor.Components;
+using DeviceRunners.UITesting;
+namespace MemoAna.UnitTests;
 
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-
-builder.RootComponents.Add<TestRunnerApp>("#app");
-
-builder
-    .UseVisualTestRunner(conf => conf
+public static class MauiProgram
+{
+	public static MauiApp CreateMauiApp()
+	{
+		var builder = MauiApp.CreateBuilder();
+		builder.ConfigureUITesting().UseVisualTestRunner(conf => conf
 		.AddCliConfiguration()
 #if EXCLUDE_FAILING_TESTS
 		// Exclude the intentionally-failing demo tests on CI device runs, which
@@ -16,8 +17,7 @@ builder
 		// -p:IncludeFailingTests=false (the TCP and XHarness CI runs); local and
 		// interactive runs leave it undefined so the failure demos stay visible.
 		.SetTestCaseFilter("Category!=ExpectedFailure")
-#endif
-#if MODE_NON_INTERACTIVE_VISUAL
+#endif 
 		.EnableAutoStart(true)
 		.AddTcpResultChannel(new TcpResultChannelOptions
 		{
@@ -28,11 +28,17 @@ builder
 			Retries = 3,
 			RetryTimeout = TimeSpan.FromSeconds(5),
 			Timeout = TimeSpan.FromSeconds(30)
-		})
-#endif
+		}) 
 		.AddConsoleResultChannel()
 		.AddXunit3()
 		.AddTestAssembly(typeof(MemoAna.UnitTests.Game.GameServiceTests).Assembly)
 		.AddConsoleResultChannel());
+#if DEBUG
+		builder.Logging.AddDebug();
+#else
+		builder.Logging.AddConsole();
+#endif
 
-await builder.Build().RunAsync();
+		return builder.Build();
+	}
+}
