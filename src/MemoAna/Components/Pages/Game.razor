@@ -11,7 +11,7 @@
     {
         <div class="loading-container">
             <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Warning" />
-            <MudText Class="loading-text">Preparando Tabuleiro...</MudText>
+            <MudText Class="loading-text">@Localizer["LoadingBoard"]</MudText>
         </div>
     }
     else if (IsSelecting)
@@ -103,20 +103,20 @@
     else if (IsPvpLobby)
     {
         <div class="pvp-lobby">
-            <MudText Class="selection-title">PVP</MudText>
+            <MudText Class="selection-title">@Localizer["PVP"]</MudText>
             <MudTextField T="string" Label='@Localizer["PlayerName"]' @bind-Value="PlayerName"
                           Required="true" RequiredError='@Localizer["PlayerNameRequired"]'
                           Immediate="true" Variant="Variant.Outlined" Class="pvp-player-name"
                           data-testid="pvp-player-name" />
-            <MudButton Class="game-action-button" data-testid="create-pvp-room" OnClick="StartPvpHostAsync" Disabled="@(PvpBusy || string.IsNullOrWhiteSpace(PlayerName))">CRIAR SALA</MudButton>
-            <MudButton Class="game-action-button" data-testid="discover-pvp-rooms" OnClick="DiscoverPvpHostsAsync" Disabled="@PvpBusy">PROCURAR SALAS</MudButton>
+            <MudButton Class="game-action-button" data-testid="create-pvp-room" OnClick="StartPvpHostAsync" Disabled="@(PvpBusy || string.IsNullOrWhiteSpace(PlayerName))">@Localizer["CreateRoom"]</MudButton>
+            <MudButton Class="game-action-button" data-testid="discover-pvp-rooms" OnClick="DiscoverPvpHostsAsync" Disabled="@PvpBusy">@Localizer["DiscoverRooms"]</MudButton>
             @if (pvp.IsHost && pvp.IsConnected)
             {
-                <MudButton Class="game-action-button" data-testid="start-pvp-game" OnClick="StartPvpGameAsync">INICIAR PARTIDA</MudButton>
+                <MudButton Class="game-action-button" data-testid="start-pvp-game" OnClick="StartPvpGameAsync">@Localizer["StartMatch"]</MudButton>
             }
             @if (PvpHosts.Count > 0)
             {
-                <MudText Class="selection-title">SALAS DISPONÍVEIS</MudText>
+                <MudText Class="selection-title">@Localizer["AvailableRooms"]</MudText>
                 @foreach (PVPHostInfo host in PvpHosts)
                 {
                     <MudButton Class="game-action-button" data-testid="pvp-room" OnClick="() => ConnectPvpAsync(host)">
@@ -134,7 +134,7 @@
     {
         @if (game.CurrentMode == GameMode.IA || IsPvpMode)
         {
-            <MudText Class="game-turn-indicator" data-testid="turn-indicator">@(IsPvpMode ? (pvp.IsLocalTurn ? "SEU TURNO" : "TURNO DO OPONENTE") : game.CurrentTurn == GameTurn.AI ? "TURNO DA IA" : "SEU TURNO")</MudText>
+            <MudText Class="game-turn-indicator" data-testid="turn-indicator">@(IsPvpMode ? (pvp.IsLocalTurn ? Localizer["YourTurn"] : Localizer["OpponentTurn"]) : game.CurrentTurn == GameTurn.AI ? Localizer["AITurn"] : Localizer["YourTurn"])</MudText>
         }
 
         <div class="game-header">
@@ -154,7 +154,7 @@
             else if (IsPvpMode)
             {
                 <MudText Class="game-header-comparison game-header-score">@pvp.LocalScore.ToString("D3") x @pvp.RemoteScore.ToString("D3")</MudText>
-                <MudText Class="game-header-moves">PVP</MudText>
+                <MudText Class="game-header-moves">@Localizer["PVP"]</MudText>
             }
             else
             {
@@ -200,8 +200,8 @@
             </table>
         </div>
         <div class="game-actions">
-            <MudButton Class="game-action-button" OnClick="GoToMain">INICIO</MudButton>
-            <MudButton Class="game-action-button game-action-repeat" OnClick="RestartGame">REPETIR</MudButton>
+            <MudButton Class="game-action-button" OnClick="GoToMain">@Localizer["Home"]</MudButton>
+            <MudButton Class="game-action-button game-action-repeat" OnClick="RestartGame">@Localizer["Repeat"]</MudButton>
         </div>
     }
     else if (IsGameFinished)
@@ -209,8 +209,8 @@
         <div class="statistics-container">
             @if (game.CurrentMode == GameMode.IA)
             {
-                <MudText Class="victory-text ia-result-title" data-testid="ia-result-title">@(Statistics.IsVictory ? "VOCÊ VENCEU!" : "VOCÊ PERDEU!")</MudText>
-                <MudText Class="ia-result-subtitle">@(Statistics.IsVictory ? "Você derrotou a IA." : "A IA venceu esta partida.")</MudText>
+                <MudText Class="victory-text ia-result-title" data-testid="ia-result-title">@(Statistics.IsVictory ? Localizer["Victory"] : Localizer["Defeat"])</MudText>
+                <MudText Class="ia-result-subtitle">@(Statistics.IsVictory ? Localizer["YouDefeatedAI"] : Localizer["AIWonMatch"])</MudText>
             }
             else
             {
@@ -220,7 +220,7 @@
                 <MudText Class="statistic-value statistic-left">@Statistics.ThemeName</MudText>
                 <MudText Class="statistic-value statistic-right">@Statistics.Difficulty</MudText>
                 <MudText Class="statistic-value statistic-center">@Statistics.PlayedAt</MudText>
-                <MudText Class="statistic-label">ACERTOS</MudText>
+                <MudText Class="statistic-label">@Localizer["Hits"]</MudText>
                 @if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
@@ -233,7 +233,7 @@
                 {
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.TotalMoves</MudText>
                 }
-                <MudText Class="statistic-label">ERROS</MudText>
+                <MudText Class="statistic-label">@Localizer["Misses"]</MudText>
                 @if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
@@ -246,7 +246,7 @@
                 {
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.Mistakes</MudText>
                 }
-                <MudText Class="statistic-label">JOGADAS</MudText>
+                <MudText Class="statistic-label">@Localizer["Moves"]</MudText>
                 @if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
@@ -259,7 +259,7 @@
                 {
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
                 }
-                <MudText Class="statistic-label">PONTOS</MudText>
+                <MudText Class="statistic-label">@Localizer["Score"]</MudText>
                 @if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
@@ -272,7 +272,7 @@
                 {
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@CurrentScore</MudText>
                 }
-                <MudText Class="statistic-label">TOTAL</MudText>
+                <MudText Class="statistic-label">@Localizer["Total"]</MudText>
                 @if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
@@ -289,8 +289,8 @@
         </div>
 
         <div class="game-actions">
-            <MudButton Class="game-action-button" OnClick="GoToMain">INICIO</MudButton>
-            <MudButton Class="game-action-button game-action-repeat" OnClick="RestartGame">REPETIR</MudButton>
+            <MudButton Class="game-action-button" OnClick="GoToMain">@Localizer["Home"]</MudButton>
+            <MudButton Class="game-action-button game-action-repeat" OnClick="RestartGame">@Localizer["Repeat"]</MudButton>
         </div>
     }
 
@@ -349,7 +349,7 @@
         {
             IsSelecting = false;
             IsPvpLobby = true;
-            PvpStatus = "Crie uma sala ou procure salas na rede local.";
+            PvpStatus = Localizer["PvpLobbyInstructions"];
             await InvokeAsync(StateHasChanged);
             return;
         }
@@ -548,7 +548,7 @@
                 e.AIFinalScore,
                 e.AISuccessfulMoves,
                 e.AIMistakes);
-            IsVictory = e.IsVictory ? "+1 CONQUISTA!" : "DERROTA!";
+            IsVictory = e.IsVictory ? Localizer["VictoryShort"] : Localizer["DefeatShort"];
             CurrentScore = e.FinalScore.ToString("D3");
             await audio.StopAsync();
             StateHasChanged();
@@ -655,14 +655,14 @@
         try
         {
             PvpBusy = true;
-            PvpStatus = "Sala criada. Aguardando jogador...";
+            PvpStatus = Localizer["PvpRoomWaiting"];
             AttachPvpEvents();
             await pvp.StartHostAsync(new PVPGameSettings(difficulty, SelectedTheme.ThemeName, PlayerName.Trim()));
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Could not start PVP host.");
-            PvpStatus = "Não foi possível criar a sala.";
+            PvpStatus = Localizer["PvpRoomCreationFailed"];
         }
         finally
         {
@@ -677,22 +677,22 @@
         {
             PvpBusy = true;
             PvpHosts.Clear();
-            PvpStatus = "Procurando salas...";
+            PvpStatus = Localizer["PvpSearching"];
             AttachPvpEvents();
             IReadOnlyList<PVPHostInfo> hosts = await pvp.DiscoverHostsAsync();
             foreach (PVPHostInfo host in hosts)
                 if (PvpHosts.All(existing => existing.Address != host.Address || existing.Port != host.Port))
                     PvpHosts.Add(host);
-            PvpStatus = PvpHosts.Count == 0 ? "Nenhuma sala encontrada." : string.Empty;
+            PvpStatus = PvpHosts.Count == 0 ? Localizer["PvpNoRooms"] : string.Empty;
         }
         catch (OperationCanceledException)
         {
-            PvpStatus = "Busca cancelada.";
+            PvpStatus = Localizer["PvpSearchCancelled"];
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "Could not discover PVP hosts.");
-            PvpStatus = "Não foi possível procurar salas.";
+            PvpStatus = Localizer["PvpDiscoveryFailed"];
         }
         finally
         {
@@ -706,7 +706,7 @@
         try
         {
             PvpBusy = true;
-            PvpStatus = "Conectando...";
+            PvpStatus = Localizer["PvpConnecting"];
             if (string.IsNullOrWhiteSpace(PlayerName))
             {
                 PvpStatus = Localizer["PlayerNameRequired"];
@@ -717,7 +717,7 @@
         catch (Exception exception)
         {
             logger.LogError(exception, "Could not connect to PVP host.");
-            PvpStatus = "Não foi possível conectar à sala.";
+            PvpStatus = Localizer["PvpConnectionFailed"];
         }
         finally
         {
@@ -735,7 +735,7 @@
         catch (Exception exception)
         {
             logger.LogError(exception, "Could not start PVP game.");
-            PvpStatus = "Não foi possível iniciar a partida.";
+            PvpStatus = Localizer["PvpGameStartFailed"];
         }
     }
 
@@ -762,7 +762,7 @@
             IsPvpLobby = true;
             IsGameActive = false;
             IsGameFinished = false;
-            PvpStatus = "Sala criada. Aguardando jogador...";
+            PvpStatus = Localizer["PvpRoomWaiting"];
             StateHasChanged();
         });
     }
@@ -797,7 +797,7 @@
 
     private void OnPvpConnected(object? sender, System.EventArgs e)
     {
-        PvpStatus = pvp.IsHost ? "Jogador conectado. Você pode iniciar." : "Conectado. Aguardando o host iniciar.";
+        PvpStatus = pvp.IsHost ? Localizer["PvpPlayerConnected"] : Localizer["PvpConnectedWaiting"];
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -825,7 +825,7 @@
     {
         IsGameActive = false;
         IsPvpLobby = true;
-        PvpStatus = "O outro jogador desconectou.";
+        PvpStatus = Localizer["PvpPlayerDisconnected"];
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -834,7 +834,7 @@
         IsGameActive = false;
         IsGameFinished = true;
         PvpStatistics = e.Result.Statistics ?? [pvp.LocalStatistics, pvp.RemoteStatistics];
-        IsVictory = (e.Result.Winner == pvp.LocalRole) ? "+1 CONQUISTA!" : "DERROTA!";
+        IsVictory = (e.Result.Winner == pvp.LocalRole) ? Localizer["VictoryShort"] : Localizer["DefeatShort"];
         _ = InvokeAsync(StateHasChanged);
     }
 }

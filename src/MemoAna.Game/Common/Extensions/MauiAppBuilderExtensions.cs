@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Sinks.ILogger;
 using Microsoft.Extensions.Hosting;
+using System.Globalization;
 
 namespace MemoAna.Common.Extensions;
 
@@ -27,6 +28,10 @@ public static class MauiAppBuilderExtensions
         public MauiApp RunMauiApp<TApp>(Action<MauiAppBuilder> configurePresentation)
             where TApp : Application
         {
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("pt-BR");
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("pt-BR");
+            CultureInfo.CurrentCulture = CultureInfo.DefaultThreadCurrentCulture;
+            CultureInfo.CurrentUICulture = CultureInfo.DefaultThreadCurrentUICulture;
             builder.UseMauiApp<TApp>().ConfigureFonts(fonts =>
             {
                 fonts.AddFont("Bangpop.ttf", "Bangpop");

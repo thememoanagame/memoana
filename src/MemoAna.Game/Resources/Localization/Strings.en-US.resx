@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0</value></resheader><resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0</value></resheader>
+  <data name="ThemeUnavailable" xml:space="preserve"><value>Theme unavailable.</value></data><data name="ThemeImagesUnavailable" xml:space="preserve"><value>Theme images unavailable.</value></data><data name="PvpRoomCreationFailed" xml:space="preserve"><value>Unable to create the room.</value></data><data name="PvpDiscoveryFailed" xml:space="preserve"><value>Unable to discover rooms.</value></data><data name="PvpConnectionFailed" xml:space="preserve"><value>Unable to connect to the room.</value></data><data name="PvpGameStartFailed" xml:space="preserve"><value>Unable to start the match.</value></data><data name="PvpNetworkError" xml:space="preserve"><value>PVP network error.</value></data><data name="PvpInvalidMessage" xml:space="preserve"><value>Invalid PVP message received.</value></data><data name="PvpConnectionTimeout" xml:space="preserve"><value>PVP connection timed out.</value></data>
+</root>

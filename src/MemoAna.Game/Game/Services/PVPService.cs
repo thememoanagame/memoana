@@ -6,6 +6,7 @@ using System.Text.Json;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using MemoAna.Common.Abstract.Repositories;
+using MemoAna.Common.Abstract.Localization;
 using MemoAna.Game.Entities;
 using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Core;
@@ -13,6 +14,7 @@ using MemoAna.Game.Dtos;
 using MemoAna.Game.Enums;
 using MemoAna.Game.Models;
 using Microsoft.Extensions.Logging;
+using MemoAna.Game.Resources.Localization;
 
 namespace MemoAna.Game.Services;
 
@@ -23,6 +25,7 @@ public sealed class PVPService : IPVPService
     private const int DefaultDiscoveryPort = 35679;
     private readonly IThemeService themeService;
     private readonly IRepository<GameStatisticsEntity>? statisticsRepository;
+    private readonly ILocalizer<Strings>? localizer;
     private readonly ILogger<PVPService> logger;
     private readonly SemaphoreSlim stateGate = new(1, 1);
     private CancellationTokenSource operationCts = new();
@@ -60,11 +63,13 @@ public sealed class PVPService : IPVPService
     public PVPService(
         IThemeService themeService,
         ILogger<PVPService> logger,
-        IRepository<GameStatisticsEntity>? statisticsRepository = null)
+        IRepository<GameStatisticsEntity>? statisticsRepository = null,
+        ILocalizer<Strings>? localizer = null)
     {
         this.themeService = themeService;
         this.logger = logger;
         this.statisticsRepository = statisticsRepository;
+        this.localizer = localizer;
     }
 
     public IReadOnlyList<KeyValuePair<int, MemoryCard>> CurrentCards => cards;

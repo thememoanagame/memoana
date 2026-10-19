@@ -7,6 +7,8 @@ using MemoAna.Game.Entities;
 using MemoAna.Game.Enums;
 using MemoAna.Game.EventArgs;
 using MemoAna.Game.Models;
+using MemoAna.Common.Abstract.Localization;
+using MemoAna.Game.Resources.Localization;
 
 namespace MemoAna.Game.Services;
 
@@ -17,6 +19,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
     private readonly IRepository<GameStatisticsEntity> statisticsRepository;
     private readonly IDispatcherTimer _gameTimer;
     private readonly IAIService aiService;
+    private readonly ILocalizer<Strings>? localizer;
     private CancellationTokenSource? _gameCancellation;
     private MemoryCard? _firstSelectedCard;
     private MemoryCard? _secondSelectedCard;
@@ -65,12 +68,14 @@ public sealed class GameService : IGameService, IAsyncDisposable
         IRepository<GameSettingsEntity> settingsRepository,
         IRepository<GameStatisticsEntity> statisticsRepository,
         IDispatcher dispatcher,
-        IAIService aiService)
+        IAIService aiService,
+        ILocalizer<Strings>? localizer = null)
     {
         this.themeService = themeService;
         this.settingsRepository = settingsRepository;
         this.statisticsRepository = statisticsRepository;
         this.aiService = aiService;
+        this.localizer = localizer;
 
         _gameTimer = dispatcher.CreateTimer();
         _gameTimer.Interval = TimeSpan.FromSeconds(1);
@@ -96,7 +101,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         if (cancellationToken.IsCancellationRequested || gameGeneration != _gameGeneration)
             return;
 
-        CardThemeDto cards = await themeService.GetThemeAsync(_currentTheme) ?? throw new KeyNotFoundException("Tema não disponível");
+        CardThemeDto cards = await themeService.GetThemeAsync(_currentTheme) ?? throw new KeyNotFoundException(localizer?["ThemeUnavailable"] ?? "Tema não disponível");
         if (cancellationToken.IsCancellationRequested || gameGeneration != _gameGeneration)
             return;
 
@@ -104,7 +109,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
 
         // .OrderBy(_ => random.Next()) ensures always get a random set of cards from manifest
         List<string> rawStrings = cards?.Base64Images.OrderBy(_ => random.Next()).Take(pairCount).ToList()
-            ?? throw new KeyNotFoundException("Imagens do tema não encontradas");
+            ?? throw new KeyNotFoundException(localizer?["ThemeImagesUnavailable"] ?? "Imagens do tema não encontradas");
 
         var gameCards = new List<MemoryCard>();
         int idFactory = 0;
