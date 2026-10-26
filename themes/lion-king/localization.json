@@ -1,0 +1,122 @@
+[
+  {
+    "CardId": "01a17869-7490-73e2-8b8f-6e47fd2587a9",
+    "FileName": "Kiara.webp",
+    "Name": {
+      "en_US": "Kiara",
+      "pt_BR": "Kiara"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-752c-b095-c552e0f23f7f",
+    "FileName": "Kion.webp",
+    "Name": {
+      "en_US": "Kion",
+      "pt_BR": "Kion"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7180-917d-01031e1262f5",
+    "FileName": "Kovu.webp",
+    "Name": {
+      "en_US": "Kovu",
+      "pt_BR": "Kovu"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7e0c-95c2-5d04b8958667",
+    "FileName": "Mufasa.webp",
+    "Name": {
+      "en_US": "Mufasa",
+      "pt_BR": "Mufasa"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-76c4-b562-063b56a7c151",
+    "FileName": "Mufasa_Simba.webp",
+    "Name": {
+      "en_US": "Mufasa and Simba",
+      "pt_BR": "Mufasa e Simba"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7984-bd03-56d854b970ab",
+    "FileName": "Nala.webp",
+    "Name": {
+      "en_US": "Nala",
+      "pt_BR": "Nala"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7596-99f7-5840150989df",
+    "FileName": "Nuka.webp",
+    "Name": {
+      "en_US": "Nuka",
+      "pt_BR": "Nuka"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-79e1-b331-74a6909d5376",
+    "FileName": "Pumbaa.webp",
+    "Name": {
+      "en_US": "Pumba",
+      "pt_BR": "Pumba"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7991-b3a8-e78d3ceaefe6",
+    "FileName": "Rani.webp",
+    "Name": {
+      "en_US": "Rani",
+      "pt_BR": "Rani"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-78ae-91bd-6be8178e9223",
+    "FileName": "Scar.webp",
+    "Name": {
+      "en_US": "Scar",
+      "pt_BR": "Scar"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-762f-95a9-c0463ab0bd11",
+    "FileName": "Simba.webp",
+    "Name": {
+      "en_US": "Simba",
+      "pt_BR": "Simba"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7bf5-8546-1afee9d6a95f",
+    "FileName": "Timon.webp",
+    "Name": {
+      "en_US": "Timon",
+      "pt_BR": "TIm\u00E3o"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7280-a097-6f61c8f485c9",
+    "FileName": "Timon_Pumba.webp",
+    "Name": {
+      "en_US": "Timon and Pumba",
+      "pt_BR": "Tim\u00E3o e Pumba"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7108-8a1f-31413e3f58b3",
+    "FileName": "Zazu.webp",
+    "Name": {
+      "en_US": "Zazu",
+      "pt_BR": "Zazu"
+    }
+  },
+  {
+    "CardId": "01a17869-7490-7559-a740-b17d6bd8d0f9",
+    "FileName": "Zira.webp",
+    "Name": {
+      "en_US": "Zira",
+      "pt_BR": "Zira"
+    }
+  }
+]

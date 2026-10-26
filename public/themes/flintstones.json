@@ -1,0 +1,122 @@
+[
+  {
+    "id": "01a1785b-69b0-7ef8-9288-c52df824cb8c",
+    "cardPath": "/themes/flintstones/Bachelor_Daze_-_Fred_Barney_Betty_Wilma_in_the_Cinderama.webp",
+    "name": {
+      "en_US": "Fred Barney Betty and Wilma",
+      "pt_BR": "Fred Barney Betty e Vilma"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7851-a9df-f03e1d0343ed",
+    "cardPath": "/themes/flintstones/bamm-bamm_rubble.webp",
+    "name": {
+      "en_US": "Bamm Bamm Rubble",
+      "pt_BR": "Bamm Bamm Rubble"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-76c5-9e3f-317890f555e1",
+    "cardPath": "/themes/flintstones/Bamm-Bamm_with_Betty_and_Barney.webp",
+    "name": {
+      "en_US": "Rubble Family",
+      "pt_BR": "Familia Rubble"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7c7c-9289-e6cb2e80311c",
+    "cardPath": "/themes/flintstones/barney_rubble.webp",
+    "name": {
+      "en_US": "Barney Rubble",
+      "pt_BR": "Barney Rubble"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7e3f-a0e3-7983e3e671e5",
+    "cardPath": "/themes/flintstones/betty_rubble.webp",
+    "name": {
+      "en_US": "Betty Rubble",
+      "pt_BR": "Betty Rubble"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7c82-8e02-364ee3d84d7e",
+    "cardPath": "/themes/flintstones/dino.webp",
+    "name": {
+      "en_US": "Dino",
+      "pt_BR": "Dino"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7a4a-879d-912c91e1c095",
+    "cardPath": "/themes/flintstones/Fred_and_Barney_as_babies_Fussin_and_Feudin.webp",
+    "name": {
+      "en_US": "Fred and Barney (Fussin and Feudin)",
+      "pt_BR": "Fred e Barney (Fucin e Feudin)"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7ddd-9636-ff51d040a226",
+    "cardPath": "/themes/flintstones/Fred_Barney_and_the_Great_Gazoo.webp",
+    "name": {
+      "en_US": "Fred Barney and Great Gazoo",
+      "pt_BR": "Fred Barney e o Grande Gazoo"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-764e-8899-bc1a6a028faa",
+    "cardPath": "/themes/flintstones/fred_flintstone.webp",
+    "name": {
+      "en_US": "Fred Flintstone",
+      "pt_BR": "Fred Flintstone"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7e12-8bb5-974bc2b2b2dc",
+    "cardPath": "/themes/flintstones/gazoo.webp",
+    "name": {
+      "en_US": "Gazoo",
+      "pt_BR": "Gazoo"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-75f8-825b-824a77401bfb",
+    "cardPath": "/themes/flintstones/Hoppy.webp",
+    "name": {
+      "en_US": "Hoppy",
+      "pt_BR": "Hoppy"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7fc3-8493-f1ee0e43fd21",
+    "cardPath": "/themes/flintstones/Pebbles_And_Bamm-Bamm_Nuptial_Bliss.webp",
+    "name": {
+      "en_US": "Pebbles and Bamm Bamm ",
+      "pt_BR": "Pedrita e Bamm Bamm"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7b5e-9336-00be6b608fa0",
+    "cardPath": "/themes/flintstones/pebbles_flintstone.webp",
+    "name": {
+      "en_US": "Pebbles Flintstone",
+      "pt_BR": "Pedrita Flintstone"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7827-8c96-a3534e92abe1",
+    "cardPath": "/themes/flintstones/sassie.webp",
+    "name": {
+      "en_US": "Sassie",
+      "pt_BR": "Sassie"
+    }
+  },
+  {
+    "id": "01a1785b-69b0-7922-b397-604f9f017cbd",
+    "cardPath": "/themes/flintstones/wilma_flintstone.webp",
+    "name": {
+      "en_US": "Wilma Flintstone",
+      "pt_BR": "Vilma Flintstone"
+    }
+  }
+]

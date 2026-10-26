@@ -40,9 +40,9 @@ public sealed partial class AudioService(IAudioManager manager, IRepository<Game
     }
     public async Task PlayFlipAsync()
     {
-        GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
-        if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsSfxEnabled)
-            return;
+        //GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
+        //if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsSfxEnabled)
+        //    return;
 
         await InitializeAsync("freesound_community-flipcard.mp3");
         _player?.Play();
@@ -50,9 +50,9 @@ public sealed partial class AudioService(IAudioManager manager, IRepository<Game
 
     public async Task PlayLoseAsync()
     {
-        GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
-        if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsMusicEnabled)
-            return;
+        //GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
+        //if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsMusicEnabled)
+        //    return;
 
         await InitializeAsync("lose_effect.mp3");
         _player?.Play();
@@ -60,9 +60,9 @@ public sealed partial class AudioService(IAudioManager manager, IRepository<Game
 
     public async Task PlayMainGameAsync()
     {
-        GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
-        if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsMusicEnabled)
-            return;
+        //GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
+        //if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsMusicEnabled)
+        //    return;
 
         await InitializeAsync("andorios-arcade_music3.mp3", true);
         _player?.Play();
@@ -70,9 +70,9 @@ public sealed partial class AudioService(IAudioManager manager, IRepository<Game
 
     public async Task PlayMainTitleAsync()
     {
-        GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
-        if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsMusicEnabled)
-            return;
+        //GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
+        //if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsMusicEnabled)
+        //    return;
 
         await InitializeAsync("andorios-arcade_music7.mp3", true);
         _player?.Play();
@@ -80,9 +80,9 @@ public sealed partial class AudioService(IAudioManager manager, IRepository<Game
 
     public async Task PlayShuffleFlipAsync()
     {
-        GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
-        if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsSfxEnabled)
-            return;
+        //GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
+        //if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsSfxEnabled)
+        //    return;
 
         await InitializeAsync("freesound_community-shuffleandcardflip1.mp3");
         _player?.Play();
@@ -90,9 +90,9 @@ public sealed partial class AudioService(IAudioManager manager, IRepository<Game
 
     public async Task PlayWinAsync()
     {
-        GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
-        if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsMusicEnabled)
-            return;
+        //GameSettingsEntity? currentConfig = (await repository.ListAsync(x => true, null!, CancellationToken.None)).FirstOrDefault();
+        //if (currentConfig is GameSettingsEntity gs && gs.Options is GameOptions go && !go.IsMusicEnabled)
+        //    return;
 
         await InitializeAsync("win_effect.mp3");
         _player?.Play();

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "01a17875-dead-7c6d-b437-96208f37660b",
+    "cardPath": "/themes/sega/Amy_hugs.webp",
+    "name": {
+      "en_US": "Sonic And Amy hugging",
+      "pt_BR": "Sonic e Amy abra\u00E7ando"
+    }
+  },
+  {
+    "id": "01a17875-dead-7d6a-b41e-e2467142e68c",
+    "cardPath": "/themes/sega/Amy_Sonic.webp",
+    "name": {
+      "en_US": "Sonic And Amy hugging again",
+      "pt_BR": "Sonic e Amy abra\u00E7ando de novo"
+    }
+  },
+  {
+    "id": "01a17875-dead-78ad-85e4-72b497a46040",
+    "cardPath": "/themes/sega/Sonic.webp",
+    "name": {
+      "en_US": "Sonic",
+      "pt_BR": "Sonic"
+    }
+  },
+  {
+    "id": "01a17875-dead-7ca1-b02b-c7a006380c43",
+    "cardPath": "/themes/sega/Sonic_Chris.webp",
+    "name": {
+      "en_US": "Sonic and Chris",
+      "pt_BR": "Sonic e Chris"
+    }
+  },
+  {
+    "id": "01a17875-dead-78f9-9faa-0d0616cc6b7f",
+    "cardPath": "/themes/sega/Sonic_CreamCheese.webp",
+    "name": {
+      "en_US": "Sonic and Cream Cheese",
+      "pt_BR": "Sonic e Cream Cheese"
+    }
+  },
+  {
+    "id": "01a17875-dead-7f78-ae39-9a0afdab97b7",
+    "cardPath": "/themes/sega/Sonic_EggMan.webp",
+    "name": {
+      "en_US": "Sonic vs EggMan",
+      "pt_BR": "Sonic vs Robotinc"
+    }
+  },
+  {
+    "id": "01a17875-dead-7c65-9446-b67ce207087e",
+    "cardPath": "/themes/sega/Sonic_gives_Amy_a_flower.webp",
+    "name": {
+      "en_US": "Sonic Amy",
+      "pt_BR": "Sonic Amy"
+    }
+  },
+  {
+    "id": "01a17875-dead-708f-9de2-638706ecd673",
+    "cardPath": "/themes/sega/Sonic_Knux.webp",
+    "name": {
+      "en_US": "Sonic and Knux",
+      "pt_BR": "Sonic e Knux"
+    }
+  },
+  {
+    "id": "01a17875-dead-7fe1-8345-b2d970c159cd",
+    "cardPath": "/themes/sega/Sonic_right_by_eggman.webp",
+    "name": {
+      "en_US": "Sonic and EggMan",
+      "pt_BR": "Sonic e Robotnic"
+    }
+  },
+  {
+    "id": "01a17875-dead-70ac-98ac-1b30e136f0b3",
+    "cardPath": "/themes/sega/Sonic_running_in_Sonic_X.webp",
+    "name": {
+      "en_US": "Sonic X",
+      "pt_BR": "Sonic X"
+    }
+  },
+  {
+    "id": "01a17875-dead-7bc1-a24f-b1ea7df6134c",
+    "cardPath": "/themes/sega/Sonic_Tails.webp",
+    "name": {
+      "en_US": "Sonic and Tails",
+      "pt_BR": "Sonic e Tails"
+    }
+  },
+  {
+    "id": "01a17875-dead-760b-aa29-c7da52bf21a5",
+    "cardPath": "/themes/sega/Sonic_vs._Shadow.webp",
+    "name": {
+      "en_US": "Sonic x Shadow",
+      "pt_BR": "Sonic x Sombra"
+    }
+  },
+  {
+    "id": "01a17875-dead-7be1-95a9-9da9b14807cf",
+    "cardPath": "/themes/sega/Sx-supersonic.webp",
+    "name": {
+      "en_US": "Supersonic",
+      "pt_BR": "Supersonic"
+    }
+  },
+  {
+    "id": "01a17875-dead-7bf5-ace7-2bc64fcff712",
+    "cardPath": "/themes/sega/SX05ChrisSonic.webp",
+    "name": {
+      "en_US": "Chirs and Sonic",
+      "pt_BR": "Chirs e Sonic"
+    }
+  },
+  {
+    "id": "01a17875-dead-71e4-813d-5aa15c391403",
+    "cardPath": "/themes/sega/Team.webp",
+    "name": {
+      "en_US": "Team",
+      "pt_BR": "Turma"
+    }
+  }
+]

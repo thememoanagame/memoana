@@ -1,0 +1,122 @@
+[
+  {
+    "CardId": "01a1785b-6d0e-7d78-93b9-01bda900f6c5",
+    "FileName": "ariel.webp",
+    "Name": {
+      "en_US": "Ariel",
+      "pt_BR": "Ariel"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7332-8a6e-9a4dab9c6355",
+    "FileName": "Ariel_Bela_Aurora.webp",
+    "Name": {
+      "en_US": "Ariel Bela e Aurora",
+      "pt_BR": "Ariel Bela e Aurora"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7339-9c31-0f7a477382e4",
+    "FileName": "Aurora_Jasmine_SnowWhite_Bella_Arie_Cinderela.webp",
+    "Name": {
+      "en_US": "Aurora Jasmine Snow White Bela Ariel and Cinderela",
+      "pt_BR": "Aurora Jasmine Branca de Neve Bela Ariel e Cinderela"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7e33-b3d9-8dc6cfca3836",
+    "FileName": "Bashful(Dengoso).webp",
+    "Name": {
+      "en_US": "Dengoso",
+      "pt_BR": "Bashful"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-75e5-a814-50b059ced5e3",
+    "FileName": "Cheshire_Cat.webp",
+    "Name": {
+      "en_US": "Cheshire Cat",
+      "pt_BR": "Gato de Cheshire"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-74c6-8dce-f02585068d1e",
+    "FileName": "cinderella.webp",
+    "Name": {
+      "en_US": "Cinrelella",
+      "pt_BR": "Cinderela"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7ab3-b450-77252db6243c",
+    "FileName": "Cinderella_SnowWhite_Aurora_Tiana_Bella_Ariel_Rapunzel.webp",
+    "Name": {
+      "en_US": "Cinderella Snow White Aurora Tiana Bella Ariel and Rapunzel",
+      "pt_BR": "Cinderella Branca de Neve Aurora Tiana Bella Ariel e Rapunzel"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7a8a-8116-fd4827d1aa5a",
+    "FileName": "jasmine.webp",
+    "Name": {
+      "en_US": "Jasmine",
+      "pt_BR": "Jasmin"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7a13-86c5-0d856b65cd71",
+    "FileName": "Mad Hatter.webp",
+    "Name": {
+      "en_US": "Mad Hatter",
+      "pt_BR": "Chapeleiro Maluco"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7656-8090-19efe5887af8",
+    "FileName": "Merida.webp",
+    "Name": {
+      "en_US": "Merida",
+      "pt_BR": "Merida"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7789-ad7d-43d268d41b5c",
+    "FileName": "pocahontas.webp",
+    "Name": {
+      "en_US": "Pocahontas",
+      "pt_BR": "Pocahontas"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7580-a86d-13be5348dc49",
+    "FileName": "quasimodo.webp",
+    "Name": {
+      "en_US": "Quasimodo",
+      "pt_BR": "Quasimodo"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7d0c-bf4f-9d9bb7ffe0ff",
+    "FileName": "queen_of_hearts.webp",
+    "Name": {
+      "en_US": "Queen of Hearts",
+      "pt_BR": "Rainha de copas"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-7805-84bc-b0a85be82524",
+    "FileName": "SnowWhite_Rapunzel_Pocahontas_Mulan_Aurora_Cinderella_Merida_Tiana_Bella_Ariel_Jasmine.webp",
+    "Name": {
+      "en_US": "Snow White Rapunzel Pocahontas Mulan Aurora Cinderella Merida Tiana Bela Ariel and Jasmine",
+      "pt_BR": "Branca de Neve Rapunzel Pocahontas Mulan Aurora Cinderela Merida Tiana Bela Ariel e Jasmin"
+    }
+  },
+  {
+    "CardId": "01a1785b-6d0e-78b7-9496-7d4154c3aa83",
+    "FileName": "WhiteRabbit.webp",
+    "Name": {
+      "en_US": "White Rabbit",
+      "pt_BR": "Coelho Branco"
+    }
+  }
+]

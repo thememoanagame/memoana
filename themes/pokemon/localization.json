@@ -1,0 +1,122 @@
+[
+  {
+    "CardId": "01a17874-49f6-7ae4-bfb6-5149ff98dc03",
+    "FileName": "bulbasaur.webp",
+    "Name": {
+      "en_US": "Bulbasaur",
+      "pt_BR": "Bulbasauro"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-721f-90b7-9b7b2264c2c0",
+    "FileName": "charizard.webp",
+    "Name": {
+      "en_US": "Charizard",
+      "pt_BR": "Charizard"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7d53-a41d-c426457186fe",
+    "FileName": "charmander.webp",
+    "Name": {
+      "en_US": "Charmander",
+      "pt_BR": "Charmander"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7bbc-aac8-41e676296379",
+    "FileName": "charmeleon.webp",
+    "Name": {
+      "en_US": "Charmeleon",
+      "pt_BR": "Charmeleon"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-71ff-b0ef-73f6d6e16b1b",
+    "FileName": "Clefable.webp",
+    "Name": {
+      "en_US": "Clefable",
+      "pt_BR": "Clefable"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-79b6-9fb7-9e5263a9a052",
+    "FileName": "Clefairy.webp",
+    "Name": {
+      "en_US": "Clefairy",
+      "pt_BR": "Clefairy"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7fb8-b997-ab9d6162cd31",
+    "FileName": "ivysaur.webp",
+    "Name": {
+      "en_US": "Ivysaur",
+      "pt_BR": "Ivysauro"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7ffe-9543-7fd5afe97db6",
+    "FileName": "Ninetales.webp",
+    "Name": {
+      "en_US": "Ninetales",
+      "pt_BR": "Ninetales"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7363-a398-32b4b979bbb5",
+    "FileName": "Pidgeot.webp",
+    "Name": {
+      "en_US": "Pidgeot",
+      "pt_BR": "Pidgeot"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-73c4-a9cc-742a6f11660e",
+    "FileName": "Pidgeotto.webp",
+    "Name": {
+      "en_US": "Pidgeotto",
+      "pt_BR": "Pidgeotto"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7af6-84f5-c4ce5013454d",
+    "FileName": "Pidgey.webp",
+    "Name": {
+      "en_US": "Pidgey",
+      "pt_BR": "Pidgey"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7f82-b607-8c574f2967a6",
+    "FileName": "pikachu.webp",
+    "Name": {
+      "en_US": "Pikachu",
+      "pt_BR": "Pikachu"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-764b-b30b-bd72fa942dab",
+    "FileName": "Raichu.webp",
+    "Name": {
+      "en_US": "Raychu",
+      "pt_BR": "Raichu"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7a64-9737-dcf3c9d6aaae",
+    "FileName": "venusaur.webp",
+    "Name": {
+      "en_US": "Venusaur",
+      "pt_BR": "Venusauro"
+    }
+  },
+  {
+    "CardId": "01a17874-49f6-7ef6-9600-0863e1d3562b",
+    "FileName": "Vulpix.webp",
+    "Name": {
+      "en_US": "Vulpix",
+      "pt_BR": "Vulpix"
+    }
+  }
+]
