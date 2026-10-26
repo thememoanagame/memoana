@@ -1,0 +1,122 @@
+[
+  {
+    "id": "01a1785b-6d0e-7d78-93b9-01bda900f6c5",
+    "cardPath": "/themes/disney/ariel.webp",
+    "name": {
+      "en_US": "Ariel",
+      "pt_BR": "Ariel"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7332-8a6e-9a4dab9c6355",
+    "cardPath": "/themes/disney/Ariel_Bela_Aurora.webp",
+    "name": {
+      "en_US": "Ariel Bela e Aurora",
+      "pt_BR": "Ariel Bela e Aurora"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7339-9c31-0f7a477382e4",
+    "cardPath": "/themes/disney/Aurora_Jasmine_SnowWhite_Bella_Arie_Cinderela.webp",
+    "name": {
+      "en_US": "Aurora Jasmine Snow White Bela Ariel and Cinderela",
+      "pt_BR": "Aurora Jasmine Branca de Neve Bela Ariel e Cinderela"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7e33-b3d9-8dc6cfca3836",
+    "cardPath": "/themes/disney/Bashful(Dengoso).webp",
+    "name": {
+      "en_US": "Dengoso",
+      "pt_BR": "Bashful"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-75e5-a814-50b059ced5e3",
+    "cardPath": "/themes/disney/Cheshire_Cat.webp",
+    "name": {
+      "en_US": "Cheshire Cat",
+      "pt_BR": "Gato de Cheshire"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-74c6-8dce-f02585068d1e",
+    "cardPath": "/themes/disney/cinderella.webp",
+    "name": {
+      "en_US": "Cinrelella",
+      "pt_BR": "Cinderela"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7ab3-b450-77252db6243c",
+    "cardPath": "/themes/disney/Cinderella_SnowWhite_Aurora_Tiana_Bella_Ariel_Rapunzel.webp",
+    "name": {
+      "en_US": "Cinderella Snow White Aurora Tiana Bella Ariel and Rapunzel",
+      "pt_BR": "Cinderella Branca de Neve Aurora Tiana Bella Ariel e Rapunzel"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7a8a-8116-fd4827d1aa5a",
+    "cardPath": "/themes/disney/jasmine.webp",
+    "name": {
+      "en_US": "Jasmine",
+      "pt_BR": "Jasmin"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7a13-86c5-0d856b65cd71",
+    "cardPath": "/themes/disney/Mad Hatter.webp",
+    "name": {
+      "en_US": "Mad Hatter",
+      "pt_BR": "Chapeleiro Maluco"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7656-8090-19efe5887af8",
+    "cardPath": "/themes/disney/Merida.webp",
+    "name": {
+      "en_US": "Merida",
+      "pt_BR": "Merida"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7789-ad7d-43d268d41b5c",
+    "cardPath": "/themes/disney/pocahontas.webp",
+    "name": {
+      "en_US": "Pocahontas",
+      "pt_BR": "Pocahontas"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7580-a86d-13be5348dc49",
+    "cardPath": "/themes/disney/quasimodo.webp",
+    "name": {
+      "en_US": "Quasimodo",
+      "pt_BR": "Quasimodo"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7d0c-bf4f-9d9bb7ffe0ff",
+    "cardPath": "/themes/disney/queen_of_hearts.webp",
+    "name": {
+      "en_US": "Queen of Hearts",
+      "pt_BR": "Rainha de copas"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-7805-84bc-b0a85be82524",
+    "cardPath": "/themes/disney/SnowWhite_Rapunzel_Pocahontas_Mulan_Aurora_Cinderella_Merida_Tiana_Bella_Ariel_Jasmine.webp",
+    "name": {
+      "en_US": "Snow White Rapunzel Pocahontas Mulan Aurora Cinderella Merida Tiana Bela Ariel and Jasmine",
+      "pt_BR": "Branca de Neve Rapunzel Pocahontas Mulan Aurora Cinderela Merida Tiana Bela Ariel e Jasmin"
+    }
+  },
+  {
+    "id": "01a1785b-6d0e-78b7-9496-7d4154c3aa83",
+    "cardPath": "/themes/disney/WhiteRabbit.webp",
+    "name": {
+      "en_US": "White Rabbit",
+      "pt_BR": "Coelho Branco"
+    }
+  }
+]

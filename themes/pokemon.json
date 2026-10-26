@@ -1,0 +1,122 @@
+[
+  {
+    "id": "01a17874-49f6-7ae4-bfb6-5149ff98dc03",
+    "cardPath": "/themes/pokemon/bulbasaur.webp",
+    "name": {
+      "en_US": "Bulbasaur",
+      "pt_BR": "Bulbasauro"
+    }
+  },
+  {
+    "id": "01a17874-49f6-721f-90b7-9b7b2264c2c0",
+    "cardPath": "/themes/pokemon/charizard.webp",
+    "name": {
+      "en_US": "Charizard",
+      "pt_BR": "Charizard"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7d53-a41d-c426457186fe",
+    "cardPath": "/themes/pokemon/charmander.webp",
+    "name": {
+      "en_US": "Charmander",
+      "pt_BR": "Charmander"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7bbc-aac8-41e676296379",
+    "cardPath": "/themes/pokemon/charmeleon.webp",
+    "name": {
+      "en_US": "Charmeleon",
+      "pt_BR": "Charmeleon"
+    }
+  },
+  {
+    "id": "01a17874-49f6-71ff-b0ef-73f6d6e16b1b",
+    "cardPath": "/themes/pokemon/Clefable.webp",
+    "name": {
+      "en_US": "Clefable",
+      "pt_BR": "Clefable"
+    }
+  },
+  {
+    "id": "01a17874-49f6-79b6-9fb7-9e5263a9a052",
+    "cardPath": "/themes/pokemon/Clefairy.webp",
+    "name": {
+      "en_US": "Clefairy",
+      "pt_BR": "Clefairy"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7fb8-b997-ab9d6162cd31",
+    "cardPath": "/themes/pokemon/ivysaur.webp",
+    "name": {
+      "en_US": "Ivysaur",
+      "pt_BR": "Ivysauro"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7ffe-9543-7fd5afe97db6",
+    "cardPath": "/themes/pokemon/Ninetales.webp",
+    "name": {
+      "en_US": "Ninetales",
+      "pt_BR": "Ninetales"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7363-a398-32b4b979bbb5",
+    "cardPath": "/themes/pokemon/Pidgeot.webp",
+    "name": {
+      "en_US": "Pidgeot",
+      "pt_BR": "Pidgeot"
+    }
+  },
+  {
+    "id": "01a17874-49f6-73c4-a9cc-742a6f11660e",
+    "cardPath": "/themes/pokemon/Pidgeotto.webp",
+    "name": {
+      "en_US": "Pidgeotto",
+      "pt_BR": "Pidgeotto"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7af6-84f5-c4ce5013454d",
+    "cardPath": "/themes/pokemon/Pidgey.webp",
+    "name": {
+      "en_US": "Pidgey",
+      "pt_BR": "Pidgey"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7f82-b607-8c574f2967a6",
+    "cardPath": "/themes/pokemon/pikachu.webp",
+    "name": {
+      "en_US": "Pikachu",
+      "pt_BR": "Pikachu"
+    }
+  },
+  {
+    "id": "01a17874-49f6-764b-b30b-bd72fa942dab",
+    "cardPath": "/themes/pokemon/Raichu.webp",
+    "name": {
+      "en_US": "Raychu",
+      "pt_BR": "Raichu"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7a64-9737-dcf3c9d6aaae",
+    "cardPath": "/themes/pokemon/venusaur.webp",
+    "name": {
+      "en_US": "Venusaur",
+      "pt_BR": "Venusauro"
+    }
+  },
+  {
+    "id": "01a17874-49f6-7ef6-9600-0863e1d3562b",
+    "cardPath": "/themes/pokemon/Vulpix.webp",
+    "name": {
+      "en_US": "Vulpix",
+      "pt_BR": "Vulpix"
+    }
+  }
+]
