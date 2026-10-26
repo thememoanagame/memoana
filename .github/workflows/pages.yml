@@ -1,0 +1,19 @@
+name: Deploy JSON API and Images
+
+on:
+  push:
+    tags: [ "*" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v7
+
+      - name: Publicar no GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        if: ${{ contains('tag',  github.ref ) }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public # Publica apenas a pasta de saída gerada pelo script

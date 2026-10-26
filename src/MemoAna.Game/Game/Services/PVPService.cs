@@ -7,6 +7,10 @@ using LiteNetLib;
 using LiteNetLib.Utils;
 using MemoAna.Common.Abstract.Repositories;
 using MemoAna.Common.Abstract.Localization;
+using MemoAna.Common.Abstract.Services;
+using MemoAna.Common.Enums;
+using MemoAna.Common.Exceptions;
+using MemoAna.Common.Services;
 using MemoAna.Game.Entities;
 using MemoAna.Game.Abstract.Services;
 using MemoAna.Game.Core;
@@ -14,6 +18,7 @@ using MemoAna.Game.Dtos;
 using MemoAna.Game.Enums;
 using MemoAna.Game.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Maui.ApplicationModel;
 using MemoAna.Game.Resources.Localization;
 
 namespace MemoAna.Game.Services;
@@ -24,6 +29,7 @@ public sealed class PVPService : IPVPService
     private const int DefaultPort = 35678;
     private const int DefaultDiscoveryPort = 35679;
     private readonly IThemeService themeService;
+    private readonly IPermissionService permissionService;
     private readonly IRepository<GameStatisticsEntity>? statisticsRepository;
     private readonly ILocalizer<Strings>? localizer;
     private readonly ILogger<PVPService> logger;
@@ -63,13 +69,24 @@ public sealed class PVPService : IPVPService
     public PVPService(
         IThemeService themeService,
         ILogger<PVPService> logger,
+        IPermissionService permissionService,
         IRepository<GameStatisticsEntity>? statisticsRepository = null,
         ILocalizer<Strings>? localizer = null)
     {
         this.themeService = themeService;
         this.logger = logger;
+        this.permissionService = permissionService;
         this.statisticsRepository = statisticsRepository;
         this.localizer = localizer;
+    }
+
+    public PVPService(
+        IThemeService themeService,
+        ILogger<PVPService> logger,
+        IRepository<GameStatisticsEntity>? statisticsRepository = null,
+        ILocalizer<Strings>? localizer = null)
+        : this(themeService, logger, new PermissionService(), statisticsRepository, localizer)
+    {
     }
 
     public IReadOnlyList<KeyValuePair<int, MemoryCard>> CurrentCards => cards;
@@ -101,6 +118,15 @@ public sealed class PVPService : IPVPService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(hostSettings.ThemeName);
         ArgumentException.ThrowIfNullOrWhiteSpace(hostSettings.PlayerName);
+
+        PermissionStatus permissionStatus = await permissionService.EnsureGrantedAsync(AppPermission.LocalNetwork, cancellationToken);
+        if (permissionStatus != PermissionStatus.Granted)
+        {
+            var exception = new PermissionDeniedException(AppPermission.LocalNetwork, permissionStatus);
+            RaiseError("Local network permission was not granted for PVP host.", exception);
+            throw exception;
+        }
+
         await StopAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -128,6 +154,14 @@ public sealed class PVPService : IPVPService
         TimeSpan? timeout = null,
         CancellationToken cancellationToken = default)
     {
+        PermissionStatus permissionStatus = await permissionService.EnsureGrantedAsync(AppPermission.LocalNetwork, cancellationToken);
+        if (permissionStatus != PermissionStatus.Granted)
+        {
+            var exception = new PermissionDeniedException(AppPermission.LocalNetwork, permissionStatus);
+            RaiseError("Local network permission was not granted for PVP discovery.", exception);
+            throw exception;
+        }
+
         await StopAsync(cancellationToken);
         lock (discoveredHosts)
             discoveredHosts.Clear();
@@ -217,6 +251,15 @@ public sealed class PVPService : IPVPService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(host.Address);
         ArgumentException.ThrowIfNullOrWhiteSpace(playerName);
+
+        PermissionStatus permissionStatus = await permissionService.EnsureGrantedAsync(AppPermission.LocalNetwork, cancellationToken);
+        if (permissionStatus != PermissionStatus.Granted)
+        {
+            var exception = new PermissionDeniedException(AppPermission.LocalNetwork, permissionStatus);
+            RaiseError("Local network permission was not granted for PVP connection.", exception);
+            throw exception;
+        }
+
         await StopAsync(cancellationToken);
         settings = new PVPGameSettings(host.Difficulty, host.ThemeName, playerName, host.Port, host.DiscoveryPort);
         localRole = PVPPlayerRole.Client;

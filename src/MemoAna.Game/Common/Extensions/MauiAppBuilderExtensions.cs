@@ -1,4 +1,4 @@
-﻿using MemoAna.ame.Services;
+using MemoAna.ame.Services;
 using MemoAna.Game.Core;
 using MemoAna.Common.Abstract.Localization;
 using MemoAna.Common.Abstract.Repositories;
@@ -82,6 +82,8 @@ public static class MauiAppBuilderExtensions
         
         private MauiAppBuilder AddApplication()
         {
+            builder.Services.AddSingleton<IPermissionPlatformAdapter, DefaultPermissionPlatformAdapter>();
+            builder.Services.AddSingleton<IPermissionService, PermissionService>();
             builder.Services.AddSingleton<IGameService, GameService>();
             builder.Services.AddSingleton<IAIService, AIService>();
             builder.Services.AddSingleton<IPVPService, PVPService>();

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "01a1785b-5eb7-79a0-9b7e-daa31ea8c41e",
+    "name": "Cars",
+    "collectionPath": "/themes/cars.json",
+    "thumbnail": "/themes/cars/thumbnail.webp",
+    "count": 15,
+    "hash": "c9cf819f6b109d24a68b987ccfa62c99"
+  },
+  {
+    "id": "01a1785b-6d0d-716d-913c-8931a6cb4a5f",
+    "name": "Disney",
+    "collectionPath": "/themes/disney.json",
+    "thumbnail": "/themes/disney/thumbnail.webp",
+    "count": 15,
+    "hash": "3ac680d2976e2a4aee5b2a5a2fbab322"
+  },
+  {
+    "id": "01a1785b-69b0-7aef-8015-09d3a6064783",
+    "name": "Flintstones",
+    "collectionPath": "/themes/flintstones.json",
+    "thumbnail": "/themes/flintstones/thumbnail.webp",
+    "count": 15,
+    "hash": "a6307a55877f5952b9830902714652ea"
+  },
+  {
+    "id": "01a17870-0d2a-794e-a7be-54de49975a0c",
+    "name": "Marvel",
+    "collectionPath": "/themes/marvel.json",
+    "thumbnail": "/themes/marvel/thumbnail.webp",
+    "count": 15,
+    "hash": "1513e5c0643f3adaf7ca8e4fb6cc5637"
+  },
+  {
+    "id": "01a17874-49f6-7686-ae9b-f99b923e7fda",
+    "name": "Pokemon",
+    "collectionPath": "/themes/pokemon.json",
+    "thumbnail": "/themes/pokemon/thumbnail.webp",
+    "count": 15,
+    "hash": "9d24687dc4a763c26c4a79285b7a9592"
+  },
+  {
+    "id": "01a17875-dead-7f64-9616-e04d31e4bc4e",
+    "name": "Sega",
+    "collectionPath": "/themes/sega.json",
+    "thumbnail": "/themes/sega/thumbnail.webp",
+    "count": 15,
+    "hash": "b41d6a28a1d0757db9372f9d9a7d5037"
+  }
+]

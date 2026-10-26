@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Editor.MainPage"
+             Title="Memory Game Theme Editor">
+
+    <Grid RowDefinitions="Auto, *" ColumnDefinitions="250, *">
+        
+        <!-- Topbar -->
+        <HorizontalStackLayout Grid.Row="0" Grid.ColumnSpan="2" Padding="15" Spacing="15" BackgroundColor="#2B2B2B">
+            <Button Text="Selecionar Repositório" Clicked="OnSelectRepoClicked" />
+            <Label x:Name="LblCurrentRepo" VerticalOptions="Center" TextColor="White" />
+            <Button Text="Salvar Textos do Tema" Clicked="OnSaveThemeClicked" BackgroundColor="DarkGreen" />
+            <Button Text="BUILD STATIC API (/public)" Clicked="OnBuildApiClicked" BackgroundColor="DarkBlue" HorizontalOptions="End" />
+        </HorizontalStackLayout>
+
+        <!-- Sidebar: Themes -->
+        <CollectionView x:Name="CvThemes" Grid.Row="1" Grid.Column="0" SelectionMode="Single" SelectionChanged="OnThemeSelected" BackgroundColor="#1E1E1E">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Label Text="{Binding .}" Padding="15" TextColor="White" FontSize="16" />
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Main Area: Cards Editor -->
+        <ScrollView Grid.Row="1" Grid.Column="1" Padding="20">
+            <VerticalStackLayout x:Name="ContainerCards" Spacing="20" BindableLayout.ItemsSource="{Binding CurrentCards}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate>
+                        <Border BackgroundColor="#333333" Padding="15">
+                            <Grid ColumnDefinitions="120, *">
+                                <Image Grid.Column="0" Source="{Binding LocalFullPath}" WidthRequest="100" HeightRequest="100" Aspect="AspectFit" />
+                                
+                                <VerticalStackLayout Grid.Column="1" Spacing="10" VerticalOptions="Center">
+                                    <Label Text="{Binding FileName}" TextColor="Gray" FontSize="12" />
+                                    
+                                    <HorizontalStackLayout Spacing="10">
+                                        <Label Text="EN:" VerticalOptions="Center" WidthRequest="30" TextColor="White"/>
+                                        <Entry Text="{Binding Name.EnUs}" WidthRequest="300" BackgroundColor="#444" TextColor="White" />
+                                    </HorizontalStackLayout>
+                                    
+                                    <HorizontalStackLayout Spacing="10">
+                                        <Label Text="PT:" VerticalOptions="Center" WidthRequest="30" TextColor="White"/>
+                                        <Entry Text="{Binding Name.PtBr}" WidthRequest="300" BackgroundColor="#444" TextColor="White"/>
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

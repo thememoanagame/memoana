@@ -1,0 +1,122 @@
+[
+  {
+    "CardId": "01a17870-0d2a-7c15-b159-8b3bb33c969a",
+    "FileName": "Ashley_Barton_Spider_Woman.webp",
+    "Name": {
+      "en_US": "Ashley Barton - Spider Woman",
+      "pt_BR": "Ashley Barton - Mulher Aranha"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7573-827c-dbe0af384eb8",
+    "FileName": "Black_Widow_Natasha_Romanoff.webp",
+    "Name": {
+      "en_US": "Natasha Romanoff - Black Widow",
+      "pt_BR": "Natasha Romanoff - Vi\u00FAva Negra"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7447-8d17-3d3717ad4dfd",
+    "FileName": "Captain_America_Steve_Rogers.webp",
+    "Name": {
+      "en_US": "Steve Rogers - Captain America",
+      "pt_BR": "Steve Rogers - Capit\u00E3o Am\u00E9rica"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7bd4-92f0-6173294eeef2",
+    "FileName": "Captain_Marvel_Carol_Danvers.webp",
+    "Name": {
+      "en_US": "Carol Denvers - Captain Marvel",
+      "pt_BR": "Carol Denvers - Capit\u00E3 Marvel"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7522-b17d-48776cea3b5b",
+    "FileName": "Henry_Pym_Ant_Man.webp",
+    "Name": {
+      "en_US": "Henry Pym - Ant Man",
+      "pt_BR": "Henry Pym - Homem Formiga"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7bb6-97fd-1d22d9169fd4",
+    "FileName": "Howard_Stark.webp",
+    "Name": {
+      "en_US": "Howard Stark",
+      "pt_BR": "Howard Stark"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7447-8613-c6e73ee24edc",
+    "FileName": "Hulk_Bruce_Banner.webp",
+    "Name": {
+      "en_US": "Bruce Banner - Hulk",
+      "pt_BR": "Bruce Banner - Hulk"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7286-bb00-8cec8675a58c",
+    "FileName": "Iron_Man_Tony_Stark.webp",
+    "Name": {
+      "en_US": "Tony Stark - Iron Man",
+      "pt_BR": "Tony Stark - Homem de Ferro"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-76a5-8606-891a8f291f07",
+    "FileName": "Kamala_Khan_Ms._Marvel.webp",
+    "Name": {
+      "en_US": "Kamala Khan - Ms Marvel",
+      "pt_BR": "Kamala Khan - Ms Marvel"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-71e9-8808-8fdd8288e331",
+    "FileName": "Mercury_Pietro_Maximoff.webp",
+    "Name": {
+      "en_US": "Pietro Maximoff - Mercury ",
+      "pt_BR": "Pietro Maximoff - Merc\u00FArio"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7f8d-a173-cb6c6d564df9",
+    "FileName": "Michael_van_Patrick_Scarlat_Spider.webp",
+    "Name": {
+      "en_US": "Michael van Patrick - Scarlt Spider",
+      "pt_BR": "Michael van Patrick - Aranha Escarlate"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7e7b-92a9-05b5ca6b27f2",
+    "FileName": "Samuel_Wilson_Falcon.webp",
+    "Name": {
+      "en_US": "Samuel Wilson - Falcon",
+      "pt_BR": "Samuel Wilson - Falc\u00E3o"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7d57-833f-2f7b8f45ee65",
+    "FileName": "Thanos.webp",
+    "Name": {
+      "en_US": "Thanos",
+      "pt_BR": "Thanos"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-70b3-871c-cebda3febad2",
+    "FileName": "Ultron.webp",
+    "Name": {
+      "en_US": "Ultron",
+      "pt_BR": "Ultron"
+    }
+  },
+  {
+    "CardId": "01a17870-0d2a-7be9-85d1-b8dbda730f18",
+    "FileName": "Winter_Soldier_Bucky.webp",
+    "Name": {
+      "en_US": "Bucky - Winter Soldier",
+      "pt_BR": "Bucky - Soldado Invernal"
+    }
+  }
+]

@@ -1,0 +1,122 @@
+[
+  {
+    "CardId": "01a1785b-5eb8-7167-81a0-4b9e4f36712c",
+    "FileName": "Chick.webp",
+    "Name": {
+      "en_US": "Chick",
+      "pt_BR": "Chick"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-71c7-8991-0fba2c2473de",
+    "FileName": "Doc.webp",
+    "Name": {
+      "en_US": "Doc Hudson",
+      "pt_BR": "Doc Hudson"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-7080-9467-9ed924f716a8",
+    "FileName": "Fillmore.webp",
+    "Name": {
+      "en_US": "Fillmore",
+      "pt_BR": "Fillmore"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-7ec1-8aa3-7ecb25defe4e",
+    "FileName": "Flo.webp",
+    "Name": {
+      "en_US": "Flo",
+      "pt_BR": "Flo"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-739e-8283-8339ccae0d7a",
+    "FileName": "Guido.webp",
+    "Name": {
+      "en_US": "Guido",
+      "pt_BR": "Guido"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-728c-9b61-96c187b53f68",
+    "FileName": "Lizzie.webp",
+    "Name": {
+      "en_US": "Lizzie",
+      "pt_BR": "Lizzie"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-7d72-bd7a-dd5ede39fa72",
+    "FileName": "Luigi.webp",
+    "Name": {
+      "en_US": "Luigi",
+      "pt_BR": "Luigi"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-72df-b423-eae29b7daa56",
+    "FileName": "Mack.webp",
+    "Name": {
+      "en_US": "Mack",
+      "pt_BR": "Mack"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-7173-9698-0bef1e0983a7",
+    "FileName": "Mater.webp",
+    "Name": {
+      "en_US": "Tom Mater",
+      "pt_BR": "Tom Mate"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-79bf-954f-094f9261e865",
+    "FileName": "Mcqueen.webp",
+    "Name": {
+      "en_US": "Lightning Mcqueen",
+      "pt_BR": "Relampago Mcqueen"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-72b3-b9da-c1a8223beab0",
+    "FileName": "Ramone.webp",
+    "Name": {
+      "en_US": "Ramone",
+      "pt_BR": "Ramone"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-79a7-a2c5-242c23fc85dd",
+    "FileName": "Sally.webp",
+    "Name": {
+      "en_US": "Sally",
+      "pt_BR": "Sally"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-7fae-bfb1-3ee81f2a620b",
+    "FileName": "Sarg.webp",
+    "Name": {
+      "en_US": "Sarg",
+      "pt_BR": "Sargento"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-7994-8f3b-3bd7cf5e4dcc",
+    "FileName": "Weathers.webp",
+    "Name": {
+      "en_US": "Weathers",
+      "pt_BR": "Weathers"
+    }
+  },
+  {
+    "CardId": "01a1785b-5eb8-768b-8b3d-e9b180b5a560",
+    "FileName": "Xeriff.webp",
+    "Name": {
+      "en_US": "Xeriff",
+      "pt_BR": "Xerife"
+    }
+  }
+]

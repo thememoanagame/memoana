@@ -85,6 +85,9 @@ namespace MemoAna.Common.Persistence.Migrations
                     b.Property<int>("FinalScore")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("GameMode")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsVictory")
                         .HasColumnType("INTEGER");
 
@@ -92,6 +95,10 @@ namespace MemoAna.Common.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("PlayedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PlayerName")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RemainingSeconds")

@@ -219,7 +219,7 @@ public sealed class GameServiceTests
 
     private sealed class FakeThemeService : IThemeService
     {
-        public Task<IReadOnlyCollection<CardThemeManifestDto>> GetThemesAsync() =>
+        public Task<IReadOnlyCollection<CardThemeManifestDto>> GetThemesAsync(bool include = false) =>
             Task.FromResult<IReadOnlyCollection<CardThemeManifestDto>>([]);
 
         public Task<CardThemeDto> GetThemeAsync(string themeName) =>
