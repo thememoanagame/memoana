@@ -108,7 +108,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         var random = new Random();
 
         // .OrderBy(_ => random.Next()) ensures always get a random set of cards from manifest
-        List<string> rawStrings = cards?.Base64Images.OrderBy(_ => random.Next()).Take(pairCount).ToList()
+        List<string> rawStrings = cards?.ImagesSrc.OrderBy(_ => random.Next()).Take(pairCount).ToList()
             ?? throw new KeyNotFoundException(localizer?["ThemeImagesUnavailable"] ?? "Imagens do tema não encontradas");
 
         var gameCards = new List<MemoryCard>();

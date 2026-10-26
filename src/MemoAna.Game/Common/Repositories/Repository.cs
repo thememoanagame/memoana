@@ -16,16 +16,17 @@ public sealed class Repository<TEntity> : IRepository<TEntity>
     where TEntity : EntityBase
 {
     private readonly DbSet<TEntity> Set;
+    private readonly IQueryable<TEntity> NoTrackingSet;
     private readonly IUnitOfWork uow;
     private readonly ILogger<Repository<TEntity>> logger;
 
     public Repository(GameDbContext dbContext, ILogger<Repository<TEntity>> logger, IUnitOfWork uow) =>
-        (Set, this.logger, this.uow) = (dbContext.Set<TEntity>(), logger, uow);
+        (Set, NoTrackingSet, this.logger, this.uow) = (dbContext.Set<TEntity>(), dbContext.Set<TEntity>().AsNoTracking<TEntity>(), logger, uow);
 
     /// <inheritdoc />
     public async Task<TEntity?> GetByIdAsync(string id, Expression<Func<TEntity, object?>>[] includes, CancellationToken cancellationToken)
     {
-        IQueryable<TEntity> query = Set.AsNoTracking();
+        IQueryable<TEntity> query = NoTrackingSet;
         query = ApplyIncludes(query, includes);
         return await query.FirstOrDefaultAsync(entity => entity.Id == id, cancellationToken);
     }
@@ -41,7 +42,7 @@ public sealed class Repository<TEntity> : IRepository<TEntity>
     /// <inheritdoc />
     public async Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, Expression<Func<TEntity, object?>>[] includes, CancellationToken cancellationToken)
     {
-        IQueryable<TEntity> query = Set.AsNoTracking();
+        IQueryable<TEntity> query = NoTrackingSet;
         query = ApplyIncludes(query, includes);
         return await query.FirstOrDefaultAsync(
             predicate,
@@ -51,7 +52,7 @@ public sealed class Repository<TEntity> : IRepository<TEntity>
     /// <inheritdoc />
     public async Task<IReadOnlyList<TEntity>> ListAsync(Expression<Func<TEntity, bool>>? predicate, Expression<Func<TEntity, object?>>[] includes, CancellationToken cancellationToken)
     {
-        IQueryable<TEntity> query = Set.AsNoTracking();
+        IQueryable<TEntity> query = NoTrackingSet;
         query = ApplyIncludes(query, includes);
 
         if (predicate is not null)
@@ -73,7 +74,7 @@ public sealed class Repository<TEntity> : IRepository<TEntity>
 
     /// <inheritdoc />
     public Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken) 
-        => Set.AsNoTracking().AnyAsync(predicate, cancellationToken);
+        => NoTrackingSet.AnyAsync(predicate, cancellationToken);
 
     /// <inheritdoc />
     public async Task AddAsync(TEntity entity, CancellationToken cancellationToken)

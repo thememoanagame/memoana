@@ -92,7 +92,7 @@
                             <MudButton Class=@("theme-select-button " + (IsSelected(theme) ? "theme-preview-selected" :
                                                                string.Empty)) data-testid="theme-select-button"
                                        OnClick="@(async () => await SelectThemeAsync(theme))">
-                                <MudImage Src="@GetThemeImage(theme)" Class="theme-image" Alt="@theme.ThemeName" />
+                                <MudImage Class="theme-image" Src="@(theme.ThumbnailSrc)" Alt="@(theme.ThemeName)" />
                             </MudButton>
                         </div>
                     </ItemTemplate>
@@ -360,17 +360,6 @@
     private bool IsSelected(CardThemeManifestDto theme)
     {
         return SelectedTheme?.CardThemeId == theme.CardThemeId;
-    }
-
-    private static string GetThemeImage(CardThemeManifestDto theme)
-    {
-        if (string.IsNullOrWhiteSpace(theme.PreviewBase64Image))
-            return string.Empty;
-
-        if (theme.PreviewBase64Image.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
-            return theme.PreviewBase64Image;
-
-        return $"data:image/png;base64,{theme.PreviewBase64Image}";
     }
 
     private async Task LoadThemesAsync()
@@ -1040,7 +1029,7 @@
         position: absolute;
         inset: 0;
         z-index: 3;
-        display: flex;
+        display: grid;
         flex-direction: column;
         align-items: center;
         justify-content: center;

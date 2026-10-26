@@ -14,6 +14,6 @@ public sealed class ThemeService(IRepository<CardThemeManifestEntity> repository
     public async Task<CardThemeDto> GetThemeAsync(string themeName)
     {
         var manifest = await repository.FirstOrDefaultAsync(x => x.ThemeName == themeName, [x => x.CardTheme], CancellationToken.None);
-        return manifest is null ? throw new InvalidOperationException($"Theme '{themeName}' not found.") : new CardThemeDto(manifest.CardTheme!.Base64Images, manifest.Id, new(manifest));
+        return manifest is null ? throw new InvalidOperationException($"Theme '{themeName}' not found.") : new CardThemeDto(manifest.CardTheme!.ImagesSrc, manifest.Id, new(manifest));
     }
 }

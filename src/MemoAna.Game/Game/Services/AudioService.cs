@@ -5,7 +5,7 @@ using MemoAna.Game.Models;
 using Microsoft.Extensions.Logging;
 using Plugin.Maui.Audio;
 
-namespace MemoAna.ame.Services;
+namespace MemoAna.Game.Services;
 
 public sealed partial class AudioService(IAudioManager manager, IRepository<GameSettingsEntity> repository, ILogger<AudioService> logger) : IAudioService, IDisposable
 {

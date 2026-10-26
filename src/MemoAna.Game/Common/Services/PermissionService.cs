@@ -9,19 +9,12 @@ namespace MemoAna.Common.Services;
 /// Cross-platform permission service managing application functional permissions.
 /// Queries the underlying platform on demand and avoids redundant requests.
 /// </summary>
-public sealed class PermissionService : IPermissionService
+public sealed class PermissionService(
+    IPermissionPlatformAdapter? platformAdapter = null,
+    ILogger<PermissionService>? logger = null) : IPermissionService
 {
-    private readonly IPermissionPlatformAdapter platformAdapter;
-    private readonly ILogger<PermissionService>? logger;
+    private readonly IPermissionPlatformAdapter platformAdapter = platformAdapter ?? new DefaultPermissionPlatformAdapter();
     private readonly SemaphoreSlim requestGate = new(1, 1);
-
-    public PermissionService(
-        IPermissionPlatformAdapter? platformAdapter = null,
-        ILogger<PermissionService>? logger = null)
-    {
-        this.platformAdapter = platformAdapter ?? new DefaultPermissionPlatformAdapter();
-        this.logger = logger;
-    }
 
     public async Task<PermissionStatus> CheckStatusAsync(AppPermission permission, CancellationToken cancellationToken = default)
     {

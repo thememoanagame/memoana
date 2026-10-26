@@ -11,21 +11,21 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MemoAna.Common.Persistence.Migrations
 {
     [DbContext(typeof(GameDbContext))]
-    [Migration("20261021212951_InitialCreate")]
+    [Migration("20261026173033_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("MemoAna.Game.Entities.CardThemeEntity", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Base64Images")
+                    b.Property<string>("ImagesSrc")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -53,11 +53,11 @@ namespace MemoAna.Common.Persistence.Migrations
                     b.Property<bool>("IsDefault")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("PreviewBase64Image")
+                    b.Property<string>("ThemeName")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ThemeName")
+                    b.Property<string>("ThumbnailSrc")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -122,6 +122,70 @@ namespace MemoAna.Common.Persistence.Migrations
                     b.ToTable("GameStatistics");
                 });
 
+            modelBuilder.Entity("MemoAna.Game.Entities.RemoteThemeCardEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CardPath")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NameEnUs")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NamePtBr")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RemoteThemeIndexId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RemoteThemeIndexId");
+
+                    b.ToTable("RemoteThemeCards");
+                });
+
+            modelBuilder.Entity("MemoAna.Game.Entities.RemoteThemeIndexEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CollectionPath")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThumbnailPath")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RemoteThemeIndexes");
+                });
+
             modelBuilder.Entity("MemoAna.Game.Entities.CardThemeEntity", b =>
                 {
                     b.HasOne("MemoAna.Game.Entities.CardThemeManifestEntity", "Manifest")
@@ -169,9 +233,25 @@ namespace MemoAna.Common.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("MemoAna.Game.Entities.RemoteThemeCardEntity", b =>
+                {
+                    b.HasOne("MemoAna.Game.Entities.RemoteThemeIndexEntity", "RemoteThemeIndex")
+                        .WithMany("Cards")
+                        .HasForeignKey("RemoteThemeIndexId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RemoteThemeIndex");
+                });
+
             modelBuilder.Entity("MemoAna.Game.Entities.CardThemeManifestEntity", b =>
                 {
                     b.Navigation("CardTheme");
+                });
+
+            modelBuilder.Entity("MemoAna.Game.Entities.RemoteThemeIndexEntity", b =>
+                {
+                    b.Navigation("Cards");
                 });
 #pragma warning restore 612, 618
         }

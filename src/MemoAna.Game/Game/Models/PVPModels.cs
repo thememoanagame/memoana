@@ -77,46 +77,30 @@ public sealed record PVPPlayerStatistics(
     public int FinalScore => Score;
 }
 
-public sealed class PVPStateChangedEventArgs : System.EventArgs
+public sealed class PVPStateChangedEventArgs(PVPGameState state) : System.EventArgs
 {
-    public PVPStateChangedEventArgs(PVPGameState state) => State = state;
-    public PVPGameState State { get; }
+    public PVPGameState State { get; } = state;
 }
 
-public sealed class PVPHostDiscoveredEventArgs : System.EventArgs
+public sealed class PVPHostDiscoveredEventArgs(PVPHostInfo host) : System.EventArgs
 {
-    public PVPHostDiscoveredEventArgs(PVPHostInfo host) => Host = host;
-    public PVPHostInfo Host { get; }
+    public PVPHostInfo Host { get; } = host;
 }
 
-public sealed class PVPCardEventArgs : System.EventArgs
+public sealed class PVPCardEventArgs(int position, PVPPlayerRole player, bool matched) : System.EventArgs
 {
-    public PVPCardEventArgs(int position, PVPPlayerRole player, bool matched)
-    {
-        Position = position;
-        Player = player;
-        Matched = matched;
-    }
-
-    public int Position { get; }
-    public PVPPlayerRole Player { get; }
-    public bool Matched { get; }
+    public int Position { get; } = position;
+    public PVPPlayerRole Player { get; } = player;
+    public bool Matched { get; } = matched;
 }
 
-public sealed class PVPErrorEventArgs : System.EventArgs
+public sealed class PVPErrorEventArgs(string message, Exception? exception = null) : System.EventArgs
 {
-    public PVPErrorEventArgs(string message, Exception? exception = null)
-    {
-        Message = message;
-        Exception = exception;
-    }
-
-    public string Message { get; }
-    public Exception? Exception { get; }
+    public string Message { get; } = message;
+    public Exception? Exception { get; } = exception;
 }
 
-public sealed class PVPGameFinishedEventArgs : System.EventArgs
+public sealed class PVPGameFinishedEventArgs(PVPGameResult result) : System.EventArgs
 {
-    public PVPGameFinishedEventArgs(PVPGameResult result) => Result = result;
-    public PVPGameResult Result { get; }
+    public PVPGameResult Result { get; } = result;
 }

@@ -17,24 +17,12 @@ public sealed class AccessLocalNetworkPermission : Permissions.BasePlatformPermi
 /// <summary>
 /// Default platform adapter for checking and requesting permissions across supported operating systems.
 /// </summary>
-public class DefaultPermissionPlatformAdapter : IPermissionPlatformAdapter
+public class DefaultPermissionPlatformAdapter(
+    MauiPlatform? platform = null,
+    int? androidApiLevel = null,
+    Func<AppPermission, CancellationToken, Task<PermissionStatus>>? customCheckHandler = null,
+    Func<AppPermission, CancellationToken, Task<PermissionStatus>>? customRequestHandler = null) : IPermissionPlatformAdapter
 {
-    private readonly MauiPlatform? explicitPlatform;
-    private readonly int? explicitAndroidApiLevel;
-    private readonly Func<AppPermission, CancellationToken, Task<PermissionStatus>>? customCheckHandler;
-    private readonly Func<AppPermission, CancellationToken, Task<PermissionStatus>>? customRequestHandler;
-
-    public DefaultPermissionPlatformAdapter(
-        MauiPlatform? platform = null,
-        int? androidApiLevel = null,
-        Func<AppPermission, CancellationToken, Task<PermissionStatus>>? customCheckHandler = null,
-        Func<AppPermission, CancellationToken, Task<PermissionStatus>>? customRequestHandler = null)
-    {
-        explicitPlatform = platform;
-        explicitAndroidApiLevel = androidApiLevel;
-        this.customCheckHandler = customCheckHandler;
-        this.customRequestHandler = customRequestHandler;
-    }
 
     public async Task<PermissionStatus> CheckStatusAsync(AppPermission permission, CancellationToken cancellationToken = default)
     {
@@ -141,9 +129,9 @@ public class DefaultPermissionPlatformAdapter : IPermissionPlatformAdapter
 
     private MauiPlatform ResolvePlatform()
     {
-        if (explicitPlatform.HasValue)
+        if (platform.HasValue)
         {
-            return explicitPlatform.Value;
+            return platform.Value;
         }
 
 #if WINDOWS
@@ -165,9 +153,9 @@ public class DefaultPermissionPlatformAdapter : IPermissionPlatformAdapter
 
     private int ResolveAndroidApiLevel()
     {
-        if (explicitAndroidApiLevel.HasValue)
+        if (androidApiLevel.HasValue)
         {
-            return explicitAndroidApiLevel.Value;
+            return androidApiLevel.Value;
         }
 
 #if ANDROID

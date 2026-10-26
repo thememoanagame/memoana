@@ -92,12 +92,11 @@ internal static class NativePrerequisites
         if (process.ExitCode != 0)
             throw new InvalidOperationException($"adb devices failed: {error}");
 
-        string[] devices = output.Split(Environment.NewLine,
+        string[] devices = [.. output.Split(Environment.NewLine,
                 StringSplitOptions.RemoveEmptyEntries)
             .Skip(1)
             .Where(line => line.EndsWith("\tdevice", StringComparison.Ordinal))
-            .Select(line => line[..line.IndexOf('\t')])
-            .ToArray();
+            .Select(line => line[..line.IndexOf('\t')])];
         if (!string.IsNullOrWhiteSpace(requestedSerial))
         {
             if (!devices.Contains(requestedSerial, StringComparer.Ordinal))
