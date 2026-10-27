@@ -25,8 +25,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
     private MemoryCard? _secondSelectedCard;
     private int _firstPosition;
     private int _secondPosition;
-    private bool _isProcessingTurn;
-    private bool _aiTurnInProgress;
+    private bool _isProcessingTurn; 
     private bool _lastTurnMatched;
     private int _gameGeneration;
     private readonly SemaphoreSlim _turnGate = new(1, 1);
@@ -158,8 +157,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         _gameTimer.Stop();
         _firstSelectedCard = null;
         _secondSelectedCard = null;
-        _isProcessingTurn = false;
-        _aiTurnInProgress = false;
+        _isProcessingTurn = false; 
         _lastTurnMatched = false;
         _gameGeneration++;
         _endedGeneration = -1;

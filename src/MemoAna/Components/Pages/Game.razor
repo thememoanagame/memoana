@@ -987,12 +987,8 @@
     }
 
     .theme-section {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 20px;
-        height: calc(100vh - 400px);
-        min-height: 270px;
+        top: calc(100vh*0.4);
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -1013,10 +1009,9 @@
     }
 
     .theme-carousel {
-        width: 70dvw;
-        height: 70dvh;
+        width: calc(100vh/0.8);
         flex: 1 1 auto;
-        min-height: 0;
+        min-height: calc(50vh / 1.2);
         margin: 30px 0;
     }
 
@@ -1328,7 +1323,7 @@
         font-style: normal;
     }
 
-    @@media (max-height: 750px) {
+    @@media (max-height: 700px) {
         .difficulty-section {
             top: 120px;
         }
@@ -1343,7 +1338,7 @@
         }
 
         .theme-section {
-            height: calc(100vh - 350px);
+            height: calc(100vh - 300px);
         }
     }
 
