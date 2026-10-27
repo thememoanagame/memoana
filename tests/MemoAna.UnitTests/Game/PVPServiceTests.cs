@@ -444,4 +444,182 @@ public sealed class PVPServiceTests
         public Task RemoveAsync(GameStatisticsEntity value, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task RemoveRangeAsync(IEnumerable<GameStatisticsEntity> values, CancellationToken cancellationToken) => Task.CompletedTask;
     }
+
+    [Fact]
+    public async Task HostAndClient_BothReceiveGameFinished_WithFinalStateAndStats()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        var hostRepo = new RecordingStatisticsRepository();
+        var clientRepo = new RecordingStatisticsRepository();
+        await using var host = CreateService(hostRepo);
+        await using var client = CreateService(clientRepo);
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Alice", port, discoveryPort), TestContext.Current.CancellationToken);
+        await client.ConnectAsync(new PVPHostInfo("Alice", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1"), "Bob", TestContext.Current.CancellationToken);
+
+        TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.SessionStarted += (_, _) => started.TrySetResult(true);
+        TaskCompletionSource<PVPGameResult> hostFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<PVPGameResult> clientFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        host.GameFinished += (_, args) => hostFinished.TrySetResult(args.Result);
+        client.GameFinished += (_, args) => clientFinished.TrySetResult(args.Result);
+
+        await host.StartGameAsync(TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        foreach (KeyValuePair<int, MemoAna.Game.Core.MemoryCard>[] pair in host.CurrentCards.GroupBy(card => card.Value.PairId).Select(group => group.ToArray()))
+        {
+            await host.FlipCardAsync(pair[0].Key, TestContext.Current.CancellationToken);
+            await host.FlipCardAsync(pair[1].Key, TestContext.Current.CancellationToken);
+        }
+
+        PVPGameResult hostResult = await hostFinished.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        PVPGameResult clientResult = await clientFinished.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Verify Host State
+        Assert.False(host.IsGameActive);
+        Assert.NotNull(host.SessionId);
+        Assert.Equal(host.SessionId, hostResult.SessionId);
+        Assert.Equal(PVPPlayerRole.Host, hostResult.Winner);
+        Assert.Equal(6, host.LocalStatistics.Hits);
+        Assert.Equal(0, host.LocalStatistics.Misses);
+
+        // Verify Client State
+        Assert.False(client.IsGameActive);
+        Assert.NotNull(client.SessionId);
+        Assert.Equal(host.SessionId, client.SessionId);
+        Assert.Equal(host.SessionId, clientResult.SessionId);
+        Assert.Equal(6, client.RemoteStatistics.Hits);
+        Assert.Equal("Alice", client.RemotePlayerName);
+        Assert.Equal("Bob", client.LocalPlayerName);
+    }
+
+    [Fact]
+    public async Task GameCompletion_IsIdempotent_SecondFinishMessageIgnored()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        var clientRepo = new RecordingStatisticsRepository();
+        await using var host = CreateService();
+        await using var client = CreateService(clientRepo);
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Alice", port, discoveryPort), TestContext.Current.CancellationToken);
+        await client.ConnectAsync(new PVPHostInfo("Alice", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1"), "Bob", TestContext.Current.CancellationToken);
+
+        TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.SessionStarted += (_, _) => started.TrySetResult(true);
+        int clientFinishCount = 0;
+        PVPGameResult? lastResult = null;
+        client.GameFinished += (_, args) =>
+        {
+            clientFinishCount++;
+            lastResult = args.Result;
+        };
+
+        await host.StartGameAsync(TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        foreach (KeyValuePair<int, MemoAna.Game.Core.MemoryCard>[] pair in host.CurrentCards.GroupBy(card => card.Value.PairId).Select(group => group.ToArray()))
+        {
+            await host.FlipCardAsync(pair[0].Key, TestContext.Current.CancellationToken);
+            await host.FlipCardAsync(pair[1].Key, TestContext.Current.CancellationToken);
+        }
+
+        // Wait until first finish completes
+        for (int i = 0; i < 50 && clientFinishCount == 0; i++)
+            await Task.Delay(50);
+
+        Assert.Equal(1, clientFinishCount);
+        int initialPersistedCount = clientRepo.Items.Count;
+        Assert.True(initialPersistedCount > 0);
+
+        // Simulate duplicate wire message arriving at client
+        var wireMessageType = typeof(PVPService).GetNestedType("PVPWireMessage", System.Reflection.BindingFlags.NonPublic)!;
+        var wireMessage = Activator.CreateInstance(wireMessageType, "memoana-pvp-1", PVPMessageType.GameFinished, client.SessionId, null, lastResult);
+        var handleMethod = typeof(PVPService).GetMethod("HandleMessageAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await (Task)handleMethod.Invoke(client, [wireMessage])!;
+
+        // Event and persistence should NOT duplicate
+        Assert.Equal(1, clientFinishCount);
+        Assert.Equal(initialPersistedCount, clientRepo.Items.Count);
+    }
+
+    [Fact]
+    public async Task OldSessionFinishMessage_DoesNotEndCurrentGame()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        await using var host = CreateService();
+        await using var client = CreateService();
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Alice", port, discoveryPort), TestContext.Current.CancellationToken);
+        await client.ConnectAsync(new PVPHostInfo("Alice", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1"), "Bob", TestContext.Current.CancellationToken);
+
+        TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.SessionStarted += (_, _) => started.TrySetResult(true);
+        bool clientFinishedCalled = false;
+        client.GameFinished += (_, _) => clientFinishedCalled = true;
+
+        await host.StartGameAsync(TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.True(client.IsGameActive);
+
+        // Send GameFinished with a DIFFERENT sessionId
+        Guid oldSessionId = Guid.NewGuid();
+        var staleResult = new PVPGameResult(oldSessionId, PVPPlayerRole.Host, 10, 0, "theme", 0, DateTime.UtcNow, []);
+        var wireMessageType = typeof(PVPService).GetNestedType("PVPWireMessage", System.Reflection.BindingFlags.NonPublic)!;
+        var wireMessage = Activator.CreateInstance(wireMessageType, "memoana-pvp-1", PVPMessageType.GameFinished, oldSessionId, null, staleResult);
+
+        var handleMethod = typeof(PVPService).GetMethod("HandleMessageAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        await (Task)handleMethod.Invoke(client, [wireMessage])!;
+
+        Assert.True(client.IsGameActive);
+        Assert.False(clientFinishedCalled);
+        Assert.NotEqual(oldSessionId, client.SessionId);
+    }
+
+    [Fact]
+    public async Task PeerDisconnectAfterGameCompletion_PreservesSessionIdAndStatistics()
+    {
+        SkipIfBrowser();
+        (int port, int discoveryPort) = GetFreePortPair();
+        await using var host = CreateService();
+        await using var client = CreateService();
+
+        await host.StartHostAsync(new PVPGameSettings(0, "theme", "Alice", port, discoveryPort), TestContext.Current.CancellationToken);
+        await client.ConnectAsync(new PVPHostInfo("Alice", "127.0.0.1", port, discoveryPort, 0, "theme", 1, 2, "memoana-pvp-1"), "Bob", TestContext.Current.CancellationToken);
+
+        TaskCompletionSource<bool> started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.SessionStarted += (_, _) => started.TrySetResult(true);
+        TaskCompletionSource<bool> clientFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.GameFinished += (_, _) => clientFinished.TrySetResult(true);
+
+        await host.StartGameAsync(TestContext.Current.CancellationToken);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        foreach (KeyValuePair<int, MemoAna.Game.Core.MemoryCard>[] pair in host.CurrentCards.GroupBy(card => card.Value.PairId).Select(group => group.ToArray()))
+        {
+            await host.FlipCardAsync(pair[0].Key, TestContext.Current.CancellationToken);
+            await host.FlipCardAsync(pair[1].Key, TestContext.Current.CancellationToken);
+        }
+
+        await clientFinished.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Guid expectedSessionId = Assert.IsType<Guid>(client.SessionId);
+
+        TaskCompletionSource<bool> clientDisconnected = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.PlayerDisconnected += (_, _) => clientDisconnected.TrySetResult(true);
+
+        // Host disconnects after the match has finished
+        await host.StopAsync(TestContext.Current.CancellationToken);
+        await clientDisconnected.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // Client must retain its finished session ID and statistics!
+        Assert.False(client.IsConnected);
+        Assert.False(client.IsGameActive);
+        Assert.Equal(expectedSessionId, client.SessionId);
+        Assert.Equal(6, client.RemoteStatistics.Hits);
+        Assert.NotEmpty(client.CurrentCards);
+    }
 }

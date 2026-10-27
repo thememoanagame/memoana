@@ -52,22 +52,21 @@ public class AssetService(
                     await RemoveObsoleteThemesAsync(themesToRemove, cancellationToken);
                 }
 
-                var syncTasks = new List<Task>();
+                var themesToSync = remoteIndexes
+                    .Where(r => {
+                        var local = localIndexes.FirstOrDefault(l => l.Id == r.Id);
+                        return local is null || local.Hash != r.Hash;
+                    })
+                    .ToList();
 
-                foreach (var remoteTheme in remoteIndexes)
+                if (themesToSync.Count > 0)
                 {
-                    var localTheme = localIndexes.FirstOrDefault(l => l.Id == remoteTheme.Id);
-
-                    if (localTheme is null || localTheme.Hash != remoteTheme.Hash)
+                    logger.LogInformation("Downloading and updating {Count} themes...", themesToSync.Count);
+                    foreach (var remoteTheme in themesToSync)
                     {
-                        syncTasks.Add(ProcessThemeSyncAsync(remoteTheme, localTheme is not null, cancellationToken));
+                        var isUpdate = localIndexes.Any(l => l.Id == remoteTheme.Id);
+                        await ProcessThemeSyncAsync(remoteTheme, isUpdate, cancellationToken);
                     }
-                }
-
-                if (syncTasks.Any(x => x is not null))
-                {
-                    logger.LogInformation("Downloading and updating {Count} themes...", syncTasks.Count);
-                    await Task.WhenAll(syncTasks);
                 }
                 else
                 {

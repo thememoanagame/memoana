@@ -61,6 +61,7 @@ public sealed class PVPService(
     private int hostStreak;
     private int clientStreak;
     private Guid? finishedSessionId;
+    private Guid? persistedSessionId;
     private int firstPosition = -1;
     private int secondPosition = -1;
     private bool mismatchPending;
@@ -364,6 +365,7 @@ public sealed class PVPService(
         clientPlayerName = "Client";
         ResetStatistics();
         finishedSessionId = null;
+        persistedSessionId = null;
         currentTurn = default;
         firstPosition = -1;
         secondPosition = -1;
@@ -468,7 +470,7 @@ public sealed class PVPService(
         if (peer == disconnectedPeer)
             peer = null;
         IsGameActive = false;
-        if (!IsHost)
+        if (!IsHost && finishedSessionId != sessionId)
         {
             sessionId = Guid.Empty;
             cards.Clear();
@@ -576,8 +578,12 @@ public sealed class PVPService(
                     break;
                 case PVPMessageType.GameFinished when !IsHost && message.Result is not null &&
                     message.Result.SessionId == sessionId:
+                    if (finishedSessionId == message.Result.SessionId)
+                        return;
+                    finishedSessionId = message.Result.SessionId;
                     IsGameActive = false;
                     ApplyResultStatistics(message.Result);
+                    await PersistStatisticsAsync(message.Result);
                     GameFinished?.Invoke(this, new(message.Result));
                     break;
             }
@@ -639,6 +645,9 @@ public sealed class PVPService(
         PublishState(TurnChanged);
         if (cards.All(card => card.Value.IsMatched))
         {
+            if (finishedSessionId == sessionId)
+                return;
+            finishedSessionId = sessionId;
             IsGameActive = false;
             var result = new PVPGameResult(sessionId,
                 hostScore == clientScore ? player : hostScore > clientScore ? PVPPlayerRole.Host : PVPPlayerRole.Client,
@@ -805,6 +814,7 @@ public sealed class PVPService(
         hostStreak = 0;
         clientStreak = 0;
         finishedSessionId = null;
+        persistedSessionId = null;
     }
 
     private void IncrementMove(PVPPlayerRole player)
@@ -877,10 +887,10 @@ public sealed class PVPService(
 
     private async Task PersistStatisticsAsync(PVPGameResult result)
     {
-        if (statisticsRepository is null || finishedSessionId == result.SessionId || result.Statistics is null)
+        if (statisticsRepository is null || persistedSessionId == result.SessionId || result.Statistics is null)
             return;
 
-        finishedSessionId = result.SessionId;
+        persistedSessionId = result.SessionId;
         foreach (PVPPlayerStatistics player in result.Statistics)
         {
             await statisticsRepository.AddAsync(new GameStatisticsEntity

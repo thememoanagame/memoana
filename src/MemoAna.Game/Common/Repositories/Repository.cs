@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using MemoAna.Common.Abstract.Repositories;
 using MemoAna.Common.Entities;
 using MemoAna.Common.Persistence;
@@ -85,9 +85,8 @@ public sealed class Repository<TEntity> : IRepository<TEntity>
 
             EntityEntry<TEntity> entityEntry = await Set.AddAsync(entity, cancellationToken);
 
+            await uow.SaveChangesAsync(cancellationToken);
             await uow.CommitTransactionAsync(cancellationToken);
-                
-            await  uow.SaveChangesAsync(cancellationToken);
         }
         catch (Exception e)
         {
@@ -104,8 +103,8 @@ public sealed class Repository<TEntity> : IRepository<TEntity>
         {
             await uow.BeginTransactionAsync(cancellationToken);
             Set.Update(entity);
-            await uow.CommitTransactionAsync(cancellationToken);
             await uow.SaveChangesAsync(cancellationToken);
+            await uow.CommitTransactionAsync(cancellationToken);
         }
         catch(Exception e)
         {
@@ -122,8 +121,8 @@ public sealed class Repository<TEntity> : IRepository<TEntity>
         {
             await uow.BeginTransactionAsync(cancellationToken);
             Set.Remove(entity);
-            await uow.CommitTransactionAsync(cancellationToken);
             await uow.SaveChangesAsync(cancellationToken);
+            await uow.CommitTransactionAsync(cancellationToken);
         }
         catch(Exception e)
         {
@@ -140,8 +139,8 @@ public sealed class Repository<TEntity> : IRepository<TEntity>
         {
             await uow.BeginTransactionAsync(cancellationToken);
             Set.RemoveRange(entities);
-            await uow.CommitTransactionAsync(cancellationToken);
             await uow.SaveChangesAsync(cancellationToken);
+            await uow.CommitTransactionAsync(cancellationToken);
         }
         catch(Exception e)
         {
