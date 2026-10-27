@@ -7,9 +7,11 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp() => 
         MauiApp
         .CreateBuilder()
-        .RunMauiApp<App>(
+        .RunGame<App>(
             builder =>
             {
+                builder.Services.AddSingleton<MainPage>();
+                builder.Services.AddSingleton<App>();
 #if DEBUG
                 builder.Services.AddBlazorWebViewDeveloperTools();
 #endif

@@ -18,7 +18,7 @@ namespace MemoAna.Common.Persistence.Migrations
                     Id = table.Column<string>(type: "TEXT", nullable: false),
                     ThemeName = table.Column<string>(type: "TEXT", nullable: false),
                     IsDefault = table.Column<bool>(type: "INTEGER", nullable: false),
-                    PreviewBase64Image = table.Column<string>(type: "TEXT", nullable: false),
+                    ThumbnailSrc = table.Column<string>(type: "TEXT", nullable: false),
                     CardThemeId = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
@@ -61,11 +61,27 @@ namespace MemoAna.Common.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "RemoteThemeIndexes",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
+                    CollectionPath = table.Column<string>(type: "TEXT", maxLength: 300, nullable: false),
+                    ThumbnailPath = table.Column<string>(type: "TEXT", maxLength: 300, nullable: false),
+                    Count = table.Column<int>(type: "INTEGER", nullable: false),
+                    Hash = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RemoteThemeIndexes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CardThemes",
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
-                    Base64Images = table.Column<string>(type: "TEXT", nullable: false),
+                    ImagesSrc = table.Column<string>(type: "TEXT", nullable: false),
                     ManifestId = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
@@ -79,11 +95,37 @@ namespace MemoAna.Common.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "RemoteThemeCards",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "TEXT", nullable: false),
+                    CardPath = table.Column<string>(type: "TEXT", maxLength: 300, nullable: false),
+                    NameEnUs = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
+                    NamePtBr = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
+                    RemoteThemeIndexId = table.Column<string>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RemoteThemeCards", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RemoteThemeCards_RemoteThemeIndexes_RemoteThemeIndexId",
+                        column: x => x.RemoteThemeIndexId,
+                        principalTable: "RemoteThemeIndexes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_CardThemes_ManifestId",
                 table: "CardThemes",
                 column: "ManifestId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RemoteThemeCards_RemoteThemeIndexId",
+                table: "RemoteThemeCards",
+                column: "RemoteThemeIndexId");
         }
 
         /// <inheritdoc />
@@ -99,7 +141,13 @@ namespace MemoAna.Common.Persistence.Migrations
                 name: "GameStatistics");
 
             migrationBuilder.DropTable(
+                name: "RemoteThemeCards");
+
+            migrationBuilder.DropTable(
                 name: "CardThemeManifests");
+
+            migrationBuilder.DropTable(
+                name: "RemoteThemeIndexes");
         }
     }
 }

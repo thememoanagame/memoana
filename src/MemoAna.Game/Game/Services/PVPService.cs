@@ -23,16 +23,16 @@ using MemoAna.Game.Resources.Localization;
 
 namespace MemoAna.Game.Services;
 
-public sealed class PVPService : IPVPService
+public sealed class PVPService(
+    IThemeService themeService,
+    ILogger<PVPService> logger,
+    IPermissionService permissionService,
+    IRepository<GameStatisticsEntity>? statisticsRepository = null,
+    ILocalizer<Strings>? localizer = null) : IPVPService
 {
     private const string ProtocolVersion = "memoana-pvp-1";
     private const int DefaultPort = 35678;
     private const int DefaultDiscoveryPort = 35679;
-    private readonly IThemeService themeService;
-    private readonly IPermissionService permissionService;
-    private readonly IRepository<GameStatisticsEntity>? statisticsRepository;
-    private readonly ILocalizer<Strings>? localizer;
-    private readonly ILogger<PVPService> logger;
     private readonly SemaphoreSlim stateGate = new(1, 1);
     private CancellationTokenSource operationCts = new();
     private readonly Dictionary<string, PVPHostInfo> discoveredHosts = new(StringComparer.Ordinal);
@@ -61,24 +61,11 @@ public sealed class PVPService : IPVPService
     private int hostStreak;
     private int clientStreak;
     private Guid? finishedSessionId;
+    private Guid? persistedSessionId;
     private int firstPosition = -1;
     private int secondPosition = -1;
     private bool mismatchPending;
     private PVPPlayerRole currentMovePlayer;
-
-    public PVPService(
-        IThemeService themeService,
-        ILogger<PVPService> logger,
-        IPermissionService permissionService,
-        IRepository<GameStatisticsEntity>? statisticsRepository = null,
-        ILocalizer<Strings>? localizer = null)
-    {
-        this.themeService = themeService;
-        this.logger = logger;
-        this.permissionService = permissionService;
-        this.statisticsRepository = statisticsRepository;
-        this.localizer = localizer;
-    }
 
     public PVPService(
         IThemeService themeService,
@@ -378,6 +365,7 @@ public sealed class PVPService : IPVPService
         clientPlayerName = "Client";
         ResetStatistics();
         finishedSessionId = null;
+        persistedSessionId = null;
         currentTurn = default;
         firstPosition = -1;
         secondPosition = -1;
@@ -482,7 +470,7 @@ public sealed class PVPService : IPVPService
         if (peer == disconnectedPeer)
             peer = null;
         IsGameActive = false;
-        if (!IsHost)
+        if (!IsHost && finishedSessionId != sessionId)
         {
             sessionId = Guid.Empty;
             cards.Clear();
@@ -590,8 +578,12 @@ public sealed class PVPService : IPVPService
                     break;
                 case PVPMessageType.GameFinished when !IsHost && message.Result is not null &&
                     message.Result.SessionId == sessionId:
+                    if (finishedSessionId == message.Result.SessionId)
+                        return;
+                    finishedSessionId = message.Result.SessionId;
                     IsGameActive = false;
                     ApplyResultStatistics(message.Result);
+                    await PersistStatisticsAsync(message.Result);
                     GameFinished?.Invoke(this, new(message.Result));
                     break;
             }
@@ -653,6 +645,9 @@ public sealed class PVPService : IPVPService
         PublishState(TurnChanged);
         if (cards.All(card => card.Value.IsMatched))
         {
+            if (finishedSessionId == sessionId)
+                return;
+            finishedSessionId = sessionId;
             IsGameActive = false;
             var result = new PVPGameResult(sessionId,
                 hostScore == clientScore ? player : hostScore > clientScore ? PVPPlayerRole.Host : PVPPlayerRole.Client,
@@ -755,7 +750,7 @@ public sealed class PVPService : IPVPService
         var theme = await themeService.GetThemeAsync(gameSettings.ThemeName)
             ?? throw new KeyNotFoundException($"Theme '{gameSettings.ThemeName}' was not found.");
         int pairCount = gameSettings.Difficulty switch { 1 => 10, 2 => 15, _ => 6 };
-        var selected = theme.Base64Images.Where(image => !string.IsNullOrWhiteSpace(image))
+        var selected = theme.ImagesSrc.Where(image => !string.IsNullOrWhiteSpace(image))
             .Take(pairCount).Select((image, index) => (image, index)).ToList();
         var board = selected.SelectMany(item => new[] { item, item }).OrderBy(_ => Random.Shared.Next()).ToList();
         cards.Clear();
@@ -774,14 +769,14 @@ public sealed class PVPService : IPVPService
 
         CardThemeDto theme = await themeService.GetThemeAsync(state.ThemeName)
             ?? throw new KeyNotFoundException($"Theme '{state.ThemeName}' was not found.");
-        if (state.Cards.Any(card => card.ImageIndex >= theme.Base64Images.Count))
+        if (state.Cards.Any(card => card.ImageIndex >= theme.ImagesSrc.Count))
             throw new InvalidOperationException("The selected theme cannot render the PVP board.");
         sessionId = state.SessionId;
         cards.Clear();
         foreach (PVPCardState card in state.Cards)
         {
-            string? image = card.ImageIndex >= 0 && card.ImageIndex < theme.Base64Images.Count
-                ? theme.Base64Images.ElementAt(card.ImageIndex)
+            string? image = card.ImageIndex >= 0 && card.ImageIndex < theme.ImagesSrc.Count
+                ? theme.ImagesSrc.ElementAt(card.ImageIndex)
                 : null;
             cards.Add(new(card.Position, new MemoryCard
             {
@@ -819,6 +814,7 @@ public sealed class PVPService : IPVPService
         hostStreak = 0;
         clientStreak = 0;
         finishedSessionId = null;
+        persistedSessionId = null;
     }
 
     private void IncrementMove(PVPPlayerRole player)
@@ -891,10 +887,10 @@ public sealed class PVPService : IPVPService
 
     private async Task PersistStatisticsAsync(PVPGameResult result)
     {
-        if (statisticsRepository is null || finishedSessionId == result.SessionId || result.Statistics is null)
+        if (statisticsRepository is null || persistedSessionId == result.SessionId || result.Statistics is null)
             return;
 
-        finishedSessionId = result.SessionId;
+        persistedSessionId = result.SessionId;
         foreach (PVPPlayerStatistics player in result.Statistics)
         {
             await statisticsRepository.AddAsync(new GameStatisticsEntity

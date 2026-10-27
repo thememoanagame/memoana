@@ -39,4 +39,22 @@
   <data name="PvpConnectionTimeout" xml:space="preserve">
     <value>PVP connection timed out.</value>
   </data>
+  <data name="PvpVictory" xml:space="preserve">
+    <value>Victory!</value>
+  </data>
+  <data name="PvpVictorySubtitle" xml:space="preserve">
+    <value>You won the match.</value>
+  </data>
+  <data name="PvpDefeat" xml:space="preserve">
+    <value>Defeat!</value>
+  </data>
+  <data name="PvpDefeatSubtitle" xml:space="preserve">
+    <value>Your opponent won the match.</value>
+  </data>
+  <data name="PvpTie" xml:space="preserve">
+    <value>Draw!</value>
+  </data>
+  <data name="PvpTieSubtitle" xml:space="preserve">
+    <value>The match ended in a draw.</value>
+  </data>
 </root>

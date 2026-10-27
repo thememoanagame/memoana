@@ -5,14 +5,16 @@ using Microsoft.UI.Windowing;
 namespace MemoAna;
 public partial class App : Microsoft.Maui.Controls.Application
 {
-    public App()
+    private readonly MainPage page;
+    public App(MainPage page)
     {
         InitializeComponent();
+        this.page = page;
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        var w =  new Window(new MainPage()) { Title = "MemoAna" };
+        var w =  new Window(page) { Title = "MemoAna" };
         // Configuração exclusiva para a plataforma Windows
 #if WINDOWS
         w.Created += (sender, e) =>

@@ -8,4 +8,5 @@ public interface IPlatformService
     bool IsMacOS { get; }
     bool IsAndroid { get; }
     bool IsIOS { get; }
+    string AppDataPath { get; }
 }

@@ -92,7 +92,7 @@
                             <MudButton Class=@("theme-select-button " + (IsSelected(theme) ? "theme-preview-selected" :
                                                                string.Empty)) data-testid="theme-select-button"
                                        OnClick="@(async () => await SelectThemeAsync(theme))">
-                                <MudImage Src="@GetThemeImage(theme)" Class="theme-image" Alt="@theme.ThemeName" />
+                                <MudImage Class="theme-image" Src="@(theme.ThumbnailSrc)" Alt="@(theme.ThemeName)" />
                             </MudButton>
                         </div>
                     </ItemTemplate>
@@ -183,31 +183,15 @@
             }
         </div>
     }
-    else if (IsGameFinished && IsPvpMode)
-    {
-        <div class="statistics-container pvp-statistics-container">
-            <MudText Class="victory-text">@IsVictory</MudText>
-            <table class="pvp-statistics-table" data-testid="pvp-statistics">
-                <thead>
-                    <tr><th>@Localizer["Player"]</th><th>@Localizer["Score"]</th><th>@Localizer["Hits"]</th><th>@Localizer["Misses"]</th><th>@Localizer["Moves"]</th></tr>
-                </thead>
-                <tbody>
-                    @foreach (PVPPlayerStatistics player in PvpStatistics)
-                    {
-                        <tr data-testid="pvp-statistics-row"><td>@player.Name</td><td>@player.Score</td><td>@player.Hits</td><td>@player.Misses</td><td>@player.TotalMoves</td></tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-        <div class="game-actions">
-            <MudButton Class="game-action-button" OnClick="GoToMain">@Localizer["Home"]</MudButton>
-            <MudButton Class="game-action-button game-action-repeat" OnClick="RestartGame">@Localizer["Repeat"]</MudButton>
-        </div>
-    }
     else if (IsGameFinished)
     {
         <div class="statistics-container">
-            @if (game.CurrentMode == GameMode.IA)
+            @if (IsPvpMode || game.CurrentMode == GameMode.PVP)
+            {
+                <MudText Class="victory-text pvp-result-title" data-testid="pvp-result-title">@PvpResultTitle</MudText>
+                <MudText Class="ia-result-subtitle pvp-result-subtitle" data-testid="pvp-result-subtitle">@PvpResultSubtitle</MudText>
+            }
+            else if (game.CurrentMode == GameMode.IA)
             {
                 <MudText Class="victory-text ia-result-title" data-testid="ia-result-title">@(Statistics.IsVictory ? Localizer["Victory"] : Localizer["Defeat"])</MudText>
                 <MudText Class="ia-result-subtitle">@(Statistics.IsVictory ? Localizer["YouDefeatedAI"] : Localizer["AIWonMatch"])</MudText>
@@ -216,12 +200,20 @@
             {
                 <MudText Class="victory-text">@IsVictory</MudText>
             }
-            <div class="statistics-grid">
-                <MudText Class="statistic-value statistic-left">@Statistics.ThemeName</MudText>
-                <MudText Class="statistic-value statistic-right">@Statistics.Difficulty</MudText>
-                <MudText Class="statistic-value statistic-center">@Statistics.PlayedAt</MudText>
+            <div class="statistics-grid" data-testid="@(IsPvpMode ? "pvp-statistics" : null)">
+                <MudText Class="statistic-value statistic-left">@(IsPvpMode ? PvpThemeName : Statistics.ThemeName)</MudText>
+                <MudText Class="statistic-value statistic-right">@(IsPvpMode ? PvpDifficultyName : Statistics.Difficulty)</MudText>
+                <MudText Class="statistic-value statistic-center">@(IsPvpMode ? PvpPlayedAt : Statistics.PlayedAt)</MudText>
                 <MudText Class="statistic-label">@Localizer["Hits"]</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (IsPvpMode)
+                {
+                    <div class="statistic-value statistic-right stat-comparison" data-testid="pvp-stat-hits">
+                        <MudText Typo="Typo.h5" Class="stat-player">@LocalPvpStats.Hits</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@RemotePvpStats.Hits</MudText>
+                    </div>
+                }
+                else if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.SuccessfulMoves</MudText>
@@ -234,7 +226,15 @@
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.TotalMoves</MudText>
                 }
                 <MudText Class="statistic-label">@Localizer["Misses"]</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (IsPvpMode)
+                {
+                    <div class="statistic-value statistic-right stat-comparison" data-testid="pvp-stat-misses">
+                        <MudText Typo="Typo.h5" Class="stat-player">@LocalPvpStats.Misses</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@RemotePvpStats.Misses</MudText>
+                    </div>
+                }
+                else if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.Mistakes</MudText>
@@ -247,7 +247,15 @@
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.Mistakes</MudText>
                 }
                 <MudText Class="statistic-label">@Localizer["Moves"]</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (IsPvpMode)
+                {
+                    <div class="statistic-value statistic-right stat-comparison" data-testid="pvp-stat-moves">
+                        <MudText Typo="Typo.h5" Class="stat-player">@LocalPvpStats.TotalMoves</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@RemotePvpStats.TotalMoves</MudText>
+                    </div>
+                }
+                else if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.SuccessfulMoves</MudText>
@@ -260,7 +268,15 @@
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@Statistics.SuccessfulMoves</MudText>
                 }
                 <MudText Class="statistic-label">@Localizer["Score"]</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (IsPvpMode)
+                {
+                    <div class="statistic-value statistic-right stat-comparison" data-testid="pvp-stat-score">
+                        <MudText Typo="Typo.h5" Class="stat-player">@LocalPvpStats.Score.ToString("D3")</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@RemotePvpStats.Score.ToString("D3")</MudText>
+                    </div>
+                }
+                else if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.PlayerScore.ToString("D3")</MudText>
@@ -273,7 +289,15 @@
                     <MudText Typo="Typo.h5" Class="statistic-value statistic-right">@CurrentScore</MudText>
                 }
                 <MudText Class="statistic-label">@Localizer["Total"]</MudText>
-                @if (game.CurrentMode == GameMode.IA)
+                @if (IsPvpMode)
+                {
+                    <div class="statistic-value statistic-right stat-comparison" data-testid="pvp-stat-total">
+                        <MudText Typo="Typo.h5" Class="stat-player">@LocalPvpStats.FinalScore.ToString("D3")</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-separator">x</MudText>
+                        <MudText Typo="Typo.h5" Class="stat-ai">@RemotePvpStats.FinalScore.ToString("D3")</MudText>
+                    </div>
+                }
+                else if (game.CurrentMode == GameMode.IA)
                 {
                     <div class="statistic-value statistic-right stat-comparison">
                         <MudText Typo="Typo.h5" Class="stat-player">@Statistics.FinalScore.ToString("D3")</MudText>
@@ -329,6 +353,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await audio.PlayMainTitleAsync();
         await LoadThemesAsync();
     }
 
@@ -360,17 +385,6 @@
     private bool IsSelected(CardThemeManifestDto theme)
     {
         return SelectedTheme?.CardThemeId == theme.CardThemeId;
-    }
-
-    private static string GetThemeImage(CardThemeManifestDto theme)
-    {
-        if (string.IsNullOrWhiteSpace(theme.PreviewBase64Image))
-            return string.Empty;
-
-        if (theme.PreviewBase64Image.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
-            return theme.PreviewBase64Image;
-
-        return $"data:image/png;base64,{theme.PreviewBase64Image}";
     }
 
     private async Task LoadThemesAsync()
@@ -420,6 +434,8 @@
         {
             try
             {
+                await audio.PlayMainGameAsync();
+                await audio.PlayShuffleFlipAsync();
                 ConfigureGridGeometry(level);
                 string themeName = SelectedTheme.ThemeName;
 
@@ -440,8 +456,7 @@
                     MovesCount = game.PlayerSuccessfulMoves.ToString();
                 });
 
-                await audio.StopAsync();
-                await audio.PlayMainGameAsync();
+                await audio.StopShuffleAsync();
 
                 await InvokeAsync(() =>
                 {
@@ -550,13 +565,17 @@
                 e.AIMistakes);
             IsVictory = e.IsVictory ? Localizer["VictoryShort"] : Localizer["DefeatShort"];
             CurrentScore = e.FinalScore.ToString("D3");
-            await audio.StopAsync();
             StateHasChanged();
         });
     }
 
     private void OnCardFlipped(object? sender, GameCardFlippedEventArgs e)
     {
+        var match = Cards.FirstOrDefault(c => c.Key == e.MemoryCard.Position);
+        if (match.Value is { IsFaceUp: true })
+        {
+            _ = audio.PlayFlipAsync();
+        }
         RequestRender();
     }
 
@@ -588,16 +607,22 @@
         };
     }
 
-    private void GoToMain() => navigation.NavigateTo("/");
+    private void GoToMain()
+    {
+        _ = audio.PlayMainTitleAsync();
+        navigation.NavigateTo("/");
+    }
 
     private void RestartGame()
     {
+        _ = audio.PlayMainTitleAsync();
         game.ForceStopTimer();
         _ = pvp.StopAsync();
         IsSelecting = true;
         IsPvpLobby = false;
         IsGameActive = false;
         IsGameFinished = false;
+        _pvpResult = null;
         SelectedTheme = null;
         Cards.Clear();
         _ = InvokeAsync(StateHasChanged);
@@ -633,7 +658,6 @@
         await pvp.StopAsync();
 
         IsGameActive = false;
-        await audio.StopAsync();
     }
 
     public async ValueTask DisposeAsync()
@@ -803,6 +827,12 @@
 
     private void OnPvpSessionStarted(object? sender, PVPStateChangedEventArgs e)
     {
+        _ = Task.Run(async () =>
+        {
+            await audio.PlayMainGameAsync();
+            await audio.PlayShuffleFlipAsync();
+            await audio.StopShuffleAsync();
+        });
         IsPvpLobby = false;
         IsGameActive = true;
         Cards.Clear();
@@ -818,23 +848,69 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
-    private void OnPvpCardChanged(object? sender, PVPCardEventArgs e) => RequestRender();
+    private void OnPvpCardChanged(object? sender, PVPCardEventArgs e)
+    {
+        var match = Cards.FirstOrDefault(c => c.Key == e.Position);
+        if (match.Value is { IsFaceUp: true } && !e.Matched)
+        {
+            _ = audio.PlayFlipAsync();
+        }
+        RequestRender();
+    }
     private void OnPvpTurnChanged(object? sender, PVPStateChangedEventArgs e) => RequestRender();
 
     private void OnPvpPlayerDisconnected(object? sender, System.EventArgs e)
     {
+        if (IsGameFinished)
+            return;
+
         IsGameActive = false;
         IsPvpLobby = true;
         PvpStatus = Localizer["PvpPlayerDisconnected"];
         _ = InvokeAsync(StateHasChanged);
     }
 
+    private PVPGameResult? _pvpResult;
+    private string PvpThemeName => _pvpResult?.ThemeName ?? SelectedTheme?.ThemeName ?? string.Empty;
+    private string PvpDifficultyName => _pvpResult is not null
+        ? ((GameDifficulty)_pvpResult.Difficulty).ToString()
+        : string.Empty;
+    private string PvpPlayedAt => (_pvpResult?.PlayedAt == default ? DateTime.UtcNow : _pvpResult.PlayedAt).ToString("g");
+    private PVPPlayerStatistics LocalPvpStats =>
+        PvpStatistics.FirstOrDefault(s => s.Role == pvp.LocalRole) ?? pvp.LocalStatistics;
+    private PVPPlayerStatistics RemotePvpStats =>
+        PvpStatistics.FirstOrDefault(s => s.Role != pvp.LocalRole) ?? pvp.RemoteStatistics;
+
+    private string PvpResultTitle
+    {
+        get
+        {
+            if (LocalPvpStats.Score > RemotePvpStats.Score)
+                return Localizer["PvpVictory"];
+            if (LocalPvpStats.Score < RemotePvpStats.Score)
+                return Localizer["PvpDefeat"];
+            return Localizer["PvpTie"];
+        }
+    }
+
+    private string PvpResultSubtitle
+    {
+        get
+        {
+            if (LocalPvpStats.Score > RemotePvpStats.Score)
+                return Localizer["PvpVictorySubtitle"];
+            if (LocalPvpStats.Score < RemotePvpStats.Score)
+                return Localizer["PvpDefeatSubtitle"];
+            return Localizer["PvpTieSubtitle"];
+        }
+    }
+
     private void OnPvpGameFinished(object? sender, PVPGameFinishedEventArgs e)
     {
         IsGameActive = false;
         IsGameFinished = true;
+        _pvpResult = e.Result;
         PvpStatistics = e.Result.Statistics ?? [pvp.LocalStatistics, pvp.RemoteStatistics];
-        IsVictory = (e.Result.Winner == pvp.LocalRole) ? Localizer["VictoryShort"] : Localizer["DefeatShort"];
         _ = InvokeAsync(StateHasChanged);
     }
 }
@@ -1040,7 +1116,7 @@
         position: absolute;
         inset: 0;
         z-index: 3;
-        display: flex;
+        display: grid;
         flex-direction: column;
         align-items: center;
         justify-content: center;
@@ -1052,30 +1128,6 @@
     .pvp-player-name {
         width: min(360px, 80vw);
         top: min(100px, 10vh);
-    }
-
-    .pvp-statistics-container {
-        min-width: min(760px, 90vw);
-    }
-
-    .pvp-statistics-table {
-        width: 100%;
-        margin-top: 24px;
-        border-collapse: collapse;
-        font-family: Bangpop;
-        color: saddlebrown;
-    }
-
-    .pvp-statistics-table th,
-    .pvp-statistics-table td {
-        padding: 8px 12px;
-        border-bottom: 1px solid rgba(139, 69, 19, 0.35);
-        text-align: right;
-    }
-
-    .pvp-statistics-table th:first-child,
-    .pvp-statistics-table td:first-child {
-        text-align: left;
     }
 
     .game-header {

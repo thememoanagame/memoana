@@ -39,6 +39,12 @@
 </div>
 @code {
 
+    protected override async Task OnInitializedAsync()
+    {
+        await audio.PlayMainTitleAsync();
+        await base.OnInitializedAsync();
+    }
+
     string Version { get; } = "1.0.0-dev";
     private void ShowDeveloperInfoModal()
     {

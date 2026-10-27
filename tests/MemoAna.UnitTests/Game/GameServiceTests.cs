@@ -338,4 +338,232 @@ public sealed class GameServiceTests
         public void CancelPendingTurn() => turns.Clear();
         public void Clear() => turns.Clear();
     }
+
+    [Fact]
+    public async Task PlayerMiss_TriggersAiTurn()
+    {
+        var scriptedAi = new ScriptedAIService();
+        await using GameService game = CreateGameService(scriptedAi);
+        await game.StartGameAsync(0, "theme", "0");
+
+        var differentCards = game.CurrentCards
+            .GroupBy(card => card.Value.PairId)
+            .Take(2)
+            .SelectMany(group => group.Take(1))
+            .ToArray();
+
+        await game.FlipCardAsync(differentCards[0].Key, differentCards[0].Value);
+        await game.FlipCardAsync(differentCards[1].Key, differentCards[1].Value);
+
+        Assert.True(scriptedAi.TurnsRequested > 0);
+    }
+
+    [Fact]
+    public async Task PlayerMatch_AllowsPlayerToPlayAgain()
+    {
+        var scriptedAi = new ScriptedAIService();
+        await using GameService game = CreateGameService(scriptedAi);
+        await game.StartGameAsync(0, "theme", "0");
+
+        var pair = game.CurrentCards
+            .GroupBy(card => card.Value.PairId)
+            .First()
+            .ToArray();
+
+        await game.FlipCardAsync(pair[0].Key, pair[0].Value);
+        await game.FlipCardAsync(pair[1].Key, pair[1].Value);
+
+        Assert.Equal(GameTurn.Player, game.CurrentTurn);
+        Assert.Equal(0, scriptedAi.TurnsRequested);
+        Assert.True(pair[0].Value.IsMatched);
+        Assert.True(pair[1].Value.IsMatched);
+    }
+
+    [Fact]
+    public async Task AiMiss_ReturnsTurnToPlayer()
+    {
+        var scriptedAi = new ScriptedAIService();
+        await using GameService game = CreateGameService(scriptedAi);
+        await game.StartGameAsync(0, "theme", "0");
+
+        // Set up scripted AI to flip a mismatching pair
+        var differentCards = game.CurrentCards
+            .GroupBy(card => card.Value.PairId)
+            .Skip(2)
+            .Take(2)
+            .SelectMany(group => group.Take(1))
+            .ToArray();
+        scriptedAi.EnqueueTurn(new AITurn(differentCards[0].Key, differentCards[1].Key));
+
+        // Player misses
+        var playerMismatch = game.CurrentCards
+            .GroupBy(card => card.Value.PairId)
+            .Take(2)
+            .SelectMany(group => group.Take(1))
+            .ToArray();
+        await game.FlipCardAsync(playerMismatch[0].Key, playerMismatch[0].Value);
+        await game.FlipCardAsync(playerMismatch[1].Key, playerMismatch[1].Value);
+
+        Assert.Equal(1, scriptedAi.TurnsRequested);
+        Assert.Equal(GameTurn.Player, game.CurrentTurn);
+        Assert.False(game.IsHumanInteractionBlocked);
+    }
+
+    [Fact]
+    public async Task AiMatch_AllowsAiToPlayAgain()
+    {
+        var scriptedAi = new ScriptedAIService();
+        await using GameService game = CreateGameService(scriptedAi);
+        await game.StartGameAsync(0, "theme", "0");
+
+        // Two matching pairs for AI
+        var pair1 = game.CurrentCards.GroupBy(c => c.Value.PairId).ElementAt(2).ToArray();
+        var pair2 = game.CurrentCards.GroupBy(c => c.Value.PairId).ElementAt(3).ToArray();
+        var mismatch = game.CurrentCards.GroupBy(c => c.Value.PairId).Skip(4).Take(2).SelectMany(g => g.Take(1)).ToArray();
+
+        scriptedAi.EnqueueTurn(new AITurn(pair1[0].Key, pair1[1].Key));
+        scriptedAi.EnqueueTurn(new AITurn(pair2[0].Key, pair2[1].Key));
+        scriptedAi.EnqueueTurn(new AITurn(mismatch[0].Key, mismatch[1].Key));
+
+        // Player misses to trigger AI
+        var playerMismatch = game.CurrentCards.GroupBy(c => c.Value.PairId).Take(2).SelectMany(g => g.Take(1)).ToArray();
+        await game.FlipCardAsync(playerMismatch[0].Key, playerMismatch[0].Value);
+        await game.FlipCardAsync(playerMismatch[1].Key, playerMismatch[1].Value);
+
+        Assert.Equal(3, scriptedAi.TurnsRequested);
+        Assert.True(pair1[0].Value.IsMatched);
+        Assert.True(pair2[0].Value.IsMatched);
+        Assert.Equal(GameTurn.Player, game.CurrentTurn);
+    }
+
+    [Fact]
+    public async Task PlayerCompletesLastPair_EndsGameAndNoNewTurnStarted()
+    {
+        var scriptedAi = new ScriptedAIService();
+        await using GameService game = CreateGameService(scriptedAi);
+        GameStatisticsEventArgs? result = null;
+        game.GameFinished += (_, statistics) => result = statistics;
+        await game.StartGameAsync(0, "theme", "0");
+
+        foreach (var pairGroup in game.CurrentCards.GroupBy(card => card.Value.PairId))
+        {
+            var pair = pairGroup.ToArray();
+            await game.FlipCardAsync(pair[0].Key, pair[0].Value);
+            await game.FlipCardAsync(pair[1].Key, pair[1].Value);
+        }
+
+        Assert.NotNull(result);
+        Assert.False(game.IsGameActive);
+        Assert.Equal(0, scriptedAi.TurnsRequested);
+    }
+
+    [Fact]
+    public async Task AiCompletesLastPair_EndsGameAndNoNewTurnStarted()
+    {
+        var scriptedAi = new ScriptedAIService();
+        await using GameService game = CreateGameService(scriptedAi);
+        GameStatisticsEventArgs? result = null;
+        game.GameFinished += (_, statistics) => result = statistics;
+        await game.StartGameAsync(0, "theme", "0");
+
+        // Script AI to match all pairs
+        foreach (var pairGroup in game.CurrentCards.GroupBy(card => card.Value.PairId))
+        {
+            var pair = pairGroup.ToArray();
+            scriptedAi.EnqueueTurn(new AITurn(pair[0].Key, pair[1].Key));
+        }
+
+        // Player misses once to hand turn to AI
+        var playerMismatch = game.CurrentCards.GroupBy(c => c.Value.PairId).Take(2).SelectMany(g => g.Take(1)).ToArray();
+        await game.FlipCardAsync(playerMismatch[0].Key, playerMismatch[0].Value);
+        await game.FlipCardAsync(playerMismatch[1].Key, playerMismatch[1].Value);
+
+        Assert.NotNull(result);
+        Assert.False(game.IsGameActive);
+        Assert.True(game.CurrentCards.All(c => c.Value.IsMatched));
+    }
+
+    [Fact]
+    public async Task NoTurnInitiatedAfterGameFinished()
+    {
+        var scriptedAi = new ScriptedAIService();
+        await using GameService game = CreateGameService(scriptedAi);
+        int gameFinishedCount = 0;
+        game.GameFinished += (_, _) => gameFinishedCount++;
+        await game.StartGameAsync(0, "theme", "0");
+
+        foreach (var pairGroup in game.CurrentCards.GroupBy(card => card.Value.PairId))
+        {
+            var pair = pairGroup.ToArray();
+            await game.FlipCardAsync(pair[0].Key, pair[0].Value);
+            await game.FlipCardAsync(pair[1].Key, pair[1].Value);
+        }
+
+        Assert.Equal(1, gameFinishedCount);
+        Assert.False(game.IsGameActive);
+
+        // Attempt further interaction after finish
+        var firstCard = game.CurrentCards.First();
+        await game.FlipCardAsync(firstCard.Key, firstCard.Value);
+
+        Assert.Equal(1, gameFinishedCount);
+        Assert.Equal(0, scriptedAi.TurnsRequested);
+    }
+
+    [Fact]
+    public async Task RestartGame_CancelsPreviousGenerationAndPreventsStaleMoveLeak()
+    {
+        var delayAi = new DelayedAiService(50);
+        await using GameService game = CreateGameService(delayAi);
+        await game.StartGameAsync(0, "theme", "0");
+
+        // Player misses to trigger AI
+        var mismatch = game.CurrentCards.GroupBy(c => c.Value.PairId).Take(2).SelectMany(g => g.Take(1)).ToArray();
+        _ = game.FlipCardAsync(mismatch[0].Key, mismatch[0].Value);
+        _ = game.FlipCardAsync(mismatch[1].Key, mismatch[1].Value);
+
+        // Immediately restart game
+        await game.StartGameAsync(0, "theme", "0");
+
+        Assert.True(game.IsGameActive);
+        Assert.Equal(GameTurn.Player, game.CurrentTurn);
+        Assert.All(game.CurrentCards, c => Assert.False(c.Value.IsMatched));
+    }
+
+    private sealed class ScriptedAIService : IAIService
+    {
+        private readonly Queue<AITurn> _turns = [];
+        public int TurnsRequested { get; private set; }
+        public bool IsPlaying => false;
+        public int RememberedCardCount => 0;
+        public int VisualRevealDelayMs => 1;
+
+        public void EnqueueTurn(AITurn turn) => _turns.Enqueue(turn);
+
+        public void StartGame(GameDifficulty difficulty, IReadOnlyCollection<KeyValuePair<int, MemoryCard>> cards) { }
+        public void ObserveCard(int position, MemoryCard card) { }
+        public Task<AITurn?> GetNextTurnAsync(CancellationToken cancellationToken = default)
+        {
+            TurnsRequested++;
+            return Task.FromResult(_turns.Count > 0 ? (AITurn?)_turns.Dequeue() : null);
+        }
+        public void CancelPendingTurn() => _turns.Clear();
+        public void Clear() => _turns.Clear();
+    }
+
+    private sealed class DelayedAiService(int delayMs) : IAIService
+    {
+        public bool IsPlaying => false;
+        public int RememberedCardCount => 0;
+        public int VisualRevealDelayMs => delayMs;
+        public void StartGame(GameDifficulty difficulty, IReadOnlyCollection<KeyValuePair<int, MemoryCard>> cards) { }
+        public void ObserveCard(int position, MemoryCard card) { }
+        public async Task<AITurn?> GetNextTurnAsync(CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(delayMs, cancellationToken);
+            return new AITurn(1, 2);
+        }
+        public void CancelPendingTurn() { }
+        public void Clear() { }
+    }
 }

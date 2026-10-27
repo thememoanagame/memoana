@@ -97,7 +97,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         CancellationToken cancellationToken = _gameCancellation!.Token;
 
         gameSettings = GameSettingsDto.FromEntity((await settingsRepository.ListTrackedAsync(x => x != null, null!, cancellationToken))
-                   .Single() ?? new());
+                   .FirstOrDefault() ?? new());
         if (cancellationToken.IsCancellationRequested || gameGeneration != _gameGeneration)
             return;
 
@@ -108,7 +108,7 @@ public sealed class GameService : IGameService, IAsyncDisposable
         var random = new Random();
 
         // .OrderBy(_ => random.Next()) ensures always get a random set of cards from manifest
-        List<string> rawStrings = cards?.Base64Images.OrderBy(_ => random.Next()).Take(pairCount).ToList()
+        List<string> rawStrings = cards?.ImagesSrc.OrderBy(_ => random.Next()).Take(pairCount).ToList()
             ?? throw new KeyNotFoundException(localizer?["ThemeImagesUnavailable"] ?? "Imagens do tema não encontradas");
 
         var gameCards = new List<MemoryCard>();
@@ -207,7 +207,10 @@ public sealed class GameService : IGameService, IAsyncDisposable
             bool turnCompleted = await ExecuteCardFlipAsync(position, selectedCard, false, gameGeneration, cancellationToken);
             if (turnCompleted && CurrentMode == GameMode.IA &&
                 IsGameActive && gameGeneration == _gameGeneration && !cancellationToken.IsCancellationRequested)
-                await RunAiTurnAsync(gameGeneration, cancellationToken);
+            {
+                if (!_lastTurnMatched)
+                    await RunAiTurnAsync(gameGeneration, cancellationToken);
+            }
         }
         finally
         {
@@ -421,6 +424,8 @@ public sealed class GameService : IGameService, IAsyncDisposable
                 // renderer; CardFlipDelayMs belongs to the mismatch visible phase.
                 await Task.Yield();
                 await Task.Delay(aiService.VisualRevealDelayMs, cancellationToken);
+                if (!IsGameActive || gameGeneration != _gameGeneration || cancellationToken.IsCancellationRequested)
+                    return;
                 MemoryCard second = CurrentCards.Single(c => c.Key == turn.SecondPosition).Value;
                 if (!await ExecuteCardFlipAsync(turn.SecondPosition, second, true, gameGeneration, cancellationToken))
                     return;

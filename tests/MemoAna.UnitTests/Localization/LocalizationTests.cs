@@ -49,6 +49,47 @@ public sealed class LocalizationTests
         Assert.Equal(neutral, portuguese);
     }
 
+    [Fact]
+    public void PvpLocalization_Portuguese_ReturnsExpectedTexts()
+    {
+        using CultureScope _ = new("pt-BR");
+        ILocalizer<GameStrings> localizer = CreateLocalizer();
+
+        Assert.Equal("Vitória!", localizer["PvpVictory"]);
+        Assert.Equal("Você venceu a partida.", localizer["PvpVictorySubtitle"]);
+        Assert.Equal("Derrota!", localizer["PvpDefeat"]);
+        Assert.Equal("Seu oponente venceu a partida.", localizer["PvpDefeatSubtitle"]);
+        Assert.Equal("Empate!", localizer["PvpTie"]);
+        Assert.Equal("A partida terminou empatada.", localizer["PvpTieSubtitle"]);
+    }
+
+    [Fact]
+    public void PvpLocalization_English_ReturnsExpectedTexts()
+    {
+        using CultureScope _ = new("en-US");
+        ILocalizer<GameStrings> localizer = CreateLocalizer();
+
+        Assert.Equal("Victory!", localizer["PvpVictory"]);
+        Assert.Equal("You won the match.", localizer["PvpVictorySubtitle"]);
+        Assert.Equal("Defeat!", localizer["PvpDefeat"]);
+        Assert.Equal("Your opponent won the match.", localizer["PvpDefeatSubtitle"]);
+        Assert.Equal("Draw!", localizer["PvpTie"]);
+        Assert.Equal("The match ended in a draw.", localizer["PvpTieSubtitle"]);
+    }
+
+    [Fact]
+    public void PvpLocalization_IsDistinctFromAiLocalization()
+    {
+        using CultureScope _ = new("pt-BR");
+        ILocalizer<GameStrings> localizer = CreateLocalizer();
+
+        // Ensure PVP texts are not reusing AI texts
+        Assert.NotEqual(localizer["Victory"], localizer["PvpVictory"]);
+        Assert.NotEqual(localizer["YouDefeatedAI"], localizer["PvpVictorySubtitle"]);
+        Assert.NotEqual(localizer["Defeat"], localizer["PvpDefeat"]);
+        Assert.NotEqual(localizer["AIWonMatch"], localizer["PvpDefeatSubtitle"]);
+    }
+
     private static HashSet<string> Keys(ResourceSet? resourceSet) =>
         resourceSet?.Cast<System.Collections.DictionaryEntry>().Select(entry => (string)entry.Key).ToHashSet()
         ?? throw new InvalidOperationException("Localization resource set was not found.");

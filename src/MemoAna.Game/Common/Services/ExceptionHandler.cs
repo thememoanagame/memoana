@@ -9,16 +9,16 @@ public sealed class ExceptionHandler(ILogger<ExceptionHandler> logger) : IExcept
 {
     public async Task HandleAsync(Exception exception)
     {
-        logger.LogError(exception, "Exceção não tratada capturada pelo GlobalExceptionHandler");
+        logger.LogError(exception, "Unhandled exception caught by ExceptionHandler");
 
         // garante execução na main thread (obrigatório pra exibir UI)
         await MainThread.InvokeOnMainThreadAsync(async () =>
         {
             var (title, message) = exception switch
             {
-                KeyNotFoundException e => ("Erro", e.Message),
-                UnauthorizedAccessException => ("Erro", "Faça login novamente."),
-                _ => ("Erro!", $"Ocorreu um erro inesperado: {exception.Message}.")
+                KeyNotFoundException e => ("Error", e.Message),
+                UnauthorizedAccessException => ("Error", "Please log in again."),
+                _ => ("Error!", $"Unexpected error: {exception.Message}.")
             };
 
             var page = Microsoft.Maui.Controls.Application.Current?.Windows[0]?.Page;
