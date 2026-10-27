@@ -39,4 +39,22 @@
   <data name="PvpConnectionTimeout" xml:space="preserve">
     <value>Conexao PVP tempo esgotado.</value>
   </data>
+  <data name="PvpVictory" xml:space="preserve">
+    <value>Vitória!</value>
+  </data>
+  <data name="PvpVictorySubtitle" xml:space="preserve">
+    <value>Você venceu a partida.</value>
+  </data>
+  <data name="PvpDefeat" xml:space="preserve">
+    <value>Derrota!</value>
+  </data>
+  <data name="PvpDefeatSubtitle" xml:space="preserve">
+    <value>Seu oponente venceu a partida.</value>
+  </data>
+  <data name="PvpTie" xml:space="preserve">
+    <value>Empate!</value>
+  </data>
+  <data name="PvpTieSubtitle" xml:space="preserve">
+    <value>A partida terminou empatada.</value>
+  </data>
 </root>

@@ -1,4 +1,4 @@
-﻿namespace MemoAna.Game.Abstract.Services;
+namespace MemoAna.Game.Abstract.Services;
 
 public interface IAudioService  
 {
@@ -7,6 +7,7 @@ public interface IAudioService
     Task PlayMainGameAsync();
     Task PlayMainTitleAsync();
     Task PlayShuffleFlipAsync();
+    Task StopShuffleAsync();
     Task PlayWinAsync();
     Task StopAsync();
     bool IsPlaying { get; }

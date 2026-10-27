@@ -186,7 +186,12 @@
     else if (IsGameFinished)
     {
         <div class="statistics-container">
-            @if (game.CurrentMode == GameMode.IA)
+            @if (IsPvpMode || game.CurrentMode == GameMode.PVP)
+            {
+                <MudText Class="victory-text pvp-result-title" data-testid="pvp-result-title">@PvpResultTitle</MudText>
+                <MudText Class="ia-result-subtitle pvp-result-subtitle" data-testid="pvp-result-subtitle">@PvpResultSubtitle</MudText>
+            }
+            else if (game.CurrentMode == GameMode.IA)
             {
                 <MudText Class="victory-text ia-result-title" data-testid="ia-result-title">@(Statistics.IsVictory ? Localizer["Victory"] : Localizer["Defeat"])</MudText>
                 <MudText Class="ia-result-subtitle">@(Statistics.IsVictory ? Localizer["YouDefeatedAI"] : Localizer["AIWonMatch"])</MudText>
@@ -348,6 +353,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await audio.PlayMainTitleAsync();
         await LoadThemesAsync();
     }
 
@@ -428,6 +434,8 @@
         {
             try
             {
+                await audio.PlayMainGameAsync();
+                await audio.PlayShuffleFlipAsync();
                 ConfigureGridGeometry(level);
                 string themeName = SelectedTheme.ThemeName;
 
@@ -448,8 +456,7 @@
                     MovesCount = game.PlayerSuccessfulMoves.ToString();
                 });
 
-                await audio.StopAsync();
-                await audio.PlayMainGameAsync();
+                await audio.StopShuffleAsync();
 
                 await InvokeAsync(() =>
                 {
@@ -558,13 +565,17 @@
                 e.AIMistakes);
             IsVictory = e.IsVictory ? Localizer["VictoryShort"] : Localizer["DefeatShort"];
             CurrentScore = e.FinalScore.ToString("D3");
-            await audio.StopAsync();
             StateHasChanged();
         });
     }
 
     private void OnCardFlipped(object? sender, GameCardFlippedEventArgs e)
     {
+        var match = Cards.FirstOrDefault(c => c.Key == e.MemoryCard.Position);
+        if (match.Value is { IsFaceUp: true })
+        {
+            _ = audio.PlayFlipAsync();
+        }
         RequestRender();
     }
 
@@ -596,10 +607,15 @@
         };
     }
 
-    private void GoToMain() => navigation.NavigateTo("/");
+    private void GoToMain()
+    {
+        _ = audio.PlayMainTitleAsync();
+        navigation.NavigateTo("/");
+    }
 
     private void RestartGame()
     {
+        _ = audio.PlayMainTitleAsync();
         game.ForceStopTimer();
         _ = pvp.StopAsync();
         IsSelecting = true;
@@ -642,7 +658,6 @@
         await pvp.StopAsync();
 
         IsGameActive = false;
-        await audio.StopAsync();
     }
 
     public async ValueTask DisposeAsync()
@@ -812,6 +827,12 @@
 
     private void OnPvpSessionStarted(object? sender, PVPStateChangedEventArgs e)
     {
+        _ = Task.Run(async () =>
+        {
+            await audio.PlayMainGameAsync();
+            await audio.PlayShuffleFlipAsync();
+            await audio.StopShuffleAsync();
+        });
         IsPvpLobby = false;
         IsGameActive = true;
         Cards.Clear();
@@ -827,7 +848,15 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
-    private void OnPvpCardChanged(object? sender, PVPCardEventArgs e) => RequestRender();
+    private void OnPvpCardChanged(object? sender, PVPCardEventArgs e)
+    {
+        var match = Cards.FirstOrDefault(c => c.Key == e.Position);
+        if (match.Value is { IsFaceUp: true } && !e.Matched)
+        {
+            _ = audio.PlayFlipAsync();
+        }
+        RequestRender();
+    }
     private void OnPvpTurnChanged(object? sender, PVPStateChangedEventArgs e) => RequestRender();
 
     private void OnPvpPlayerDisconnected(object? sender, System.EventArgs e)
@@ -852,13 +881,36 @@
     private PVPPlayerStatistics RemotePvpStats =>
         PvpStatistics.FirstOrDefault(s => s.Role != pvp.LocalRole) ?? pvp.RemoteStatistics;
 
+    private string PvpResultTitle
+    {
+        get
+        {
+            if (LocalPvpStats.Score > RemotePvpStats.Score)
+                return Localizer["PvpVictory"];
+            if (LocalPvpStats.Score < RemotePvpStats.Score)
+                return Localizer["PvpDefeat"];
+            return Localizer["PvpTie"];
+        }
+    }
+
+    private string PvpResultSubtitle
+    {
+        get
+        {
+            if (LocalPvpStats.Score > RemotePvpStats.Score)
+                return Localizer["PvpVictorySubtitle"];
+            if (LocalPvpStats.Score < RemotePvpStats.Score)
+                return Localizer["PvpDefeatSubtitle"];
+            return Localizer["PvpTieSubtitle"];
+        }
+    }
+
     private void OnPvpGameFinished(object? sender, PVPGameFinishedEventArgs e)
     {
         IsGameActive = false;
         IsGameFinished = true;
         _pvpResult = e.Result;
         PvpStatistics = e.Result.Statistics ?? [pvp.LocalStatistics, pvp.RemoteStatistics];
-        IsVictory = (e.Result.Winner == pvp.LocalRole) ? Localizer["VictoryShort"] : Localizer["DefeatShort"];
         _ = InvokeAsync(StateHasChanged);
     }
 }

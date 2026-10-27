@@ -101,7 +101,7 @@ public static class MauiAppBuilderExtensions
             builder.UseLocalization();
             builder.Services.AddTransient<IPlatformService, PlatformService>();
             builder.Services.AddTransient<IExceptionHandler, ExceptionHandler>();
-            builder.Services.AddScoped<IAudioService, AudioService>();
+            builder.Services.AddSingleton<IAudioService, AudioService>();
             builder.Services.AddScoped<ISettingsService, SettingsService>();
             builder.Services.AddScoped<IAssetService, AssetService>();
             builder.Services.AddScoped<IThemeService, ThemeService>();
