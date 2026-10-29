@@ -17,29 +17,30 @@
     else if (IsSelecting)
     {
         <MudButton StartIcon="@Icons.Material.Rounded.ArrowBack" IconColor="Color.Primary" Href="/" 
-                Class="menu-button top-left" data-testid="content-button">
-                <div class="button-content">
-                    <div class="button-highlight"></div>
-                    <MudText Class="button-text">@Localizer["Back"]</MudText>
-                </div>
-            </MudButton>
+            Class="menu-button top-left" data-testid="content-button">
+            <div class="button-content">
+                <div class="button-highlight"></div>
+                <MudText Class="button-text">@Localizer["Back"]</MudText>
+            </div>
+        </MudButton>
         <MudStack Class="difficulty-section">
-            <MudIconButton Icon="@Icons.Material.Rounded.ArrowBack" Href=".." />
             <MudText Class="selection-title">
                 @Localizer["Difficulty"]
+                <br/>
+                @(Difficulty == "0" ? Localizer["Starter"] : Difficulty == "1" ? Localizer["Medium"] : Difficulty == "2" ? Localizer["Hard"] : "")
             </MudText>
 
-            <MudToggleGroup T="string" Class="selection-options" SelectedClass="selection-striped" @bind-Value="@Difficulty"
+            <MudToggleGroup T="string"  SelectedClass="selection-striped" @bind-Value="@Difficulty"
                             CheckMark="true" Vertical="false" Color="Color.Surface" SelectionMode="SelectionMode.ToggleSelection">
-                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-easy"
+                <MudToggleItem T="string" UnselectedIcon="@Icons.Material.Filled.StarBorder" Class="selection-button" data-testid="difficulty-easy"
                                SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("0")">
                     @Localizer["Starter"]
                 </MudToggleItem>
-                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-medium"
+                <MudToggleItem T="string" UnselectedIcon="@Icons.Material.Filled.StarHalf" Class="selection-button" data-testid="difficulty-medium"
                                SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("1")">
                     @Localizer["Medium"]
                 </MudToggleItem>
-                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-hard"
+                <MudToggleItem T="string" UnselectedIcon="@Icons.Material.Filled.StarBorder" Class="selection-button" data-testid="difficulty-hard"
                                SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("2")">
                     @Localizer["Hard"]
                 </MudToggleItem>
@@ -47,6 +48,9 @@
 
             <MudText Class="selection-title mode-title">
                 @Localizer["GameMode"]
+                <br />
+                @(Mode == "0" ? Localizer["IA"] : Mode == "1" ? Localizer["TimeAttack"] : Mode == "2" ?
+            Localizer["PVP"] : "")
             </MudText>
 
             <MudToggleGroup T="string" Class="selection-options" SelectedClass="selection-striped" @bind-Value="Mode" CheckMark="true" Vertical="false"
@@ -109,14 +113,14 @@
     }
     else if (IsPvpLobby)
     {
+        <MudButton StartIcon="@Icons.Material.Rounded.ArrowBack" IconColor="Color.Primary" OnClick="GoToSelection" 
+            Class="menu-button top-left" data-testid="content-button">
+            <div class="button-content">
+                <div class="button-highlight"></div>
+                <MudText Class="button-text">@Localizer["Back"]</MudText>
+            </div>
+        </MudButton>
         <div class="pvp-lobby">
-            <MudButton StartIcon="@Icons.Material.Rounded.ArrowBack" IconColor="Color.Primary" OnClick="GoToSelection" 
-                Class="menu-button top-left" data-testid="content-button">
-                <div class="button-content">
-                    <div class="button-highlight"></div>
-                    <MudText Class="button-text">@Localizer["Back"]</MudText>
-                </div>
-            </MudButton>
             <MudText Class="selection-title">@Localizer["PVP"]</MudText>
             <MudTextField T="string" Label='@Localizer["PlayerName"]' @bind-Value="PlayerName"
                           Required="true" RequiredError='@Localizer["PlayerNameRequired"]'
@@ -990,10 +994,9 @@
     }
 
     .selection-options {
-        display: inline-flex;
+        display: flex;
         flex-direction: row;
         align-items: center;
-        gap: 10px;
         width: 100%;
         margin-top: 20px;
     }
@@ -1345,7 +1348,7 @@
 
      .top-left { 
         top: calc(100vh * 0.07);
-        left: calc(100vw * 0.45);
+        left: 10vw;
     }
 
     .bottom-center {
@@ -1440,8 +1443,7 @@
         }
 
         .selection-options {
-            width: 60svw;
-            gap: 15px;
+            width: 100%; 
         }
 
         .theme-section {

@@ -41,9 +41,10 @@
         text-shadow: 4px 4px 2px rgba(0, 0, 0, 0.8);
     }
 
+
     .top-right {
         top: calc(100vh * 0.07);
-        right: calc(-100vw * 0.6);
+        right: 5vw;
     }
 
     .top-center {
@@ -54,7 +55,12 @@
 
     .top-left { 
         top: calc(100vh * 0.07);
-        left: calc(100vw * 0.45);
+        left: 5vw;
+    }
+
+    .bottom-right {
+        top: 90vh;
+        right: 5vw;
     }
 
     .bottom-center {
@@ -62,8 +68,13 @@
         left: calc(100vw * 0.45);
     }
 
+    .bottom-left {
+        top: 90vh;
+        left: 5vw;
+    }
+
     .menu-button {
-        position: relative;
+        position: absolute;
         width: calc(100vw/2.5);
         height: 50px;
         min-height: 50px;
@@ -131,7 +142,7 @@
 
         .top-right {
             top: calc(100vh * 0.06);
-            left: 10vw;
+            right: 10vw;
         }
         
         .top-left {
@@ -140,11 +151,18 @@
         }
 
         .bottom-center {
-            top: calc(100vh * 0.825);
+            top: 88vh;
             left: 10vw;
             width: calc(100vw * 0.8) !important;
         }
     }
+
+    @@media screen and (min-width: 900px){
+        .bottom-center {
+            left: calc(100vw * 0.2);
+        }
+    }
+
 </style>
 <div class="page">
     <MudImage Src="images/empty.png"
@@ -152,8 +170,7 @@
               Alt="" />
 
     <MudButton StartIcon="@Icons.Material.Rounded.Games" IconColor="Color.Primary" Href="/game"
-               Class="@(platform.IsWindows || platform.IsMacOS ? "menu-button top-center" : "menu-button top-left")"
-               data-testid="start-game">
+               Class="menu-button top-left" data-testid="start-game">
         <div class="button-content">
             <div class="button-highlight"></div>
             <MudText Class="button-text">@Localizer["Play"]</MudText>
@@ -166,7 +183,8 @@
             <MudText Class="button-text">@Localizer["Content"]</MudText>
         </div>
     </MudButton>
-    <MudButton StartIcon="@Icons.Material.Rounded.Info" IconColor="Color.Primary" Href="/about" Class=@(platform.IsWindows || platform.IsMacOS ? "menu-button top-left" : "menu-button bottom-center")>
+    <MudButton StartIcon="@Icons.Material.Rounded.Info" IconColor="Color.Primary" Href="/about" 
+        Class=@(platform.IsWindows || platform.IsMacOS ? "menu-button bottom-left" : "menu-button bottom-center")>
         <div class="button-content">
             <div class="button-highlight"></div>
             <MudText Class="button-text">@Localizer["About"]</MudText>
@@ -174,9 +192,8 @@
     </MudButton>
     @if (platform.IsWindows || platform.IsMacOS)
     {
-        <MudButton  StartIcon="@Icons.Material.Rounded.ExitToApp" IconColor="Color.Primary"OnClick="ExitApp" Class="menu-button bottom-center">
+        <MudButton  StartIcon="@Icons.Material.Rounded.ExitToApp" IconColor="Color.Primary"OnClick="ExitApp" Class="menu-button bottom-right">
              <MudText Class="button-text">@Localizer["Exit"]</MudText>
- 
         </MudButton>
     }
 
