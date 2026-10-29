@@ -100,6 +100,7 @@ public static class MauiAppBuilderExtensions
             builder.AddSqlite();
             builder.UseLocalization();
             builder.Services.AddTransient<IPlatformService, PlatformService>();
+            builder.Services.AddTransient<IPermissionService, PermissionService>();
             builder.Services.AddTransient<IExceptionHandler, ExceptionHandler>();
             builder.Services.AddSingleton<IAudioService, AudioService>();
             builder.Services.AddScoped<ISettingsService, SettingsService>();
