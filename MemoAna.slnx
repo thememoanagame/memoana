@@ -15,17 +15,14 @@
     <File Path="scripts/postgres.ps1" />
   </Folder>
   <Folder Name="/MemoAna/src/">
-    <Folder Name="/MemoAna/src/app/" />
     <Project Path="src/MemoAna.Game/MemoAna.Game.csproj" />
     <Project Path="src/MemoAna/MemoAna.csproj">
       <Deploy Solution="Debug|*" />
     </Project>
+    <Project Path="src/MemoAna.Server/MemoAna.Server.csproj" />
   </Folder>
   <Folder Name="/MemoAna/tests/">
     <Project Path="tests/MemoAna.UITests/MemoAna.UITests.csproj" />
-  </Folder>
-  <Folder Name="/src/" />
-  <Folder Name="/tests/">
     <Project Path="tests/MemoAna.UnitTests/MemoAna.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tools/">

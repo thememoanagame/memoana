@@ -41,14 +41,48 @@
         text-shadow: 4px 4px 2px rgba(0, 0, 0, 0.8);
     }
 
+
+    .top-right {
+        top: calc(100vh * 0.07);
+        right: 5vw;
+    }
+
+    .top-center {
+        top: calc(100vh * 0.07);
+        left: calc(100vw * 0.45);
+        right: calc(100vw * 0.45);
+    }
+
+    .top-left { 
+        top: calc(100vh * 0.07);
+        left: 5vw;
+    }
+
+    .bottom-right {
+        top: 90vh;
+        right: 5vw;
+    }
+
+    .bottom-center {
+        top: calc(100vh * 0.9);
+        left: calc(100vw * 0.45);
+    }
+
+    .bottom-left {
+        top: 90vh;
+        left: 5vw;
+    }
+
     .menu-button {
-        position: relative;
-        width: 200px;
+        position: absolute;
+        width: calc(100vw/2.5);
         height: 50px;
         min-height: 50px;
         padding: 0;
         border-radius: 25px !important;
-        background-color: burlywood;
+        @* background-color: burlywood; *@
+        background-color: lightgoldenrodyellow;
+        border: 10px solid burlywood;
         color: saddlebrown;
         overflow: hidden;
         cursor: pointer;
@@ -63,13 +97,11 @@
 
         .menu-button:active {
             transform: translate(4px, 4px);
-            box-shadow: 2px 2px 2px rgba(127, 127, 127, 1.0);
+            box-shadow: 2px 2px 2px rgba(172, 172, 172, 1.0);
         }
 
     .button-content {
-        position: relative;
-        width: 100%;
-        height: 100%;
+        position: relative; 
         display: flex;
         align-items: center;
         justify-content: center;
@@ -103,48 +135,72 @@
         font-style: normal;
     }
 
-    @@media (max-height: 700px) {
+    @@media screen and (max-height: 960px) {
         .page-container {
             gap: 12px;
         }
+
+        .top-right {
+            top: calc(100vh * 0.06);
+            right: 10vw;
+        }
+        
+        .top-left {
+            top: calc(100vh * 0.06);
+            left: 10vw;
+        }
+
+        .bottom-center {
+            top: 88vh;
+            left: 10vw;
+            width: calc(100vw * 0.8) !important;
+        }
     }
+
+    @@media screen and (min-width: 900px){
+        .bottom-center {
+            left: calc(100vw * 0.2);
+        }
+    }
+
 </style>
 <div class="page">
     <MudImage Src="images/empty.png"
               Class="background-image"
               Alt="" />
+
+    <MudButton StartIcon="@Icons.Material.Rounded.Games" IconColor="Color.Primary" Href="/game"
+               Class="menu-button top-left" data-testid="start-game">
+        <div class="button-content">
+            <div class="button-highlight"></div>
+            <MudText Class="button-text">@Localizer["Play"]</MudText>
+        </div>
+    </MudButton> 
+    <MudButton StartIcon="@Icons.Material.Rounded.ViewList" IconColor="Color.Primary" Href="/content" 
+        Class="menu-button top-right" data-testid="content-button">
+        <div class="button-content">
+            <div class="button-highlight"></div>
+            <MudText Class="button-text">@Localizer["Content"]</MudText>
+        </div>
+    </MudButton>
+    <MudButton StartIcon="@Icons.Material.Rounded.Info" IconColor="Color.Primary" Href="/about" 
+        Class=@(platform.IsWindows || platform.IsMacOS ? "menu-button bottom-left" : "menu-button bottom-center")>
+        <div class="button-content">
+            <div class="button-highlight"></div>
+            <MudText Class="button-text">@Localizer["About"]</MudText>
+        </div>
+    </MudButton>
+    @if (platform.IsWindows || platform.IsMacOS)
+    {
+        <MudButton  StartIcon="@Icons.Material.Rounded.ExitToApp" IconColor="Color.Primary"OnClick="ExitApp" Class="menu-button bottom-right">
+             <MudText Class="button-text">@Localizer["Exit"]</MudText>
+        </MudButton>
+    }
+
     <div class="page-container">
         <MudText Class="container-title">
             @Localizer["GameName"].ToUpper()
         </MudText>
-        <MudButton Href="/game" Class="menu-button" data-testid="start-game">
-            <div class="button-content">
-                <div class="button-highlight"></div>
-                <MudText Class="button-text">@Localizer["Play"]</MudText>
-            </div>
-        </MudButton> 
-        <MudButton Href="/content" Class="menu-button">
-            <div class="button-content">
-                <div class="button-highlight"></div>
-                <MudText Class="button-text">@Localizer["Content"]</MudText>
-            </div>
-        </MudButton>
-        <MudButton Href="/about" Class="menu-button">
-            <div class="button-content">
-                <div class="button-highlight"></div>
-                <MudText Class="button-text">@Localizer["About"]</MudText>
-            </div>
-        </MudButton>
-        @if (platform.IsWindows || platform.IsMacOS)
-        {
-            <MudButton OnClick="ExitApp" Class="menu-button">
-                <div class="button-content">
-                    <div class="button-highlight"></div>
-                    <MudText Class="button-text">@Localizer["Exit"]</MudText>
-                </div>
-            </MudButton>
-        }
-
     </div>
 </div>
 

@@ -6,12 +6,18 @@
 @inject IPVPService pvp
 <div class="page">
     <img src="images/empty.png" class="game-background" alt="" />
-
+    <div style="width:100vw; height: 100vh; position: fixed; top: 10px; z-index: 10;">
+    <MudButton StartIcon="@Icons.Material.Rounded.ArrowBack" IconColor="Color.Primary" Href="/" 
+        Class="menu-button top-left" data-testid="content-button">
+        <div class="button-content">
+            <div class="button-highlight"></div>
+            <MudText Class="button-text">@Localizer["Back"]</MudText>
+        </div>
+    </MudButton>
     @if (IsBusy)
     {
         <div class="loading-container">
             <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Warning" />
-            <MudText Class="loading-text">@Localizer["LoadingBoard"]</MudText>
         </div>
     }
     else
@@ -29,15 +35,12 @@
                     <div id="unique_id_scroll_section" class="theme-item-container scrollable-panels-container">
                         @foreach (var theme in Themes)
                         {
-                            <MudExpansionPanel Text="@theme.ThemeName" Class="theme-select-button " @onclick="@(async () => await SelectThemeAsync(theme))" Style="min-width: 30svw;">
-                                <MudCarousel TData="string" ItemsSource="@Cards" Class="card-section" @bind-SelectedIndex="selectedCardIndex" AutoCycle="false" EnableSwipeGesture="true" ShowArrows="true">
+                            <MudExpansionPanel Text="@theme.ThemeName" Class="theme-select-button " @onclick="@(async () => await SelectThemeAsync(theme))">
+                                <MudCarousel TData="string" ItemsSource="@Cards" Class="card-section" @bind-SelectedIndex="selectedCardIndex" AutoCycle="false" EnableSwipeGesture="true" ShowArrows="false" ShowBullets="false">
                                     <ItemTemplate Context="themeCard">
-                                        <div style="position: relative;">
-                                            <MudIconButton Edge="Edge.End" Icon="@Icons.Material.Filled.Close" OnClick="@(async () => await ClearAsync())" />
-                                            <div class="card-item">
-                                                <div class="card-select-button">
-                                                    <MudImage Src="@(themeCard)" Class="theme-image" />
-                                                </div>
+                                        <div class="card-item">
+                                            <div class="card-select-button">
+                                                <MudImage Src="@(themeCard)" Class="theme-image" />
                                             </div>
                                         </div>
                                     </ItemTemplate>
@@ -49,6 +52,7 @@
             }
         </MudStack>
     }
+    </div>
 </div>
 
 @code {
@@ -64,12 +68,6 @@
     {
         await audio.PlayMainTitleAsync();
         await LoadThemesAsync();
-    }
-
-    private async Task ClearAsync() {
-        Cards.Clear();
-        SelectedTheme = null;
-        await panels?.CollapseAllAsync();
     }
 
     private async Task SelectThemeAsync(CardThemeManifestDto theme)
@@ -114,7 +112,6 @@
 }
 
 <style>
-    .game-selection-page,
     .page {
         position: relative;
         width: 100%;
@@ -132,6 +129,66 @@
         z-index: 0;
         pointer-events: none;
         user-select: none;
+    }
+
+    .top-left { 
+        top: calc(100vh * 0.07);
+        left: calc(100vw * 0.45);
+    }
+
+    .menu-button {
+        position: relative;
+        width: calc(100vw/2.5);
+        height: 50px;
+        min-height: 50px;
+        padding: 0;
+        border-radius: 25px !important;
+        @* background-color: burlywood; *@
+        background-color: lightgoldenrodyellow;
+        border: 10px solid burlywood;
+        color: saddlebrown;
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: 4px 4px 2px rgba(189, 63, 21, 1.0);
+        transition: transform 80ms ease, box-shadow 100ms ease;
+    }
+
+        .menu-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 4px 5px 3px rgba(217, 217, 217, 1.0);
+        }
+
+        .menu-button:active {
+            transform: translate(4px, 4px);
+            box-shadow: 2px 2px 2px rgba(172, 172, 172, 1.0);
+        }
+
+    .button-content {
+        position: relative; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .button-highlight {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        right: 2px;
+        height: 25px;
+        background-color: lightgoldenrodyellow;
+        border-radius: 18px;
+        z-index: 0;
+    }
+
+    .button-text {
+        position: relative;
+        z-index: 1;
+        font-family: Bangpop;
+        font-size: 22px;
+        font-weight: normal;
+        color: saddlebrown;
+        text-shadow: 4px 4px 2px rgba(250, 250, 210, 0.8);
     }
  
 
@@ -153,8 +210,8 @@
         position: relative;
         left: 0;
         right: 0;
-        height: calc(100vh - 350px);
-        min-height: 270px;
+        height: 70vh;
+        min-height: 300px;
         display: flex !important;
         flex-direction: column;
         align-items: center;
@@ -175,16 +232,14 @@
     }
      
 
-    .card-item {
-        width: 350px;
-        height: auto;
+    .card-item {    
+        width: calc(100vw / 2);
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 40px;
-        margin: auto;
+        place-self: center;
         user-select: none;
+        padding: 5vw 0;
     }
 
     .theme-card-header {
@@ -194,13 +249,12 @@
     }
      
     .theme-section {
-        height: calc(100vh - 600px);
+        height: calc(100vh * 0.8);
     }
 
     .theme-item-container {
         overflow-y: scroll; 
         padding: 8px;
-        width:60svw;
     }
 
     .theme-item {
@@ -219,6 +273,8 @@
         -webkit-appearance: none;
         outline: none;
         pointer-events: auto;
+        min-width: calc(100vw/1.5);
+        padding: 5vh 0;
     }
 
     .theme-select-button:hover {
@@ -227,8 +283,6 @@
 
 
     .card-select-button {
-        width: 450px;
-        height: auto;
         padding: 5px;
         box-sizing: border-box;
         background-color: burlywood;
@@ -317,22 +371,14 @@
         font-style: normal;
     }
 
-    @@media (max-height: 750px) {
-        .difficulty-section {
-            top: 120px;
-        }
-
+    @@media screen and (max-height: 950px) {
         .selection-options {
             gap: 12px;
         }
 
-        .selection-button {
-            height: 44px;
-            min-height: 44px;
-        }
-
-        .theme-section {
-            height: calc(100vh - 350px);
+        .top-left {
+            top: calc(100vh * 0.06);
+            left: 10vw;
         }
     }
 
@@ -344,16 +390,6 @@
         .selection-options {
             width: 60svw;
             gap: 15px;
-        }
-
-        .theme-section {
-            bottom: 10px;
-        }
-
-
-        .theme-select-button {
-            width: 175px;
-            height: 175px;
         }
     }
 </style>

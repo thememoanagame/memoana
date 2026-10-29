@@ -6,7 +6,7 @@
 @inject IPVPService pvp
 <div class="game-page">
     <img src="images/empty.png" class="game-background" alt="" />
-
+    
     @if (IsBusy)
     {
         <div class="loading-container">
@@ -16,23 +16,31 @@
     }
     else if (IsSelecting)
     {
-
+        <MudButton StartIcon="@Icons.Material.Rounded.ArrowBack" IconColor="Color.Primary" Href="/" 
+            Class="menu-button top-left" data-testid="content-button">
+            <div class="button-content">
+                <div class="button-highlight"></div>
+                <MudText Class="button-text">@Localizer["Back"]</MudText>
+            </div>
+        </MudButton>
         <MudStack Class="difficulty-section">
             <MudText Class="selection-title">
                 @Localizer["Difficulty"]
+                <br/>
+                @(Difficulty == "0" ? Localizer["Starter"] : Difficulty == "1" ? Localizer["Medium"] : Difficulty == "2" ? Localizer["Hard"] : "")
             </MudText>
 
-            <MudToggleGroup T="string" Class="selection-options" SelectedClass="selection-striped" Value="@Difficulty" ValueChanged="OnDifficultyChanged"
-                            CheckMark="true" Delimiters="true" Vertical="false" Outlined Color="Color.Surface" SelectionMode="SelectionMode.ToggleSelection">
-                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-easy"
+            <MudToggleGroup T="string"  SelectedClass="selection-striped" @bind-Value="@Difficulty"
+                            CheckMark="true" Vertical="false" Color="Color.Surface" SelectionMode="SelectionMode.ToggleSelection">
+                <MudToggleItem T="string" UnselectedIcon="@Icons.Material.Filled.StarBorder" Class="selection-button" data-testid="difficulty-easy"
                                SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("0")">
                     @Localizer["Starter"]
                 </MudToggleItem>
-                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-medium"
+                <MudToggleItem T="string" UnselectedIcon="@Icons.Material.Filled.StarHalf" Class="selection-button" data-testid="difficulty-medium"
                                SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("1")">
                     @Localizer["Medium"]
                 </MudToggleItem>
-                <MudToggleItem T="string" Class="selection-button" data-testid="difficulty-hard"
+                <MudToggleItem T="string" UnselectedIcon="@Icons.Material.Filled.StarBorder" Class="selection-button" data-testid="difficulty-hard"
                                SelectedIcon="@Icons.Material.TwoTone.Check" Value="@("2")">
                     @Localizer["Hard"]
                 </MudToggleItem>
@@ -40,10 +48,13 @@
 
             <MudText Class="selection-title mode-title">
                 @Localizer["GameMode"]
+                <br />
+                @(Mode == "0" ? Localizer["IA"] : Mode == "1" ? Localizer["TimeAttack"] : Mode == "2" ?
+            Localizer["PVP"] : "")
             </MudText>
 
-            <MudToggleGroup T="string" Class="selection-options" SelectedClass="selection-striped" @bind-Value="Mode" CheckMark="true" Delimiters="true" Vertical="false"
-                            Outlined Color="Color.Surface" SelectionMode="SelectionMode.ToggleSelection">
+            <MudToggleGroup T="string" Class="selection-options" SelectedClass="selection-striped" @bind-Value="Mode" CheckMark="true" Vertical="false"
+                            Color="Color.Surface" SelectionMode="SelectionMode.ToggleSelection">
                 <MudToggleItem T="string" Class="selection-button" data-testid="mode-ai"
                                SelectedIcon="@Icons.Material.Filled.Computer" UnselectedIcon="@Icons.Material.TwoTone.Computer"
                                Value="@("0")">
@@ -82,8 +93,8 @@
             else
             {
                 <MudCarousel TData="CardThemeManifestDto" ItemsSource="@Themes" Class="theme-carousel" Style="height:70vh;"
-                             @bind-SelectedIndex="selectedIndex" AutoCycle="false" EnableSwipeGesture="true" ShowArrows="true"
-                             ShowBullets="true" BulletsColor="Color.Surface" ArrowsColor="Color.Surface">
+                             @bind-SelectedIndex="selectedIndex" AutoCycle="false" EnableSwipeGesture="true" ShowArrows="false"
+                             ShowBullets="false">
                     <ItemTemplate Context="theme">
                         <div class="theme-item">
                             <div class="theme-card-header">
@@ -102,6 +113,13 @@
     }
     else if (IsPvpLobby)
     {
+        <MudButton StartIcon="@Icons.Material.Rounded.ArrowBack" IconColor="Color.Primary" OnClick="GoToSelection" 
+            Class="menu-button top-left" data-testid="content-button">
+            <div class="button-content">
+                <div class="button-highlight"></div>
+                <MudText Class="button-text">@Localizer["Back"]</MudText>
+            </div>
+        </MudButton>
         <div class="pvp-lobby">
             <MudText Class="selection-title">@Localizer["PVP"]</MudText>
             <MudTextField T="string" Label='@Localizer["PlayerName"]' @bind-Value="PlayerName"
@@ -337,7 +355,7 @@
     private int Columns { get; set; } = 4;
     private int selectedIndex;
 
-    private string? Difficulty { get; set; }
+    private string? Difficulty { get; set; } = "1";
     private string Mode { get; set; } = "1";
     private string PlayerName { get; set; } = string.Empty;
 
@@ -355,12 +373,6 @@
     {
         await audio.PlayMainTitleAsync();
         await LoadThemesAsync();
-    }
-
-    private async Task OnDifficultyChanged(string? value)
-    {
-        Difficulty = value;
-        await InvokeAsync(StateHasChanged);
     }
 
     private async Task SelectThemeAsync(CardThemeManifestDto theme)
@@ -413,7 +425,18 @@
             await InvokeAsync(StateHasChanged);
         }
     }
-
+    private void GoToSelection()
+    {
+        IsSelecting = true;
+        IsGameActive = false;
+        IsGameFinished = false;
+        IsPvpLobby = false;
+        PvpStatus = string.Empty;
+        SelectedTheme = null;
+        PvpHosts.Clear();
+        PvpStatistics = [];
+        Cards.Clear();
+    }
     private Task StartSelectedGameAsync()
     {
         if (IsBusy || SelectedTheme is null || !int.TryParse(Difficulty, out int level) || Mode == "2")
@@ -924,6 +947,14 @@
         overflow: hidden;
     }
 
+    .game-action-button {
+        min-width: 140px;
+        background-color: burlywood;
+        color: saddlebrown;
+        font-family: Bangpop;
+        box-shadow: 4px 4px 2px rgba(139, 69, 19, 0.8);
+    }
+
     .selection-background,
     .game-background {
         position: absolute;
@@ -963,10 +994,9 @@
     }
 
     .selection-options {
-        display: inline-flex;
+        display: flex;
         flex-direction: row;
         align-items: center;
-        gap: 10px;
         width: 100%;
         margin-top: 20px;
     }
@@ -987,12 +1017,8 @@
     }
 
     .theme-section {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 20px;
-        height: calc(100vh - 400px);
-        min-height: 270px;
+        top: calc(100vh*0.5);
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -1013,10 +1039,9 @@
     }
 
     .theme-carousel {
-        width: 70dvw;
-        height: 70dvh;
+        width: calc(100vh/0.8);
         flex: 1 1 auto;
-        min-height: 0;
+        min-height: calc(50vh / 1.2);
         margin: 30px 0;
     }
 
@@ -1321,6 +1346,71 @@
         box-shadow: 4px 4px 2px rgba(139, 69, 19, 0.8);
     }
 
+     .top-left { 
+        top: calc(100vh * 0.07);
+        left: 10vw;
+    }
+
+    .bottom-center {
+        top: calc(100vh * 0.9);
+        left: calc(100vw * 0.45);
+    }
+
+    .menu-button {
+        position: relative;
+        width: calc(100vw/2.5);
+        height: 50px;
+        min-height: 50px;
+        padding: 0;
+        border-radius: 25px !important;
+        @* background-color: burlywood; *@
+        background-color: lightgoldenrodyellow;
+        border: 10px solid burlywood;
+        color: saddlebrown;
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: 4px 4px 2px rgba(189, 63, 21, 1.0);
+        transition: transform 80ms ease, box-shadow 100ms ease;
+    }
+
+        .menu-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 4px 5px 3px rgba(217, 217, 217, 1.0);
+        }
+
+        .menu-button:active {
+            transform: translate(4px, 4px);
+            box-shadow: 2px 2px 2px rgba(172, 172, 172, 1.0);
+        }
+
+    .button-content {
+        position: relative; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .button-highlight {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        right: 2px;
+        height: 25px;
+        background-color: lightgoldenrodyellow;
+        border-radius: 18px;
+        z-index: 0;
+    }
+
+    .button-text {
+        position: relative;
+        z-index: 1;
+        font-family: Bangpop;
+        font-size: 22px;
+        font-weight: normal;
+        color: saddlebrown;
+        text-shadow: 4px 4px 2px rgba(250, 250, 210, 0.8);
+    }
+    
     @@font-face {
         font-family: Bangpop;
         src: url('/fonts/Bangpop.ttf') format('truetype');
@@ -1328,7 +1418,7 @@
         font-style: normal;
     }
 
-    @@media (max-height: 750px) {
+    @@media (max-height: 700px) {
         .difficulty-section {
             top: 120px;
         }
@@ -1343,7 +1433,7 @@
         }
 
         .theme-section {
-            height: calc(100vh - 350px);
+            height: calc(100vh - 300px);
         }
     }
 
@@ -1353,8 +1443,7 @@
         }
 
         .selection-options {
-            width: 60svw;
-            gap: 15px;
+            width: 100%; 
         }
 
         .theme-section {
