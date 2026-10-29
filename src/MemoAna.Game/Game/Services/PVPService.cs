@@ -27,8 +27,7 @@ public sealed class PVPService(
     IThemeService themeService,
     ILogger<PVPService> logger,
     IPermissionService permissionService,
-    IRepository<GameStatisticsEntity>? statisticsRepository = null,
-    ILocalizer<Strings>? localizer = null) : IPVPService
+    IRepository<GameStatisticsEntity>? statisticsRepository = null) : IPVPService
 {
     private const string ProtocolVersion = "memoana-pvp-1";
     private const int DefaultPort = 35678;
@@ -66,16 +65,6 @@ public sealed class PVPService(
     private int secondPosition = -1;
     private bool mismatchPending;
     private PVPPlayerRole currentMovePlayer;
-
-    public PVPService(
-        IThemeService themeService,
-        ILogger<PVPService> logger,
-        IRepository<GameStatisticsEntity>? statisticsRepository = null,
-        ILocalizer<Strings>? localizer = null)
-        : this(themeService, logger, new PermissionService(), statisticsRepository, localizer)
-    {
-    }
-
     public IReadOnlyList<KeyValuePair<int, MemoryCard>> CurrentCards => cards;
     public Guid? SessionId => sessionId == Guid.Empty ? null : sessionId;
     public PVPPlayerRole LocalRole => localRole;

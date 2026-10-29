@@ -54,22 +54,24 @@
 
     .top-left { 
         top: calc(100vh * 0.07);
-        left: calc(-100vh * 0.07);
+        left: calc(100vw * 0.45);
     }
 
     .bottom-center {
         top: calc(100vh * 0.9);
-        left: calc(100vh * 0.25);
+        left: calc(100vw * 0.45);
     }
 
     .menu-button {
         position: relative;
-        width: 200px;
+        width: calc(100vw/2.5);
         height: 50px;
         min-height: 50px;
         padding: 0;
         border-radius: 25px !important;
-        background-color: burlywood;
+        @* background-color: burlywood; *@
+        background-color: lightgoldenrodyellow;
+        border: 10px solid burlywood;
         color: saddlebrown;
         overflow: hidden;
         cursor: pointer;
@@ -84,13 +86,11 @@
 
         .menu-button:active {
             transform: translate(4px, 4px);
-            box-shadow: 2px 2px 2px rgba(127, 127, 127, 1.0);
+            box-shadow: 2px 2px 2px rgba(172, 172, 172, 1.0);
         }
 
     .button-content {
-        position: relative;
-        width: 100%;
-        height: 100%;
+        position: relative; 
         display: flex;
         align-items: center;
         justify-content: center;
@@ -124,28 +124,25 @@
         font-style: normal;
     }
 
-    @@media (max-height: 700px) {
+    @@media screen and (max-height: 960px) {
         .page-container {
             gap: 12px;
         }
-        
-        .menu-button {
-            width: calc(100vh/5);
-            margin: 10px;
-        }        
 
         .top-right {
-            top: calc(100vh * 0.785);
-            right: calc(-50vw * 0.5);
+            top: calc(100vh * 0.06);
+            left: 10vw;
         }
         
         .top-left {
-            left: calc(100vh * 0.07);
+            top: calc(100vh * 0.06);
+            left: 10vw;
         }
 
         .bottom-center {
-            top: calc(100vh * 0.9);
-            left: calc(100vh*0.25);
+            top: calc(100vh * 0.825);
+            left: 10vw;
+            width: calc(100vw * 0.8) !important;
         }
     }
 </style>
@@ -154,7 +151,7 @@
               Class="background-image"
               Alt="" />
 
-    <MudButton Href="/game"
+    <MudButton StartIcon="@Icons.Material.Rounded.Games" IconColor="Color.Primary" Href="/game"
                Class="@(platform.IsWindows || platform.IsMacOS ? "menu-button top-center" : "menu-button top-left")"
                data-testid="start-game">
         <div class="button-content">
@@ -162,13 +159,14 @@
             <MudText Class="button-text">@Localizer["Play"]</MudText>
         </div>
     </MudButton> 
-    <MudButton Href="/content" Class="menu-button top-left">
+    <MudButton StartIcon="@Icons.Material.Rounded.ViewList" IconColor="Color.Primary" Href="/content" 
+        Class="menu-button top-right" data-testid="content-button">
         <div class="button-content">
             <div class="button-highlight"></div>
             <MudText Class="button-text">@Localizer["Content"]</MudText>
         </div>
     </MudButton>
-    <MudButton Href="/about" Class="menu-button top-right">
+    <MudButton StartIcon="@Icons.Material.Rounded.Info" IconColor="Color.Primary" Href="/about" Class=@(platform.IsWindows || platform.IsMacOS ? "menu-button top-left" : "menu-button bottom-center")>
         <div class="button-content">
             <div class="button-highlight"></div>
             <MudText Class="button-text">@Localizer["About"]</MudText>
@@ -176,11 +174,9 @@
     </MudButton>
     @if (platform.IsWindows || platform.IsMacOS)
     {
-        <MudButton OnClick="ExitApp" Class="menu-button bottom-center">
-            <div class="button-content">
-                <div class="button-highlight"></div>
-                <MudText Class="button-text">@Localizer["Exit"]</MudText>
-            </div>
+        <MudButton  StartIcon="@Icons.Material.Rounded.ExitToApp" IconColor="Color.Primary"OnClick="ExitApp" Class="menu-button bottom-center">
+             <MudText Class="button-text">@Localizer["Exit"]</MudText>
+ 
         </MudButton>
     }
 
