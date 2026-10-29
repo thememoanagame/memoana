@@ -1,41 +1,41 @@
+using MemoAna.Server.Infrastructure.Persistence;
+using MemoAna.Server.Infrastructure.Services.Abstract;
+using MemoAna.Server.Infrastructure.Services.Concrete;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.OpenApi;
+using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddControllers();
+builder.Services.AddDbContext<ServerDbContext>(options =>
+{
+    options.UseSqlite("Data Source=server.db;Cache=Shared;Foreign Keys=True;");
+});
 builder.Services.AddOpenApi();
+builder.Services.AddAuthentication();
+builder.Services.AddAuthorization();
+builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<ServerDbContext>()
+    .AddDefaultTokenProviders();
+builder.Services.AddSingleton<IRelayService, RelayService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (!app.Environment.IsProduction())
 {
-    app.MapOpenApi();
+    app.MapOpenApi("openapi/{v1}.json");
+    app.MapScalarApiReference("scalar/server", options =>
+    {
+        options.WithTitle($"{app.Environment.ApplicationName} API at {app.Environment.EnvironmentName} v1")
+            .WithTheme(ScalarTheme.Moon);
+    });
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+await app.RunAsync();
