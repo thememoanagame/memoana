@@ -1,3 +1,4 @@
+using Mediator;
 using MemoAna.Server.Infrastructure.Persistence;
 using MemoAna.Server.Infrastructure.Services.Abstract;
 using MemoAna.Server.Infrastructure.Services.Concrete;
@@ -13,6 +14,7 @@ builder.Services.AddDbContext<ServerDbContext>(options =>
     options.UseSqlite("Data Source=server.db;Cache=Shared;Foreign Keys=True;");
 });
 builder.Services.AddOpenApi();
+builder.Services.AddHealthChecks();
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
 builder.Services.AddIdentity<IdentityUser, IdentityRole>()
@@ -41,7 +43,11 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.User.RequireUniqueEmail = false;
 });
 builder.Services.AddSingleton<IRelayService, RelayService>();
-
+builder.Services.AddMediator(options =>
+{
+    options.Assemblies = [typeof(MemoAna.Server.Application.Relay.Handlers.RelayServerHandlers).Assembly];
+    options.ServiceLifetime = ServiceLifetime.Scoped;
+});
 var app = builder.Build();
 
 if (!app.Environment.IsProduction())
@@ -58,5 +64,27 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/api/v1/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
 
+        var response = new
+        {
+            status = report.Status.ToString(),
+            totalDurationMs = report.TotalDuration.TotalMilliseconds,
+            checks = report.Entries.Select(entry => new
+            {
+                name = entry.Key,
+                status = entry.Value.Status.ToString(),
+                description = entry.Value.Description,
+                durationMs = entry.Value.Duration.TotalMilliseconds,
+                error = entry.Value.Exception?.Message
+            })
+        };
+
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 await app.RunAsync();
