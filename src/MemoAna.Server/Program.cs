@@ -98,24 +98,57 @@ app.MapHealthChecks("/api/v1/health", new HealthCheckOptions
     ResponseWriter = async (context, report) =>
     {
         context.Response.ContentType = "application/json";
-
-        var response = new
+        IEnumerable<object> checks = report.Entries.Select(entry => new
         {
-            status = report.Status.ToString(),
-            totalDurationMs = report.TotalDuration.TotalMilliseconds,
-            checks = report.Entries.Select(entry => new
-            {
-                name = entry.Key,
-                status = entry.Value.Status.ToString(),
-                description = entry.Value.Description,
-                durationMs = entry.Value.Duration.TotalMilliseconds,
-                error = entry.Value.Exception?.Message
-            }),
-            version = "1.0.0",
-            environment = app.Environment.EnvironmentName
-        };
+            name = entry.Key,
+            status = entry.Value.Status.ToString(),
+            description = entry.Value.Description,
+            durationMs = entry.Value.Duration.TotalMilliseconds
+        });
 
-        await context.Response.WriteAsJsonAsync(response);
+        var checksResponse =  new HealthCheckResponse<IEnumerable<object>>
+        (
+            report.Status.ToString(),
+            report.TotalDuration.TotalMilliseconds,
+            typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+            app.Environment.EnvironmentName,
+            checks
+        );
+
+        var response = new HealthCheckResponse(
+            report.Status.ToString(),
+            report.TotalDuration.TotalMilliseconds,
+            typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+            app.Environment.EnvironmentName
+        );
+
+        if (checks.Any())
+        {
+            await context.Response.WriteAsJsonAsync(checksResponse);
+        }
+        else
+        {
+            await context.Response.WriteAsJsonAsync(response);
+        }       
     }
 });
 await app.RunAsync();
+
+
+
+internal class HealthCheckResponse(string status, double totalDurationMs, string version, string environment)
+{
+    public string Status { get; } = status;
+    public double TotalDurationMs { get; } = totalDurationMs;
+    public string Version { get; } = version;
+    public string Environment { get; } = environment;
+}
+
+internal class HealthCheckResponse<T>(string status, double totalDurationMs, string version, string environment, T Checks) 
+: HealthCheckResponse(status, totalDurationMs, version, environment) 
+where T : IEnumerable<object>  
+{
+    public T Checks { get; } = Checks;
+}
+
+
