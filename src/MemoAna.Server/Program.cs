@@ -82,7 +82,9 @@ app.MapHealthChecks("/api/v1/health", new HealthCheckOptions
                 description = entry.Value.Description,
                 durationMs = entry.Value.Duration.TotalMilliseconds,
                 error = entry.Value.Exception?.Message
-            })
+            }),
+            version = "1.0.0",
+            environment = app.Environment.EnvironmentName
         };
 
         await context.Response.WriteAsJsonAsync(response);
