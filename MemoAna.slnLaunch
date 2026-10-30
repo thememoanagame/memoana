@@ -3,12 +3,14 @@
     "Name": "Windows + API",
     "Projects": [
       {
-        "Path": "src\\MemoAna\\MemoAna.csproj",
-        "Action": "Start"
+        "Path": "src\\MemoAna.Server\\MemoAna.Server.csproj",
+        "Action": "Start",
+        "DebugTarget": "https"
       },
       {
-        "Path": "src\\MemoAna.Server\\MemoAna.Server.csproj",
-        "Action": "Start"
+        "Path": "src\\MemoAna\\MemoAna.csproj",
+        "Action": "Start",
+        "DebugTarget": "Windows Machine"
       }
     ]
   }
