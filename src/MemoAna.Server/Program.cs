@@ -1,12 +1,13 @@
 using Mediator;
 using MemoAna.Server.Infrastructure.Persistence;
-using MemoAna.Server.Infrastructure.Services.Abstract;
+using MemoAna.Server.Application.Abstract;
 using MemoAna.Server.Infrastructure.Services.Concrete;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.OpenApi;
 using Scalar.AspNetCore;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ServerDbContext>(options =>
