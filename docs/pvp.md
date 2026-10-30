@@ -66,3 +66,52 @@ Android uses Appium UiAutomator2 and the WebView context. PVP UI scenarios use
 separate `WindowsPlayerSession` and `AndroidPlayerSession` instances and do
 not use `MEMOANA_NATIVE_CDP_ENDPOINT`. The harness requires Appium and an
 authorized physical Android device; it does not substitute an emulator.
+
+## PVP over Relay (MemoAna.Server)
+
+For matches between devices in different networks (WAN/Internet), `MemoAna.Server` acts as an opaque **Relay** bridge between two `PVPService` endpoints without running game logic.
+
+### Non-Authoritative Relay Model
+
+> [!IMPORTANT]
+> `MemoAna.Server` **is not an authoritative game server**.
+> Host (Player A) continues to own the session authority (board setup, turn resolution, match validation, score calculation) identical to the LAN model. The server merely bridges network traffic between the two endpoints without inspecting or altering messages.
+
+### Architecture
+
+```text
+REST API (/api/v1/relay)
+  ├── POST   /rooms           (Create room / register Player A)
+  ├── GET    /rooms           (List available rooms)
+  ├── POST   /rooms/{id}/join (Join room / register Player B)
+  ├── POST   /rooms/{id}/leave(Leave room)
+  └── DELETE /rooms/{id}      (Close room)
+
+Persistent LiteNetLib Connection (UDP Relay Port)
+  └── Bi-directional opaque PVP message forwarding between Player A and Player B
+```
+
+```text
+MemoAna.Game / Player A               MemoAna.Server                  MemoAna.Game / Player B
+         │                              RelayService                             │
+         ├─── POST /rooms ───────────────────►│                                  │
+         │◄── 201 Created (Token A) ──────────┤                                  │
+         │                                    │                                  │
+         │                                    │◄── GET /rooms ───────────────────┤
+         │                                    ├─── 200 OK (Room list) ──────────►│
+         │                                    │                                  │
+         │                                    │◄── POST /rooms/{id}/join ────────┤
+         │                                    ├─── 200 OK (Token B) ────────────►│
+         │                                    │                                  │
+         ├─── UDP Connect(Token A) ──────────►│◄── UDP Connect(Token B) ─────────┤
+         │    (Peer A accepted)               │    (Peer B accepted)             │
+         │                                    │                                  │
+         ├════ Opaque PVP Payload ═══════════►│════ Forward payload ════════════►│
+         │◄═══ Forward payload ═══════════════│◄═══ Opaque PVP Payload ══════════┤
+```
+
+### Protocol & Security
+1. **Opaque Payloads**: Messages exchanged between peers are delivered as raw byte payloads (`byte[]`, `DeliveryMethod`) with zero game deserialization.
+2. **Room Authentication**: Rooms may optionally require a password. Attempts with invalid credentials are rejected (HTTP 401) without occupying the room slot.
+3. **Single UDP Port**: The relay operates on a single configured UDP port (default `35680`) for all rooms and client connections.
+4. **Lifecycle & Cleanup**: Automatic cleanup handles abrupt disconnections, timeouts, and abandoned rooms.

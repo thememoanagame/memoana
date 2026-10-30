@@ -22,6 +22,7 @@
     <Project Path="src/MemoAna.Server/MemoAna.Server.csproj" />
   </Folder>
   <Folder Name="/MemoAna/tests/">
+    <Project Path="tests/MemoAna.Server.Tests/MemoAna.Server.Tests.csproj" />
     <Project Path="tests/MemoAna.UITests/MemoAna.UITests.csproj" />
     <Project Path="tests/MemoAna.UnitTests/MemoAna.UnitTests.csproj" />
   </Folder>

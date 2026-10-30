@@ -1,14 +1,41 @@
 using Mediator;
-using MemoAna.Server.Infrastructure.Persistence;
 using MemoAna.Server.Application.Abstract;
+using MemoAna.Server.Common;
+using MemoAna.Server.Infrastructure.Persistence;
 using MemoAna.Server.Infrastructure.Services.Concrete;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.OpenApi;
-using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
+using Serilog;
 var builder = WebApplication.CreateBuilder(args);
+if (!Directory.Exists(Constants.Directories.Logs))
+{
+    Directory.CreateDirectory(Constants.Directories.Logs);
+}
+
+string path = System.IO.Path.Combine(Constants.Directories.Logs, "log-.txt");
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel
+    .Is(Serilog.Events.LogEventLevel.Fatal) // Define o nível mínimo de log
+    .WriteTo
+    .Console(Serilog.Events.LogEventLevel.Verbose, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo
+    .File(
+        path: path,
+        rollingInterval: RollingInterval.Day, // Cria um arquivo por dia
+        retainedFileCountLimit: 7,            // Mantém apenas os últimos 7 dias
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+    )
+    .CreateLogger();
+
+builder.Logging.AddSerilog(Log.Logger, dispose: true);
+builder.Logging.AddConsole();
+#if DEBUG
+builder.Logging.AddDebug();
+#endif
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ServerDbContext>(options =>
 {
@@ -43,6 +70,7 @@ builder.Services.Configure<IdentityOptions>(options =>
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
     options.User.RequireUniqueEmail = false;
 });
+builder.Services.Configure<RelayOptions>(builder.Configuration.GetSection(RelayOptions.SectionName));
 builder.Services.AddSingleton<IRelayService, RelayService>();
 builder.Services.AddMediator(options =>
 {
