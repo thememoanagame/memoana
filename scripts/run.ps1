@@ -1,13 +1,16 @@
 [CmdletBinding()]
 param(
+    [Alias('c')]
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
 
+    [Alias('t')]
     [ValidateSet('Windows', 'Android', 'Both')]
     [string]$Target = 'Both',
 
     [switch]$ServerOnly,
 
+    [Alias('d')]
     [string]$AndroidDevice
 )
 
@@ -37,11 +40,9 @@ if ($ServerOnly) {
     exit $LASTEXITCODE
 }
 
-if ($Target -in @('Windows', 'Both')) {
-    if (-not $IsWindows) {
-        Write-ErrorMessage 'The Windows MAUI target can only be started on Windows.'
-        exit 1
-    }
+if ($Target -in @('Windows', 'Both') -and -not $IsWindows) {
+    Write-ErrorMessage 'The Windows MAUI target can only be started on Windows.'
+    exit 1
 }
 
 if ($Target -in @('Android', 'Both')) {
@@ -66,52 +67,38 @@ if ($Target -in @('Android', 'Both')) {
     }
 }
 
-$jobs = @()
+$processes = @()
 
 Write-Info "Starting MemoAna.Server in $Configuration configuration."
-$jobs += Start-Job -ScriptBlock {
-    param($Project, $Config)
-    Set-Location (Split-Path -Parent (Split-Path -Parent $Project))
-    dotnet run --project $Project --configuration $Config
-} -ArgumentList $serverProject, $Configuration
+$processes += Start-Process -FilePath 'dotnet' -ArgumentList @(
+    'run', '--project', $serverProject, '--configuration', $Configuration
+) -PassThru
 
 if ($Target -in @('Windows', 'Both')) {
     Write-Info "Starting MemoAna Windows target in $Configuration configuration."
-    $jobs += Start-Job -ScriptBlock {
-        param($Project, $Config)
-        Set-Location (Split-Path -Parent (Split-Path -Parent $Project))
-        dotnet build $Project --configuration $Config -f net10.0-windows10.0.19041.0 -t:Run
-    } -ArgumentList $mauiProject, $Configuration
+    $processes += Start-Process -FilePath 'dotnet' -ArgumentList @(
+        'run', '--project', $mauiProject,
+        '--framework', 'net10.0-windows10.0.19041.0',
+        '--configuration', $Configuration
+    ) -PassThru
 }
 
 if ($Target -in @('Android', 'Both')) {
     Write-Info "Starting MemoAna Android target in $Configuration configuration."
-    $jobs += Start-Job -ScriptBlock {
-        param($Project, $Config, $Device)
-        Set-Location (Split-Path -Parent (Split-Path -Parent $Project))
-        if ($Device) {
-            $env:ANDROID_DEVICE_ID = $Device
-        }
-        dotnet build $Project --configuration $Config -f net10.0-android -t:Run
-    } -ArgumentList $mauiProject, $Configuration, $AndroidDevice
-}
 
-try {
-    while ($jobs | Where-Object State -in @('Running', 'NotStarted')) {
-        foreach ($job in $jobs) {
-            Receive-Job $job -ErrorAction SilentlyContinue
-        }
-        Start-Sleep -Milliseconds 500
+    $arguments = @(
+        'run', '--project', $mauiProject,
+        '--framework', 'net10.0-android',
+        '--configuration', $Configuration
+    )
+
+    if ($AndroidDevice) {
+        $arguments += @('--device', $AndroidDevice)
     }
 
-    foreach ($job in $jobs) {
-        Receive-Job $job -ErrorAction SilentlyContinue
-        if ($job.State -eq 'Failed') {
-            Write-ErrorMessage "A launch job failed: $($job.ChildJobs[0].JobStateInfo.Reason.Message)"
-        }
-    }
+    $processes += Start-Process -FilePath 'dotnet' -ArgumentList $arguments -PassThru
 }
-finally {
-    $jobs | Stop-Job -ErrorAction SilentlyContinue
-    $jobs | Remove-Job -Force -ErrorAction SilentlyContinue
-}
+
+Write-Info "Started $($processes.Count) process(es)."
+Write-Info 'The launched processes remain independent of this PowerShell process.'
+Write-Info 'Use Visual Studio F5 with MemoAna.slnLaunch for the shared Windows + API debug profile.'
