@@ -1,16 +1,25 @@
+using FluentValidation;
 using Mediator;
-using MemoAna.Server.Application.Abstract;
+using MemoAna.Auth.Abstract;
+using MemoAna.Server.Application.Auth.Abstract;
+using MemoAna.Server.Application.Auth.Validators;
+using MemoAna.Server.Application.Common.Middlewares;
+using MemoAna.Server.Application.Relay.Abstract;
 using MemoAna.Server.Common;
 using MemoAna.Server.Infrastructure.Persistence;
+using MemoAna.Server.Infrastructure.Persistence.Middlewares;
 using MemoAna.Server.Infrastructure.Services.Concrete;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Abstractions;
 using Scalar.AspNetCore;
 using Serilog;
+
 var builder = WebApplication.CreateBuilder(args);
+
 if (!Directory.Exists(Constants.Directories.Logs))
 {
     Directory.CreateDirectory(Constants.Directories.Logs);
@@ -70,13 +79,28 @@ builder.Services.Configure<IdentityOptions>(options =>
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
     options.User.RequireUniqueEmail = false;
 });
+
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 builder.Services.Configure<RelayOptions>(builder.Configuration.GetSection(RelayOptions.SectionName));
 builder.Services.AddSingleton<IRelayService, RelayService>();
+builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<IAuthenticatedUserClassifier, AuthenticatedUserClassifier>();
+builder.Services.AddScoped<IGooglePlayGamesAuthenticationService, GooglePlayGamesAuthenticationService>();
+builder.Services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
 builder.Services.AddMediator(options =>
 {
     options.Assemblies = [typeof(MemoAna.Server.Application.Relay.Handlers.RelayServerHandlers).Assembly];
     options.ServiceLifetime = ServiceLifetime.Scoped;
+    options.PipelineBehaviors =
+    [
+        typeof(LoggingMiddleware<,>),
+        typeof(ValidationMiddleware<,>),
+        typeof(TransactionMiddleware<,>)
+    ];
 });
+
 var app = builder.Build();
 
 if (!app.Environment.IsProduction())

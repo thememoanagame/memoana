@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using MemoAna.Game.Models;
 using MemoAna.Server.Application.Relay.Responses;
 
-namespace MemoAna.Server.Application.Abstract;
+namespace MemoAna.Server.Application.Relay.Abstract;
 
 public interface IRelayService
 {

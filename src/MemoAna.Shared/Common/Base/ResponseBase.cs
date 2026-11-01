@@ -1,6 +1,6 @@
 using System;
 
-namespace MemoAna.Server.Application.Base;
+namespace MemoAna.Common.Base;
 
 public record ResponseBase(string Message, bool Success)
 {

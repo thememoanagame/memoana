@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Mediator;
 using MemoAna.Game.Models;
-using MemoAna.Server.Application.Abstract;
+using MemoAna.Server.Application.Relay.Abstract;
 using MemoAna.Server.Application.Relay.Requests;
 using MemoAna.Server.Application.Relay.Responses;
 

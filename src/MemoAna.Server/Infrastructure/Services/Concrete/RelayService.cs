@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using LiteNetLib;
 using MemoAna.Game.Models;
-using MemoAna.Server.Application.Abstract;
+using MemoAna.Server.Application.Relay.Abstract;
 using MemoAna.Server.Application.Relay.Responses;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

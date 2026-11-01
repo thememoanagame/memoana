@@ -132,8 +132,8 @@ public static class MauiAppBuilderExtensions
                     dbOptions.CommandTimeout(TimeSpan.FromSeconds(60).Seconds);
                 });
             });
-            builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
-            builder.Services.AddTransient(typeof(IRepository<>), typeof(Repository<>));
+            builder.Services.AddTransient<IUnitOfWork<GameDbContext>, UnitOfWork<GameDbContext>>();
+            builder.Services.AddTransient(typeof(IRepository<>), typeof(Repository<,>));
             return builder;
         }
     }

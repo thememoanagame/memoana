@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using MemoAna.Common.Abstract.Repositories;
 using MemoAna.Common.Entities;
-using MemoAna.Common.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using Microsoft.Extensions.Logging;
@@ -12,16 +11,20 @@ namespace MemoAna.Common.Repositories;
 /// Provides EF Core persistence operations.
 /// </summary>
 /// <typeparam name="TEntity">The entity type.</typeparam>
-public sealed class Repository<TEntity> : IRepository<TEntity>
+public sealed class Repository<TEntity, TContext> : IRepository<TEntity>
     where TEntity : EntityBase
+    where TContext : DbContext
 {
     private readonly DbSet<TEntity> Set;
     private readonly IQueryable<TEntity> NoTrackingSet;
-    private readonly IUnitOfWork uow;
-    private readonly ILogger<Repository<TEntity>> logger;
+    private readonly IUnitOfWork<TContext> uow;
+    private readonly ILogger<Repository<TEntity, TContext>> logger;
 
-    public Repository(GameDbContext dbContext, ILogger<Repository<TEntity>> logger, IUnitOfWork uow) =>
-        (Set, NoTrackingSet, this.logger, this.uow) = (dbContext.Set<TEntity>(), dbContext.Set<TEntity>().AsNoTracking<TEntity>(), logger, uow);
+    public Repository(ILogger<Repository<TEntity, TContext>> logger, IUnitOfWork<TContext> uow)
+    {
+        (Set, NoTrackingSet, this.logger, this.uow) =
+        (uow.Context.Set<TEntity>(), uow.Context.Set<TEntity>().AsNoTracking<TEntity>(), logger, uow);
+    }
 
     /// <inheritdoc />
     public async Task<TEntity?> GetByIdAsync(string id, Expression<Func<TEntity, object?>>[] includes, CancellationToken cancellationToken)

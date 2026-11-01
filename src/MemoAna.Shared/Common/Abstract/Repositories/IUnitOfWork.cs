@@ -1,11 +1,18 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace MemoAna.Common.Abstract.Repositories;
 
 
 /// <summary>
 /// Coordinates persistence for a request.
 /// </summary>
-public interface IUnitOfWork
+public interface IUnitOfWork<T> where T : DbContext
 {
+    /// <summary>
+    /// The DbContext to retrieve 
+    /// </summary> 
+    T Context { get; set; }
+
     /// <summary>
     /// Persists tracked changes.
     /// </summary>

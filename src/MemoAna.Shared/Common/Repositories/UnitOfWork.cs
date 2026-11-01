@@ -1,15 +1,22 @@
 using MemoAna.Common.Abstract.Repositories;
-using MemoAna.Common.Persistence;
-using MemoAna.Game.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 namespace MemoAna.Common.Repositories;
 
 /// <summary>
 /// Coordinates EF Core persistence transactions.
 /// </summary>
-public sealed class UnitOfWork(GameDbContext dbContext) : IUnitOfWork,
+public sealed class UnitOfWork<T> : IUnitOfWork<T>,
     IAsyncDisposable
+    where T : DbContext
 {
+
+    public UnitOfWork(T dbContext)
+    {
+        Context = dbContext;
+    }   
+
+    public T Context { get; set; }
     private IDbContextTransaction?
         transaction;
 
@@ -17,7 +24,7 @@ public sealed class UnitOfWork(GameDbContext dbContext) : IUnitOfWork,
     public Task<int> SaveChangesAsync(
         CancellationToken cancellationToken)
     {
-        return dbContext.SaveChangesAsync(
+        return Context.SaveChangesAsync(
             cancellationToken);
     }
 
@@ -30,7 +37,7 @@ public sealed class UnitOfWork(GameDbContext dbContext) : IUnitOfWork,
             return;
         }
 
-        transaction = await dbContext.Database
+        transaction = await Context.Database
             .BeginTransactionAsync(cancellationToken);
     }
 

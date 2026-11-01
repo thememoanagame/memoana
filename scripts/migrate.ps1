@@ -9,16 +9,19 @@ param(
 )
  
 $RepoRoot = (Get-Item "$PSScriptRoot\..").FullName
-$AppStartupProject = (Get-Item (Join-Path $RepoRoot "src/MemoAna")).FullName
-$ServerStartupProject = (Get-Item (Join-Path $RepoRoot "src/MemoAna.Server")).FullName
-$AppProject = (Get-Item (Join-Path $RepoRoot "src/MemoAna.Game")).FullName
+$AppStartupProject = (Get-Item "$RepoRoot/src/MemoAna").FullName
+$ServerStartupProject = (Get-Item "$RepoRoot/src/MemoAna.Server").FullName
+$AppProject = (Get-Item "$RepoRoot/src/MemoAna.Game").FullName
 $AppMigrationsFolder = "Common/Persistence/Migrations"
 $ServerMigrationsFolder = "Infrastructure/Persistence/Migrations"
 if ($App) { $StartupProject = $AppStartupProject } else { $StartupProject = $ServerStartupProject }
 
-$ProjectRoot = (Get-Item "$RepoRoot\$StartupProject").FullName
-
+$ProjectRoot = (Get-Item "$StartupProject").FullName
+Push-Location $RepoRoot
+dotnet tool restore
+Pop-Location
 Push-Location $ProjectRoot
+
 try {
     Write-Host "Adding migration '$Name'" -ForegroundColor Cyan
     if($App) {  

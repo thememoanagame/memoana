@@ -70,7 +70,7 @@ public static class GameTheme
             },
             H1 = new H1Typography() { FontFamily = ["Cinzel", "Georgia", "serif"], FontWeight = "700" },
             H2 = new H2Typography() { FontFamily = ["Cinzel", "Georgia", "serif"], FontWeight = "600" },
-            H3 = new H3Typography() { FontFamily = ["Cinzel", "Georgia", "serif"], FontWeight = "500" },
+            H3 = new H3Typography() { FontFamily = ["Cinzel", "Georgia", "serif"], FontWeight = "500"  },
             Button = new ButtonTypography()
             {
                 FontFamily = ["Georgia", "serif"],
