@@ -1,8 +1,9 @@
-﻿using Mediator;
+using Mediator;
 using MemoAna.Auth.Abstract;
 using MemoAna.Auth.Requests;
 using MemoAna.Auth.Responses;
 using MemoAna.Common.Base;
+
 namespace MemoAna.Auth.Handlers;
 
 /// <summary>Handles identity messages.</summary>
@@ -17,6 +18,8 @@ public sealed class AuthHandlers(
         ResponseBase<TokenResponse>>,
       IRequestHandler<GooglePlayGamesLoginRequest,
         ResponseBase<TokenResponse>>,
+      IRequestHandler<LinkGooglePlayGamesRequest,
+        IdentityResultResponse>,
       IRequestHandler<RefreshTokenRequest,
         ResponseBase<TokenResponse>>,
       IRequestHandler<RevokeTokenRequest,
@@ -62,14 +65,12 @@ public sealed class AuthHandlers(
                 cancellationToken);
 
         return result is null
-            ? ResponseFactory.Failure<TokenResponse>(
-                ["Invalid credentials."])
-            : ResponseFactory.Success(result);
+            ? ResponseBase<TokenResponse>.FailureResponse("Invalid credentials.")
+            : ResponseBase<TokenResponse>.SuccessResponse(result);
     }
 
     /// <inheritdoc />
-    public async ValueTask<ResponseBase<TokenResponse>>
-        Handle(
+    public async ValueTask<ResponseBase<TokenResponse>> Handle(
             GooglePlayGamesLoginRequest request,
             CancellationToken cancellationToken)
     {
@@ -80,14 +81,25 @@ public sealed class AuthHandlers(
                 cancellationToken);
 
         return result is null
-            ? ResponseFactory.Failure<TokenResponse>(
-                ["Google Play Games authentication failed."])
-            : ResponseFactory.Success(result);
+            ? ResponseBase<TokenResponse>.FailureResponse("Google Play Games authentication failed.")
+            : ResponseBase<TokenResponse>.SuccessResponse(result);
     }
 
     /// <inheritdoc />
-    public async ValueTask<ResponseBase<TokenResponse>>
-        Handle(
+    public ValueTask<IdentityResultResponse> Handle(
+        LinkGooglePlayGamesRequest request,
+        CancellationToken cancellationToken)
+    {
+        return new ValueTask<IdentityResultResponse>(
+            googlePlayGamesService.LinkAsync(
+                request.UserId,
+                request.ServerAuthCode,
+                request.RedirectUri,
+                cancellationToken));
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<ResponseBase<TokenResponse>> Handle(
             RefreshTokenRequest request,
             CancellationToken cancellationToken)
     {
@@ -97,9 +109,8 @@ public sealed class AuthHandlers(
                 cancellationToken);
 
         return result is null
-            ? ResponseFactory.Failure<TokenResponse>(
-                ["Invalid refresh token."])
-            : ResponseFactory.Success(result);
+            ? ResponseBase<TokenResponse>.FailureResponse("Invalid refresh token.")
+            : ResponseBase<TokenResponse>.SuccessResponse(result);
     }
 
     /// <inheritdoc />
@@ -110,7 +121,7 @@ public sealed class AuthHandlers(
         bool result = await identityService.RevokeAsync(
             request.AccessToken,
             cancellationToken);
-        return ResponseFactory.Success(result);
+        return ResponseBase<bool>.SuccessResponse(result);
     }
 
     /// <inheritdoc />
@@ -124,7 +135,7 @@ public sealed class AuthHandlers(
                 request.Code,
                 request.ChangedEmail,
                 cancellationToken);
-        return ResponseFactory.Success(result);
+        return ResponseBase<bool>.SuccessResponse(result);
     }
 
     /// <inheritdoc />
@@ -163,8 +174,7 @@ public sealed class AuthHandlers(
     }
 
     /// <inheritdoc />
-    public async ValueTask<ResponseBase<IdentityInfoResponse>>
-        Handle(
+    public async ValueTask<ResponseBase<IdentityInfoResponse>> Handle(
             GetIdentityInfoRequest request,
             CancellationToken cancellationToken)
     {
@@ -174,9 +184,8 @@ public sealed class AuthHandlers(
                 cancellationToken);
 
         return result is null
-            ? ResponseFactory.Failure<IdentityInfoResponse>(
-                ["User not found."])
-            : ResponseFactory.Success(result);
+            ? ResponseBase<IdentityInfoResponse>.FailureResponse("User not found.")
+            : ResponseBase<IdentityInfoResponse>.SuccessResponse(result);
     }
 
     /// <inheritdoc />
@@ -194,8 +203,7 @@ public sealed class AuthHandlers(
     }
 
     /// <inheritdoc />
-    public async ValueTask<ResponseBase<TwoFactorResponse>>
-        Handle(
+    public async ValueTask<ResponseBase<TwoFactorResponse>> Handle(
             ConfigureTwoFactorRequest request,
             CancellationToken cancellationToken)
     {
@@ -210,8 +218,7 @@ public sealed class AuthHandlers(
                 cancellationToken);
 
         return result is null
-            ? ResponseFactory.Failure<TwoFactorResponse>(
-                ["Invalid 2FA configuration."])
-            : ResponseFactory.Success(result);
+            ? ResponseBase<TwoFactorResponse>.FailureResponse("Invalid 2FA configuration.")
+            : ResponseBase<TwoFactorResponse>.SuccessResponse(result);
     }
 }

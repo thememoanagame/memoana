@@ -1,10 +1,8 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MemoAna.Auth.Abstract;
 using MemoAna.Auth.Requests;
 
 namespace MemoAna.Server.Application.Auth.Validators;
-
-
 
 /// <summary>Validates registration requests.</summary>
 public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest>
@@ -30,7 +28,7 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
             .MinimumLength(8)
             .WithMessage("The new password needs to have at least 8 characters.")
             .WithErrorCode("UNPROCESSABLE_ENTITY")
-            .Must(pwd => pwd.All(c => char.IsLetter(c) || char.IsDigit(c) || char.IsUpper(c) || char.IsLower(c) || char.IsSymbol(c)))
+            .Must(pwd => pwd.Any(char.IsUpper) && pwd.Any(char.IsLower) && pwd.Any(char.IsDigit) && pwd.Any(c => !char.IsLetterOrDigit(c)))
             .WithErrorCode("UNPROCESSABLE_ENTITY")
             .WithMessage("The password must have at least one letter upper and lower case, one digit and one special character");
     }
@@ -56,11 +54,32 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
             .MinimumLength(8)
             .WithMessage("The new password needs to have at least 8 characters.")
             .WithErrorCode("UNPROCESSABLE_ENTITY")
-            .Must(pwd => pwd.All(c => char.IsLetter(c) || char.IsDigit(c) || char.IsUpper(c) || char.IsLower(c) || char.IsSymbol(c)))
+            .Must(pwd => pwd.Any(char.IsUpper) && pwd.Any(char.IsLower) && pwd.Any(char.IsDigit) && pwd.Any(c => !char.IsLetterOrDigit(c)))
             .WithErrorCode("UNPROCESSABLE_ENTITY")
             .WithMessage("The password must have at least one letter upper and lower case, one digit and one special character");
         _ = RuleFor(x => x).Must(x => string.IsNullOrWhiteSpace(x.TwoFactorCode) || string.IsNullOrWhiteSpace(x.TwoFactorRecoveryCode))
             .WithMessage("Only one two-factor authentication code may be supplied.");
+    }
+}
+
+/// <summary>Validates Google Play Games login requests.</summary>
+public sealed class GooglePlayGamesLoginRequestValidator : AbstractValidator<GooglePlayGamesLoginRequest>
+{
+    /// <summary>Initializes Google Play Games login validation rules.</summary>
+    public GooglePlayGamesLoginRequestValidator()
+    {
+        RuleFor(x => x.ServerAuthCode).NotEmpty().WithMessage("The server auth code cannot be empty.");
+    }
+}
+
+/// <summary>Validates Google Play Games account linking requests.</summary>
+public sealed class LinkGooglePlayGamesRequestValidator : AbstractValidator<LinkGooglePlayGamesRequest>
+{
+    /// <summary>Initializes Google Play Games link validation rules.</summary>
+    public LinkGooglePlayGamesRequestValidator()
+    {
+        RuleFor(x => x.UserId).NotEmpty().WithMessage("The user identifier cannot be empty.");
+        RuleFor(x => x.ServerAuthCode).NotEmpty().WithMessage("The server auth code cannot be empty.");
     }
 }
 
@@ -142,7 +161,7 @@ public sealed class ResetPasswordRequestValidator : AbstractValidator<ResetPassw
             .MinimumLength(8)
             .WithMessage("The new password needs to have at least 8 characters.")
             .WithErrorCode("UNPROCESSABLE_ENTITY")
-            .Must(pwd => pwd.All(c => char.IsLetter(c) || char.IsDigit(c) || char.IsUpper(c) || char.IsLower(c) || char.IsSymbol(c)))
+            .Must(pwd => pwd.Any(char.IsUpper) && pwd.Any(char.IsLower) && pwd.Any(char.IsDigit) && pwd.Any(c => !char.IsLetterOrDigit(c)))
             .WithErrorCode("UNPROCESSABLE_ENTITY")
             .WithMessage("The password must have at least one letter upper and lower case, one digit and one special character");
     }
@@ -160,5 +179,3 @@ public sealed class UpdateIdentityInfoRequestValidator : AbstractValidator<Updat
         _ = RuleFor(x => x.NewPassword).MinimumLength(8).When(x => !string.IsNullOrWhiteSpace(x.NewPassword));
     }
 }
-
-

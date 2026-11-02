@@ -1,7 +1,13 @@
-﻿using Mediator;
+using Mediator;
 using MemoAna.Common.Abstract.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace MemoAna.Server.Infrastructure.Persistence.Middlewares;
+
+/// <summary>
+/// Marker interface for Mediator requests that require an explicit database transaction.
+/// </summary>
+public interface ITransactionalRequest { }
 
 /// <summary>
 /// Executes transactional Mediator requests atomically.

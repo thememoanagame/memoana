@@ -1,95 +1,57 @@
-﻿using Google.Apis.Auth.OAuth2;
-using Google.Apis.Auth.OAuth2.Flows;
-using Google.Apis.Games.v1;
-using Google.Apis.Services;
 using MemoAna.Auth.Abstract;
 using MemoAna.Auth.Responses;
-using MemoAna.Server.Infrastructure.Auth.Options;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace MemoAna.Server.Infrastructure.Services.Concrete;
 
+/// <summary>
+/// Authenticates and links Google Play Games users by coordinating token exchange, profile retrieval, and local identity operations.
+/// </summary>
 public sealed class GooglePlayGamesAuthenticationService(
-    IOptions<GooglePlayGamesOptions> options,
+    IGooglePlayGamesClient googleClient,
     IIdentityService identityService,
     ILogger<GooglePlayGamesAuthenticationService> logger) : IGooglePlayGamesAuthenticationService
 {
-    private readonly GooglePlayGamesOptions _options = options.Value;
-
     /// <inheritdoc />
     public async Task<TokenResponse?> AuthenticateAsync(string serverAuthCode, string redirectUri, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(serverAuthCode))
+        {
+            logger.LogWarning("Server auth code cannot be null or empty.");
+            return null;
+        }
+
         try
         {
-            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
-            {
-                ClientSecrets = new ClientSecrets
-                {
-                    ClientId = _options.ClientId,
-                    ClientSecret = _options.ClientSecret
-                },
-                Scopes = [GamesService.Scope.Games,
-                    GamesService.Scope.DriveAppdata,
-                    "openid",
-                    "profile",
-                    "email"],
-            });
+            cancellationToken.ThrowIfCancellationRequested();
 
-            Google.Apis.Auth.OAuth2.Responses.TokenResponse? tokenResponse = null;
-            try
+            GoogleTokenExchangeResult? tokenResult = await googleClient.ExchangeCodeAsync(serverAuthCode, redirectUri, cancellationToken);
+            if (tokenResult == null || string.IsNullOrWhiteSpace(tokenResult.AccessToken))
             {
-                tokenResponse = await flow.ExchangeCodeForTokenAsync(string.Empty, serverAuthCode, redirectUri, cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Google.Apis.Auth.OAuth2.Responses.TokenResponseException tre)
-            {
-                logger.LogWarning(tre, "{Message}", tre.Message);
-                return null;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to exchange server auth code.");
+                logger.LogWarning("Failed to exchange server auth code or missing access token.");
                 return null;
             }
 
-            if (tokenResponse == null || string.IsNullOrEmpty(tokenResponse.AccessToken))
+            GooglePlayerProfileResult? profile = await googleClient.GetPlayerProfileAsync(tokenResult.AccessToken, tokenResult.IdToken, cancellationToken);
+            if (profile == null || string.IsNullOrWhiteSpace(profile.PlayerId))
             {
-                logger.LogWarning("Google Play Games exchange returned an invalid token.");
+                logger.LogWarning("Google Play Games profile unavailable or missing PlayerId.");
                 return null;
             }
 
-            var credential = GoogleCredential.FromAccessToken(tokenResponse.AccessToken);
-            using var gamesService = new GamesService(new BaseClientService.Initializer
-            {
-                HttpClientInitializer = credential,
-                ApplicationName = "MemoAna"
-            });
-            Google.Apis.Games.v1.Data.Player player = default!;
-            try
-            {
-                player = await gamesService.Players.Get("me").ExecuteAsync(cancellationToken);
-                if (player == null || string.IsNullOrEmpty(player.PlayerId))
-                {
-                    logger.LogWarning("Could not retrieve player ID from Google Play Games.");
-                    return null;
-                }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "The user doens't have a play games profile");
-                return null;
-            }
+            var externalProfile = new ExternalUserProfile(
+                PlayerId: profile.PlayerId,
+                DisplayName: profile.DisplayName,
+                FirstName: profile.GivenName,
+                SurName: profile.FamilyName,
+                Email: profile.Email,
+                EmailConfirmed: profile.EmailVerified,
+                AvatarUrl: profile.AvatarImageUrl);
 
             return await identityService.AuthenticateExternalAsync(
                 "GooglePlayGames",
-                player.PlayerId,
+                profile.PlayerId,
+                externalProfile,
                 cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -98,8 +60,66 @@ public sealed class GooglePlayGamesAuthenticationService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "An unexpected error occurred during Google Play Games authentication.");
+            logger.LogError(ex, "Unexpected error during Google Play Games authentication.");
             return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IdentityResultResponse> LinkAsync(string userId, string serverAuthCode, string redirectUri, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return IdentityResultResponse.Failure(["User identifier cannot be empty."]);
+        }
+
+        if (string.IsNullOrWhiteSpace(serverAuthCode))
+        {
+            return IdentityResultResponse.Failure(["Server authorization code cannot be empty."]);
+        }
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            GoogleTokenExchangeResult? tokenResult = await googleClient.ExchangeCodeAsync(serverAuthCode, redirectUri, cancellationToken);
+            if (tokenResult == null || string.IsNullOrWhiteSpace(tokenResult.AccessToken))
+            {
+                logger.LogWarning("Failed to exchange server auth code for linking.");
+                return IdentityResultResponse.Failure(["Failed to validate external Google identity."]);
+            }
+
+            GooglePlayerProfileResult? profile = await googleClient.GetPlayerProfileAsync(tokenResult.AccessToken, tokenResult.IdToken, cancellationToken);
+            if (profile == null || string.IsNullOrWhiteSpace(profile.PlayerId))
+            {
+                logger.LogWarning("Could not retrieve player profile from Google Play Games for linking.");
+                return IdentityResultResponse.Failure(["Could not retrieve player profile from Google Play Games."]);
+            }
+
+            var externalProfile = new ExternalUserProfile(
+                PlayerId: profile.PlayerId,
+                DisplayName: profile.DisplayName,
+                FirstName: profile.GivenName,
+                SurName: profile.FamilyName,
+                Email: profile.Email,
+                EmailConfirmed: profile.EmailVerified,
+                AvatarUrl: profile.AvatarImageUrl);
+
+            return await identityService.LinkExternalAsync(
+                userId,
+                "GooglePlayGames",
+                profile.PlayerId,
+                externalProfile,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error during Google Play Games account linking.");
+            return IdentityResultResponse.Failure(["An unexpected error occurred during account linking."]);
         }
     }
 }

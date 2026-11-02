@@ -1,10 +1,10 @@
-﻿using MemoAna.Auth.Abstract;
+using MemoAna.Auth.Abstract;
 using MemoAna.Auth.Responses;
 using MemoAna.Server.Infrastructure.Auth.Options;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
-using System.Management;
 using System.Security.Claims;
 using System.Text;
 
@@ -17,6 +17,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IRevokedTokenS
 {
     private readonly JwtOptions _options = options.Value;
     private readonly JwtSecurityTokenHandler tokenHandler = new();
+
     /// <inheritdoc />
     public TokenResponse CreateTokens(string userId, string email, IEnumerable<string> roles, IEnumerable<Claim> claims)
     {
@@ -40,9 +41,9 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IRevokedTokenS
 
         return new TokenResponse(
             "Bearer",
-            new JwtSecurityTokenHandler().WriteToken(access),
+            tokenHandler.WriteToken(access),
             (int)_options.AccessTokenLifetime.TotalSeconds,
-            new JwtSecurityTokenHandler().WriteToken(refresh));
+            tokenHandler.WriteToken(refresh));
     }
 
     /// <inheritdoc />
@@ -67,7 +68,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IRevokedTokenS
 
         try
         {
-            ClaimsPrincipal principal = new JwtSecurityTokenHandler().ValidateToken(token, parameters, out SecurityToken? validatedToken);
+            ClaimsPrincipal principal = tokenHandler.ValidateToken(token, parameters, out SecurityToken? validatedToken);
             var tokenId = validatedToken.Id;
             if (!string.IsNullOrWhiteSpace(tokenId) && revokedTokens.IsRevoked(tokenId))
             {

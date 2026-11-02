@@ -1,25 +1,20 @@
 using Mediator;
+using MemoAna.Auth.Dtos;
 using MemoAna.Auth.Requests;
 using MemoAna.Auth.Responses;
 using MemoAna.Common.Base;
-using MemoAna.Game.Models;
-using MemoAna.Server.Application.Relay.Requests;
-using MemoAna.Server.Application.Relay.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace MemoAna.Server.Controllers;
 
 /// <summary>
-/// Provides endpoints for authentication and relay room management.
+/// Provides endpoints for authentication, external identity federation, and identity management.
 /// </summary>
-/// <param name="mediator">Mediator used to dispatch authentication and room management requests.</param>
+/// <param name="mediator">Mediator used to dispatch authentication and identity requests.</param>
 [Route("api/v1/auth")]
 [ApiController]
 [Tags("Authentication")]
@@ -31,13 +26,13 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
     public async Task<IActionResult> Register(
-        RegisterRequest request,
+        [FromBody] RegisterDto dto,
         CancellationToken cancellationToken)
     {
         IdentityResultResponse result = await mediator.Send(
             new RegisterRequest(
-                request.Email,
-                request.Password),
+                dto.Email,
+                dto.Password),
             cancellationToken);
         return result.Succeeded
             ? Ok()
@@ -50,19 +45,19 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType<TokenResponse>(200)]
     [ProducesResponseType<ResponseBase<TokenResponse>>(401)]
     public async Task<IActionResult> Login(
-        LoginRequest request,
+        [FromBody] LoginDto dto,
         CancellationToken cancellationToken)
     {
         ResponseBase<TokenResponse> result =
             await mediator.Send(
                 new LoginRequest(
-                    request.Email,
-                    request.Password,
-                    request.TwoFactorCode,
-                    request.TwoFactorRecoveryCode),
+                    dto.Email,
+                    dto.Password,
+                    dto.TwoFactorCode,
+                    dto.TwoFactorRecoveryCode),
                 cancellationToken);
-        return result.Succeeded
-            ? Ok(result.Data)
+        return result.Success
+            ? Ok(result.Value)
             : Unauthorized(result);
     }
 
@@ -72,18 +67,46 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType<TokenResponse>(200)]
     [ProducesResponseType<ResponseBase<TokenResponse>>(401)]
     public async Task<IActionResult> GooglePlayGamesLogin(
-        GooglePlayGamesLoginRequest request,
+        [FromBody] GooglePlayGamesLoginDto dto,
         CancellationToken cancellationToken)
     {
         ResponseBase<TokenResponse> result =
             await mediator.Send(
                 new GooglePlayGamesLoginRequest(
-                    request.ServerAuthCode,
-                    request.RedirectUri),
+                    dto.ServerAuthCode,
+                    dto.RedirectUri),
                 cancellationToken);
-        return result.Succeeded
-            ? Ok(result.Data)
+        return result.Success
+            ? Ok(result.Value)
             : Unauthorized(result);
+    }
+
+    /// <summary>Links a Google Play Games identity to an authenticated account.</summary>
+    [HttpPost("manage/link/google-play-games")]
+    [Authorize]
+    [ProducesResponseType(200)]
+    [ProducesResponseType<IdentityResultResponse>(400)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> LinkGooglePlayGames(
+        [FromBody] GooglePlayGamesLoginDto dto,
+        CancellationToken cancellationToken)
+    {
+        string? userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        IdentityResultResponse result = await mediator.Send(
+            new LinkGooglePlayGamesRequest(
+                userId,
+                dto.ServerAuthCode,
+                dto.RedirectUri),
+            cancellationToken);
+
+        return result.Succeeded
+            ? Ok()
+            : BadRequest(result);
     }
 
     /// <summary>Refreshes authentication tokens.</summary>
@@ -92,14 +115,14 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType<TokenResponse>(200)]
     [ProducesResponseType<ResponseBase<TokenResponse>>(401)]
     public async Task<IActionResult> Refresh(
-        RefreshRequest request,
+        [FromBody] RefreshDto dto,
         CancellationToken cancellationToken)
     {
         ResponseBase<TokenResponse> result = await mediator.Send(
-            new RefreshTokenRequest(request.RefreshToken),
+            new RefreshTokenRequest(dto.RefreshToken),
             cancellationToken);
-        return result.Succeeded
-            ? Ok(result.Data)
+        return result.Success
+            ? Ok(result.Value)
             : Unauthorized(result);
     }
 
@@ -116,13 +139,14 @@ public class AuthController(IMediator mediator) : ControllerBase
             .Replace(
                 "Bearer ",
                 string.Empty,
-                StringComparison.OrdinalIgnoreCase);
+                StringComparison.OrdinalIgnoreCase)
+            .Trim();
 
         ResponseBase<bool> result = await mediator.Send(
             new RevokeTokenRequest(token),
             cancellationToken);
 
-        return result.Data == true
+        return result.Value == true
             ? Ok()
             : Unauthorized(result);
     }
@@ -144,7 +168,7 @@ public class AuthController(IMediator mediator) : ControllerBase
                 code,
                 changedEmail),
             cancellationToken);
-        return result.Data == true
+        return result.Value == true
             ? Ok()
             : BadRequest(result);
     }
@@ -155,12 +179,12 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType<IdentityResultResponse>(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
     public async Task<IActionResult> ResendConfirmationEmail(
-        EmailRequest request,
+        [FromBody] EmailDto dto,
         CancellationToken cancellationToken)
     {
         IdentityResultResponse result = await mediator.Send(
             new ResendConfirmationEmailRequest(
-                request.Email),
+                dto.Email),
             cancellationToken);
         return result.Succeeded
             ? Ok(result)
@@ -173,11 +197,11 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
     public async Task<IActionResult> ForgotPassword(
-        EmailRequest request,
+        [FromBody] EmailDto dto,
         CancellationToken cancellationToken)
     {
         IdentityResultResponse result = await mediator.Send(
-            new ForgotPasswordRequest(request.Email),
+            new ForgotPasswordRequest(dto.Email),
             cancellationToken);
         return result.Succeeded
             ? Ok()
@@ -190,14 +214,14 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType(200)]
     [ProducesResponseType<IdentityResultResponse>(400)]
     public async Task<IActionResult> ResetPassword(
-        ResetPasswordRequest request,
+        [FromBody] ResetPasswordDto dto,
         CancellationToken cancellationToken)
     {
         IdentityResultResponse result = await mediator.Send(
             new ResetPasswordRequest(
-                request.Email,
-                request.ResetCode,
-                request.NewPassword),
+                dto.Email,
+                dto.ResetCode,
+                dto.NewPassword),
             cancellationToken);
         return result.Succeeded
             ? Ok()
@@ -223,8 +247,8 @@ public class AuthController(IMediator mediator) : ControllerBase
             await mediator.Send(
                 new GetIdentityInfoRequest(userId),
                 cancellationToken);
-        return result.Succeeded
-            ? Ok(result.Data)
+        return result.Success
+            ? Ok(result.Value)
             : NotFound(result);
     }
 
@@ -235,7 +259,7 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType<IdentityResultResponse>(400)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> UpdateInfo(
-        InfoRequest request,
+        [FromBody] InfoDto dto,
         CancellationToken cancellationToken)
     {
         string? userId = GetUserId();
@@ -247,9 +271,9 @@ public class AuthController(IMediator mediator) : ControllerBase
         IdentityResultResponse result = await mediator.Send(
             new UpdateIdentityInfoRequest(
                 userId,
-                request.NewEmail,
-                request.NewPassword,
-                request.OldPassword),
+                dto.NewEmail,
+                dto.NewPassword,
+                dto.OldPassword),
             cancellationToken);
         return result.Succeeded
             ? Ok()
@@ -263,7 +287,7 @@ public class AuthController(IMediator mediator) : ControllerBase
     [ProducesResponseType<IdentityResultResponse>(400)]
     [ProducesResponseType(401)]
     public async Task<IActionResult> ConfigureTwoFactor(
-        TwoFactorRequest request,
+        [FromBody] TwoFactorDto dto,
         CancellationToken cancellationToken)
     {
         string? userId = GetUserId();
@@ -276,22 +300,20 @@ public class AuthController(IMediator mediator) : ControllerBase
             await mediator.Send(
                 new ConfigureTwoFactorRequest(
                     userId,
-                    request.Enable,
-                    request.TwoFactorCode,
-                    request.ResetRecoveryCodes,
-                    request.ResetSharedKey,
-                    request.ForgetMachine),
+                    dto.Enable,
+                    dto.TwoFactorCode,
+                    dto.ResetRecoveryCodes,
+                    dto.ResetSharedKey,
+                    dto.ForgetMachine),
                 cancellationToken);
-        return result.Succeeded
-            ? Ok(result.Data)
+        return result.Success
+            ? Ok(result.Value)
             : BadRequest(result);
     }
 
     private string? GetUserId()
     {
-        return User.FindFirstValue(
-                   JwtRegisteredClaimNames.Sub)
-               ?? User.FindFirstValue(
-                   ClaimTypes.NameIdentifier);
+        return User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+               ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
     }
 }

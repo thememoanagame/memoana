@@ -1,24 +1,36 @@
 using FluentValidation;
 using Mediator;
 using MemoAna.Auth.Abstract;
+using MemoAna.Common.Abstract.Repositories;
+using MemoAna.Common.Repositories;
 using MemoAna.Server.Application.Auth.Abstract;
 using MemoAna.Server.Application.Auth.Validators;
 using MemoAna.Server.Application.Common.Middlewares;
 using MemoAna.Server.Application.Relay.Abstract;
 using MemoAna.Server.Common;
+using MemoAna.Server.Infrastructure.Auth.Models;
+using MemoAna.Server.Infrastructure.Auth.Options;
 using MemoAna.Server.Infrastructure.Persistence;
 using MemoAna.Server.Infrastructure.Persistence.Middlewares;
 using MemoAna.Server.Infrastructure.Services.Concrete;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Abstractions;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+
+// Load environment variables from .env file when present (dev/local runs)
+DotEnvLoader.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Apply flat environment variable mappings into hierarchical sections
+builder.Configuration.AddInMemoryCollection(DotEnvLoader.GetMappedConfiguration());
 
 if (!Directory.Exists(Constants.Directories.Logs))
 {
@@ -28,14 +40,14 @@ if (!Directory.Exists(Constants.Directories.Logs))
 string path = System.IO.Path.Combine(Constants.Directories.Logs, "log-.txt");
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel
-    .Is(Serilog.Events.LogEventLevel.Fatal) // Define o nível mínimo de log
+    .Is(Serilog.Events.LogEventLevel.Fatal)
     .WriteTo
     .Console(Serilog.Events.LogEventLevel.Verbose, outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .WriteTo
     .File(
         path: path,
-        rollingInterval: RollingInterval.Day, // Cria um arquivo por dia
-        retainedFileCountLimit: 7,            // Mantém apenas os últimos 7 dias
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 7,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
     )
     .CreateLogger();
@@ -45,17 +57,19 @@ builder.Logging.AddConsole();
 #if DEBUG
 builder.Logging.AddDebug();
 #endif
+
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ServerDbContext>(options =>
 {
     options.UseSqlite("Data Source=server.db;Cache=Shared;Foreign Keys=True;");
 });
+
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
-builder.Services.AddAuthentication();
-builder.Services.AddAuthorization();
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
-    .AddRoles<IdentityRole>()
+
+// Identity configuration
+builder.Services.AddIdentity<User, Role>()
+    .AddRoles<Role>()
     .AddEntityFrameworkStores<ServerDbContext>()
     .AddDefaultTokenProviders();
 
@@ -80,18 +94,68 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.User.RequireUniqueEmail = false;
 });
 
-builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+// Configure options sections
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.Configure<GooglePlayGamesOptions>(builder.Configuration.GetSection(GooglePlayGamesOptions.SectionName));
 builder.Services.Configure<RelayOptions>(builder.Configuration.GetSection(RelayOptions.SectionName));
+
+// Authentication and JWT Bearer configuration
+var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
+var jwtKey = jwtSection["Key"] ?? "MemoAna-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456";
+var jwtIssuer = jwtSection["Issuer"] ?? "MemoAna";
+var jwtAudience = jwtSection["Audience"] ?? "MemoAna";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromSeconds(30)
+    };
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = context =>
+        {
+            var revokedStore = context.HttpContext.RequestServices.GetRequiredService<IRevokedTokenStore>();
+            string? jti = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
+            if (!string.IsNullOrEmpty(jti) && revokedStore.IsRevoked(jti))
+            {
+                context.Fail("Token has been revoked.");
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+builder.Services.AddAuthorization();
+
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+
 builder.Services.AddSingleton<IRelayService, RelayService>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork<ServerDbContext>>();
+builder.Services.AddScoped<IUnitOfWork<ServerDbContext>, UnitOfWork<ServerDbContext>>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
-builder.Services.AddScoped<IAuthenticatedUserClassifier, AuthenticatedUserClassifier>();
+builder.Services.AddSingleton<IGooglePlayGamesClient, GooglePlayGamesClient>();
 builder.Services.AddScoped<IGooglePlayGamesAuthenticationService, GooglePlayGamesAuthenticationService>();
 builder.Services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
+
 builder.Services.AddMediator(options =>
 {
-    options.Assemblies = [typeof(MemoAna.Server.Application.Relay.Handlers.RelayServerHandlers).Assembly];
+    options.Assemblies = [
+        typeof(MemoAna.Server.Application.Relay.Handlers.RelayServerHandlers).Assembly
+    ];
     options.ServiceLifetime = ServiceLifetime.Scoped;
     options.PipelineBehaviors =
     [
@@ -102,6 +166,12 @@ builder.Services.AddMediator(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+    await db.Database.EnsureCreatedAsync();
+}
 
 if (!app.Environment.IsProduction())
 {
@@ -130,7 +200,7 @@ app.MapHealthChecks("/api/v1/health", new HealthCheckOptions
             durationMs = entry.Value.Duration.TotalMilliseconds
         });
 
-        var checksResponse =  new HealthCheckResponse<IEnumerable<object>>
+        var checksResponse = new HealthCheckResponse<IEnumerable<object>>
         (
             report.Status.ToString(),
             report.TotalDuration.TotalMilliseconds,
@@ -153,12 +223,11 @@ app.MapHealthChecks("/api/v1/health", new HealthCheckOptions
         else
         {
             await context.Response.WriteAsJsonAsync(response);
-        }       
+        }
     }
 });
+
 await app.RunAsync();
-
-
 
 internal class HealthCheckResponse(string status, double totalDurationMs, string version, string environment)
 {
@@ -168,11 +237,11 @@ internal class HealthCheckResponse(string status, double totalDurationMs, string
     public string Environment { get; } = environment;
 }
 
-internal class HealthCheckResponse<T>(string status, double totalDurationMs, string version, string environment, T Checks) 
-: HealthCheckResponse(status, totalDurationMs, version, environment) 
-where T : IEnumerable<object>  
+internal class HealthCheckResponse<T>(string status, double totalDurationMs, string version, string environment, T Checks)
+: HealthCheckResponse(status, totalDurationMs, version, environment)
+where T : IEnumerable<object>
 {
     public T Checks { get; } = Checks;
 }
 
-
+public partial class Program { }

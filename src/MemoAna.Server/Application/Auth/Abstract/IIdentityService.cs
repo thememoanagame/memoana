@@ -1,6 +1,8 @@
-﻿namespace MemoAna.Auth.Abstract;
+using MemoAna.Auth.Responses;
 
-/// <summary> Identity Service abstraction </summary>
+namespace MemoAna.Auth.Abstract;
+
+/// <summary>Identity Service abstraction.</summary>
 public interface IIdentityService
 {
     /// <summary>Registers a user and starts email confirmation.</summary>
@@ -10,12 +12,10 @@ public interface IIdentityService
     /// <returns>The registration result.</returns>
     Task<IdentityResultResponse> RegisterAsync(string email, string password, CancellationToken cancellationToken);
 
-    /// <summary>
-    /// Checks if an email is already registered
-    /// </summary>
-    /// <param name="email">The email to check if it exists</param>
-    /// <param name="cancellationToken">An cancellation token for the operation.</param>
-    /// <returns>true if email exists; otherwise, false</returns>
+    /// <summary>Checks if an email is already registered.</summary>
+    /// <param name="email">The email to check.</param>
+    /// <param name="cancellationToken">A cancellation token for the operation.</param>
+    /// <returns>true if email exists; otherwise, false.</returns>
     Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
 
     /// <summary>Authenticates a user and issues JWT tokens when all required factors are valid.</summary>
@@ -27,12 +27,29 @@ public interface IIdentityService
     /// <returns>The token pair, or <see langword="null"/> when authentication fails.</returns>
     Task<TokenResponse?> LoginAsync(string email, string password, string? twoFactorCode, string? twoFactorRecoveryCode, CancellationToken cancellationToken);
 
+    /// <summary>Resolves an external login to a local user, storing provided profile information, and issues MemoAna JWT tokens.</summary>
+    /// <param name="loginProvider">The trusted external login provider name.</param>
+    /// <param name="providerKey">The stable provider-specific identity key.</param>
+    /// <param name="profile">The verified external user profile information, when available.</param>
+    /// <param name="cancellationToken">The token used to cancel the operation.</param>
+    /// <returns>The token pair, or <see langword="null"/> when the external identity cannot be resolved.</returns>
+    Task<TokenResponse?> AuthenticateExternalAsync(string loginProvider, string providerKey, ExternalUserProfile? profile, CancellationToken cancellationToken);
+
     /// <summary>Resolves an external login to a local user and issues MemoAna JWT tokens.</summary>
     /// <param name="loginProvider">The trusted external login provider name.</param>
     /// <param name="providerKey">The stable provider-specific identity key.</param>
     /// <param name="cancellationToken">The token used to cancel the operation.</param>
     /// <returns>The token pair, or <see langword="null"/> when the external identity cannot be resolved.</returns>
     Task<TokenResponse?> AuthenticateExternalAsync(string loginProvider, string providerKey, CancellationToken cancellationToken);
+
+    /// <summary>Links an external identity provider to an existing local user account.</summary>
+    /// <param name="userId">The unique identifier of the user to link.</param>
+    /// <param name="loginProvider">The external login provider name (e.g. GooglePlayGames).</param>
+    /// <param name="providerKey">The stable provider-specific identity key.</param>
+    /// <param name="profile">The verified external profile details to associate.</param>
+    /// <param name="cancellationToken">The token used to cancel the operation.</param>
+    /// <returns>The result of the link operation.</returns>
+    Task<IdentityResultResponse> LinkExternalAsync(string userId, string loginProvider, string providerKey, ExternalUserProfile? profile, CancellationToken cancellationToken);
 
     /// <summary>Exchanges a valid refresh token for a new token pair.</summary>
     /// <param name="refreshToken">The refresh token to exchange.</param>
@@ -74,7 +91,7 @@ public interface IIdentityService
     /// <returns>The reset operation result.</returns>
     Task<IdentityResultResponse> ResetPasswordAsync(string email, string resetCode, string newPassword, CancellationToken cancellationToken);
 
-    /// <summary>Gets basic identity information for a user.</summary>
+    /// <summary>Gets identity information for a user.</summary>
     /// <param name="userId">The user's identifier.</param>
     /// <param name="cancellationToken">The token used to cancel the operation.</param>
     /// <returns>The identity information, or <see langword="null"/> when the user does not exist.</returns>
@@ -99,5 +116,4 @@ public interface IIdentityService
     /// <param name="cancellationToken">The token used to cancel the operation.</param>
     /// <returns>The current configuration, or <see langword="null"/> when the operation cannot be completed.</returns>
     Task<TwoFactorResponse?> ConfigureTwoFactorAsync(string userId, bool? enable, string? twoFactorCode, bool resetRecoveryCodes, bool resetSharedKey, bool forgetMachine, CancellationToken cancellationToken);
-
 }

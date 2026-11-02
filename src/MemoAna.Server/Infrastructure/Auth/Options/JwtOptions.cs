@@ -1,4 +1,4 @@
-﻿namespace MemoAna.Server.Infrastructure.Auth.Options;
+namespace MemoAna.Server.Infrastructure.Auth.Options;
 
 /// <summary>Defines configuration options used by the application JWT implementation.</summary>
 public sealed class JwtOptions
@@ -7,7 +7,7 @@ public sealed class JwtOptions
     public const string SectionName = "Jwt";
 
     /// <summary>Gets or sets the secret key used to sign JWTs.</summary>
-    public required string Key { get; set; }
+    public string Key { get; set; } = "MemoAna-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456";
 
     /// <summary>Gets or sets the JWT issuer.</summary>
     public string Issuer { get; set; } = "MemoAna";
@@ -20,4 +20,11 @@ public sealed class JwtOptions
 
     /// <summary>Gets or sets the lifetime of a refresh token.</summary>
     public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(14);
+}
+
+/// <summary>Standard token types for JWT identification.</summary>
+public static class JwtTokenTypes
+{
+    public const string Access = "access";
+    public const string Refresh = "refresh";
 }

@@ -1,8 +1,8 @@
-﻿using MemoAna.Auth.Responses;
+using MemoAna.Auth.Responses;
 using Mediator;
 using MemoAna.Common.Base;
-namespace MemoAna.Auth.Requests;
 
+namespace MemoAna.Auth.Requests;
 
 /// <summary>Requests registration of a user.</summary>
 /// <param name="Email">The user email.</param>
@@ -16,9 +16,7 @@ public sealed record RegisterRequest(
 /// <param name="Email">The user email.</param>
 /// <param name="Password">The password.</param>
 /// <param name="TwoFactorCode">The 2FA code.</param>
-/// <param name="TwoFactorRecoveryCode">
-/// The 2FA recovery code.
-/// </param>
+/// <param name="TwoFactorRecoveryCode">The 2FA recovery code.</param>
 public sealed record LoginRequest(
     string Email,
     string Password,
@@ -28,11 +26,21 @@ public sealed record LoginRequest(
 
 /// <summary>Requests Google Play Games user authentication.</summary>
 /// <param name="ServerAuthCode">The server authentication code from the client.</param>
-/// <param name="RedirectUri">The application redirect uri</param>
+/// <param name="RedirectUri">The application redirect uri.</param>
 public sealed record GooglePlayGamesLoginRequest(
-    string ServerAuthCode, string RedirectUri)
+    string ServerAuthCode,
+    string RedirectUri)
     : IRequest<ResponseBase<TokenResponse>>;
 
+/// <summary>Requests linking a Google Play Games identity to an authenticated user account.</summary>
+/// <param name="UserId">The user identifier.</param>
+/// <param name="ServerAuthCode">The server authentication code from the client.</param>
+/// <param name="RedirectUri">The application redirect uri.</param>
+public sealed record LinkGooglePlayGamesRequest(
+    string UserId,
+    string ServerAuthCode,
+    string RedirectUri)
+    : IRequest<IdentityResultResponse>;
 
 /// <summary>Requests a refresh token exchange.</summary>
 /// <param name="RefreshToken">The refresh token.</param>
@@ -105,7 +113,6 @@ public sealed record ConfigureTwoFactorRequest(
     bool ResetSharedKey,
     bool ForgetMachine)
     : IRequest<ResponseBase<TwoFactorResponse>>;
-
 
 /// <summary>Requests identity information.</summary>
 /// <param name="UserId">The user identifier.</param>

@@ -1,13 +1,15 @@
-﻿using MemoAna.Auth.Abstract;
+using MemoAna.Auth.Abstract;
 using MemoAna.Auth.Responses;
 using MemoAna.Server.Application.Auth.Abstract;
 using MemoAna.Server.Infrastructure.Auth.Models;
+using MemoAna.Server.Infrastructure.Auth.Options;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 
 namespace MemoAna.Server.Infrastructure.Services.Concrete;
-
 
 /// <summary>
 /// Provides identity operations for users, authentication, account recovery, and two-factor authentication.
@@ -26,22 +28,19 @@ public sealed class IdentityService(
     IRevokedTokenStore revokedTokenStore,
     IIdentityEmailSender emailSender) : IIdentityService
 {
-
     /// <summary>
     /// Registers a new user and sends an email confirmation link.
     /// </summary>
-    /// <param name="email">The email address of the user.</param>
-    /// <param name="password">The password to assign to the user.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The result of the registration operation.</returns>
     public async Task<IdentityResultResponse> RegisterAsync(string email, string password, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var user = new User(email)
         {
             Email = email,
-            DisplayName = "",
-            FirstName = "",
-            SurName = "",
+            DisplayName = string.Empty,
+            FirstName = string.Empty,
+            SurName = string.Empty,
             EmailConfirmed = false
         };
 
@@ -63,12 +62,6 @@ public sealed class IdentityService(
     /// <summary>
     /// Authenticates a user and issues JWT access and refresh tokens when all required authentication factors are valid.
     /// </summary>
-    /// <param name="email">The user's email address.</param>
-    /// <param name="password">The user's password.</param>
-    /// <param name="twoFactorCode">The authenticator application code, when two-factor authentication is enabled.</param>
-    /// <param name="twoFactorRecoveryCode">The recovery code, when two-factor authentication is enabled and a recovery code is used.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The issued tokens, or <see langword="null"/> when authentication fails.</returns>
     public async Task<TokenResponse?> LoginAsync(
         string email,
         string password,
@@ -76,6 +69,8 @@ public sealed class IdentityService(
         string? twoFactorRecoveryCode,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         User? user = await userManager.FindByEmailAsync(email);
         if (user is null)
         {
@@ -108,13 +103,25 @@ public sealed class IdentityService(
     }
 
     /// <inheritdoc />
-    public async Task<TokenResponse?> AuthenticateExternalAsync(
+    public Task<TokenResponse?> AuthenticateExternalAsync(
         string loginProvider,
         string providerKey,
         CancellationToken cancellationToken)
     {
+        return AuthenticateExternalAsync(loginProvider, providerKey, null, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<TokenResponse?> AuthenticateExternalAsync(
+        string loginProvider,
+        string providerKey,
+        ExternalUserProfile? profile,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(loginProvider);
         ArgumentException.ThrowIfNullOrWhiteSpace(providerKey);
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         User? user = await userManager.FindByLoginAsync(loginProvider, providerKey);
         if (user is null)
@@ -122,9 +129,24 @@ public sealed class IdentityService(
             user = new User
             {
                 UserName = $"{loginProvider}_{providerKey}",
-                Email = $"{loginProvider}_{providerKey}@external.local",
-                EmailConfirmed = true
+                PlayerId = profile?.PlayerId ?? providerKey,
+                DisplayName = profile?.DisplayName ?? string.Empty,
+                AvatarUrl = profile?.AvatarUrl,
+                FirstName = profile?.FirstName,
+                SurName = profile?.SurName
             };
+
+            // Respect existing email if verified by provider and not claimed by another local account.
+            // Never create a synthetic email like @external.local.
+            if (!string.IsNullOrWhiteSpace(profile?.Email))
+            {
+                User? existingByEmail = await userManager.FindByEmailAsync(profile.Email);
+                if (existingByEmail is null)
+                {
+                    user.Email = profile.Email;
+                    user.EmailConfirmed = profile.EmailConfirmed;
+                }
+            }
 
             byte[] randomBytes = RandomNumberGenerator.GetBytes(32);
             string randomPassword = Convert.ToBase64String(randomBytes) + "A1a!";
@@ -144,18 +166,137 @@ public sealed class IdentityService(
                 return null;
             }
         }
+        else if (profile is not null)
+        {
+            bool modified = false;
+            if (string.IsNullOrWhiteSpace(user.PlayerId) && !string.IsNullOrWhiteSpace(profile.PlayerId))
+            {
+                user.PlayerId = profile.PlayerId;
+                modified = true;
+            }
+            if (string.IsNullOrWhiteSpace(user.DisplayName) && !string.IsNullOrWhiteSpace(profile.DisplayName))
+            {
+                user.DisplayName = profile.DisplayName;
+                modified = true;
+            }
+            if (string.IsNullOrWhiteSpace(user.AvatarUrl) && !string.IsNullOrWhiteSpace(profile.AvatarUrl))
+            {
+                user.AvatarUrl = profile.AvatarUrl;
+                modified = true;
+            }
+            if (string.IsNullOrWhiteSpace(user.FirstName) && !string.IsNullOrWhiteSpace(profile.FirstName))
+            {
+                user.FirstName = profile.FirstName;
+                modified = true;
+            }
+            if (string.IsNullOrWhiteSpace(user.SurName) && !string.IsNullOrWhiteSpace(profile.SurName))
+            {
+                user.SurName = profile.SurName;
+                modified = true;
+            }
+
+            if (modified)
+            {
+                await userManager.UpdateAsync(user);
+            }
+        }
 
         return await CreateUserTokensAsync(user);
+    }
+
+    /// <inheritdoc />
+    public async Task<IdentityResultResponse> LinkExternalAsync(
+        string userId,
+        string loginProvider,
+        string providerKey,
+        ExternalUserProfile? profile,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(userId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(loginProvider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerKey);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        User? currentUser = await userManager.FindByIdAsync(userId);
+        if (currentUser is null)
+        {
+            return IdentityResultResponse.Failure(["User not found."]);
+        }
+
+        // Check if another local user is already linked to this external provider key
+        User? existingUser = await userManager.FindByLoginAsync(loginProvider, providerKey);
+        if (existingUser is not null && !string.Equals(existingUser.Id, currentUser.Id, StringComparison.Ordinal))
+        {
+            return IdentityResultResponse.Failure(["This external identity is already linked to another user account."]);
+        }
+
+        if (existingUser is not null && string.Equals(existingUser.Id, currentUser.Id, StringComparison.Ordinal))
+        {
+            // Already linked to this user
+            return IdentityResultResponse.Success();
+        }
+
+        // Prevent silent replacement of an existing provider identity
+        IList<UserLoginInfo> logins = await userManager.GetLoginsAsync(currentUser);
+        UserLoginInfo? existingProvider = logins.FirstOrDefault(l => string.Equals(l.LoginProvider, loginProvider, StringComparison.OrdinalIgnoreCase));
+        if (existingProvider is not null && !string.Equals(existingProvider.ProviderKey, providerKey, StringComparison.Ordinal))
+        {
+            return IdentityResultResponse.Failure(["An account from this provider is already linked to this user."]);
+        }
+
+        IdentityResult addLoginResult = await userManager.AddLoginAsync(
+            currentUser,
+            new UserLoginInfo(loginProvider, providerKey, loginProvider));
+
+        if (!addLoginResult.Succeeded)
+        {
+            return Failure(addLoginResult);
+        }
+
+        // Update profile properties if empty
+        bool modified = false;
+        if (string.IsNullOrWhiteSpace(currentUser.PlayerId) && !string.IsNullOrWhiteSpace(profile?.PlayerId))
+        {
+            currentUser.PlayerId = profile.PlayerId;
+            modified = true;
+        }
+        if (string.IsNullOrWhiteSpace(currentUser.DisplayName) && !string.IsNullOrWhiteSpace(profile?.DisplayName))
+        {
+            currentUser.DisplayName = profile.DisplayName;
+            modified = true;
+        }
+        if (string.IsNullOrWhiteSpace(currentUser.AvatarUrl) && !string.IsNullOrWhiteSpace(profile?.AvatarUrl))
+        {
+            currentUser.AvatarUrl = profile.AvatarUrl;
+            modified = true;
+        }
+        if (string.IsNullOrWhiteSpace(currentUser.FirstName) && !string.IsNullOrWhiteSpace(profile?.FirstName))
+        {
+            currentUser.FirstName = profile.FirstName;
+            modified = true;
+        }
+        if (string.IsNullOrWhiteSpace(currentUser.SurName) && !string.IsNullOrWhiteSpace(profile?.SurName))
+        {
+            currentUser.SurName = profile.SurName;
+            modified = true;
+        }
+
+        if (modified)
+        {
+            await userManager.UpdateAsync(currentUser);
+        }
+
+        return IdentityResultResponse.Success();
     }
 
     /// <summary>
     /// Exchanges a valid refresh token for a new access and refresh token pair and revokes the previous refresh token.
     /// </summary>
-    /// <param name="refreshToken">The refresh token to exchange.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The new token pair, or <see langword="null"/> when the refresh token is invalid.</returns>
     public async Task<TokenResponse?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         ClaimsPrincipal? principal = tokenService.ValidateToken(refreshToken);
         if (principal is null || !string.Equals(principal.FindFirstValue("token_type"), JwtTokenTypes.Refresh, StringComparison.Ordinal))
         {
@@ -194,11 +335,10 @@ public sealed class IdentityService(
     /// <summary>
     /// Revokes a valid access token until its natural expiration.
     /// </summary>
-    /// <param name="accessToken">The access token to revoke.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns><see langword="true"/> when the token was revoked; otherwise, <see langword="false"/>.</returns>
     public Task<bool> RevokeAsync(string accessToken, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         ClaimsPrincipal? principal = tokenService.ValidateToken(accessToken);
         var tokenId = tokenService.GetTokenId(accessToken);
         DateTime? expiration = tokenService.GetExpiration(accessToken);
@@ -215,13 +355,10 @@ public sealed class IdentityService(
     /// <summary>
     /// Confirms a user's email address or confirms a changed email address using a supplied Identity token.
     /// </summary>
-    /// <param name="userId">The identifier of the user.</param>
-    /// <param name="code">The confirmation token.</param>
-    /// <param name="changedEmail">The new email address when confirming an email change; otherwise <see langword="null"/>.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns><see langword="true"/> when confirmation succeeds; otherwise, <see langword="false"/>.</returns>
     public async Task<bool> ConfirmEmailAsync(string userId, string code, string? changedEmail, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         User? user = await userManager.FindByIdAsync(userId);
         if (user is null)
         {
@@ -238,11 +375,10 @@ public sealed class IdentityService(
     /// <summary>
     /// Resends an email confirmation link when the specified user exists and remains unconfirmed.
     /// </summary>
-    /// <param name="email">The email address of the user.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The result of the resend operation.</returns>
     public async Task<IdentityResultResponse> ResendConfirmationEmailAsync(string email, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         User? user = await userManager.FindByEmailAsync(email);
         if (user is null || await userManager.IsEmailConfirmedAsync(user))
         {
@@ -261,11 +397,10 @@ public sealed class IdentityService(
     /// <summary>
     /// Starts a password recovery operation for a user with a password.
     /// </summary>
-    /// <param name="email">The email address of the user.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>A successful result whether or not a matching password-bearing user exists.</returns>
     public async Task<IdentityResultResponse> ForgotPasswordAsync(string email, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         User? user = await userManager.FindByEmailAsync(email);
         if (user is null || !await userManager.HasPasswordAsync(user))
         {
@@ -284,13 +419,10 @@ public sealed class IdentityService(
     /// <summary>
     /// Resets a user's password using a valid password-reset token.
     /// </summary>
-    /// <param name="email">The email address of the user.</param>
-    /// <param name="resetCode">The password-reset token.</param>
-    /// <param name="newPassword">The new password.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The result of the password reset operation.</returns>
     public async Task<IdentityResultResponse> ResetPasswordAsync(string email, string resetCode, string newPassword, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         User? user = await userManager.FindByEmailAsync(email);
         if (user is null)
         {
@@ -302,30 +434,32 @@ public sealed class IdentityService(
     }
 
     /// <summary>
-    /// Gets basic identity information for a user.
+    /// Gets identity information for a user.
     /// </summary>
-    /// <param name="userId">The identifier of the user.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The user's identity information, or <see langword="null"/> when the user does not exist.</returns>
     public async Task<IdentityInfoResponse?> GetInfoAsync(string userId, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         User? user = await userManager.FindByIdAsync(userId);
         return user is null
             ? null
-            : new IdentityInfoResponse(user.Email ?? string.Empty, await userManager.IsEmailConfirmedAsync(user));
+            : new IdentityInfoResponse(
+                user.Email ?? string.Empty,
+                await userManager.IsEmailConfirmedAsync(user),
+                user.DisplayName,
+                user.PlayerId,
+                user.AvatarUrl,
+                user.FirstName,
+                user.SurName);
     }
 
     /// <summary>
     /// Updates a user's email address and password after validating the current password.
     /// </summary>
-    /// <param name="userId">The identifier of the user.</param>
-    /// <param name="newEmail">The new email address, or <see langword="null"/> to leave it unchanged.</param>
-    /// <param name="newPassword">The new password, or <see langword="null"/> to leave it unchanged.</param>
-    /// <param name="oldPassword">The current password.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The result of the update operation.</returns>
     public async Task<IdentityResultResponse> UpdateInfoAsync(string userId, string? newEmail, string? newPassword, string oldPassword, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         User? user = await userManager.FindByIdAsync(userId);
         if (user is null || !await userManager.CheckPasswordAsync(user, oldPassword))
         {
@@ -357,16 +491,10 @@ public sealed class IdentityService(
     /// <summary>
     /// Configures authenticator-based two-factor authentication and optionally rotates its recovery material.
     /// </summary>
-    /// <param name="userId">The identifier of the user.</param>
-    /// <param name="enable">Whether to enable or disable two-factor authentication.</param>
-    /// <param name="twoFactorCode">The authenticator code used to validate enabling two-factor authentication.</param>
-    /// <param name="resetRecoveryCodes">Whether new recovery codes should be generated.</param>
-    /// <param name="resetSharedKey">Whether the authenticator shared key should be regenerated.</param>
-    /// <param name="forgetMachine">Whether the current machine should be forgotten; reserved for parity with the Identity API contract.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>The current two-factor configuration, or <see langword="null"/> when the user does not exist or an enable operation fails.</returns>
     public async Task<TwoFactorResponse?> ConfigureTwoFactorAsync(string userId, bool? enable, string? twoFactorCode, bool resetRecoveryCodes, bool resetSharedKey, bool forgetMachine, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         User? user = await userManager.FindByIdAsync(userId);
         if (user is null)
         {
@@ -425,7 +553,11 @@ public sealed class IdentityService(
             claims = [.. claims, .. await roleManager.GetClaimsAsync(role)];
         }
 
-        return tokenService.CreateTokens(user.Id, user.Email ?? user.UserName ?? user.Id, roles, claims);
+        string identityName = !string.IsNullOrWhiteSpace(user.Email)
+            ? user.Email
+            : (!string.IsNullOrWhiteSpace(user.UserName) ? user.UserName : user.Id);
+
+        return tokenService.CreateTokens(user.Id, identityName, roles, claims);
     }
 
     private static IdentityResultResponse Failure(IdentityResult result) => IdentityResultResponse.Failure(result.Errors.Select(error => error.Description));
@@ -445,29 +577,14 @@ public sealed class IdentityService(
 /// <summary>
 /// Logs identity email messages instead of delivering them through an external email provider.
 /// </summary>
-/// <param name="logger">The logger used to record email messages.</param>
 public sealed partial class LoggingIdentityEmailSender(ILogger<LoggingIdentityEmailSender> logger) : IIdentityEmailSender
 {
-    /// <summary>
-    /// Logs an email confirmation message.
-    /// </summary>
-    /// <param name="email">The recipient email address.</param>
-    /// <param name="confirmationLink">The confirmation link.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>A completed task.</returns>
     public Task SendConfirmationAsync(string email, string confirmationLink, CancellationToken cancellationToken)
     {
         LogSendConfirmation(logger, email, confirmationLink);
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Logs a password reset message.
-    /// </summary>
-    /// <param name="email">The recipient email address.</param>
-    /// <param name="resetLink">The password reset link.</param>
-    /// <param name="cancellationToken">The token used to cancel the operation.</param>
-    /// <returns>A completed task.</returns>
     public Task SendPasswordResetAsync(string email, string resetLink, CancellationToken cancellationToken)
     {
         LogSendPassword(logger, email, resetLink);

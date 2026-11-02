@@ -1,4 +1,21 @@
-﻿namespace MemoAna.Auth.Responses;
+namespace MemoAna.Auth.Responses;
+
+/// <summary>Represents external user profile information provided by an external authentication provider.</summary>
+/// <param name="PlayerId">Stable player identifier from the external provider.</param>
+/// <param name="DisplayName">Public display name / gamer tag.</param>
+/// <param name="FirstName">First name, when available.</param>
+/// <param name="SurName">Surname / family name, when available.</param>
+/// <param name="Email">Email address, when available and authorized.</param>
+/// <param name="EmailConfirmed">Whether the email is verified by the provider.</param>
+/// <param name="AvatarUrl">Avatar or profile image URL, when available.</param>
+public sealed record ExternalUserProfile(
+    string? PlayerId = null,
+    string? DisplayName = null,
+    string? FirstName = null,
+    string? SurName = null,
+    string? Email = null,
+    bool EmailConfirmed = false,
+    string? AvatarUrl = null);
 
 /// <summary>Represents the access and refresh tokens issued to an authenticated user.</summary>
 /// <param name="TokenType">The HTTP authorization scheme for the access token.</param>
@@ -26,10 +43,22 @@ public sealed record IdentityResultResponse(bool Succeeded, IReadOnlyCollection<
     public static IdentityResultResponse Failure(IEnumerable<string> errors) => new(false, [.. errors]);
 }
 
-/// <summary>Represents basic identity information exposed to the authenticated user.</summary>
+/// <summary>Represents identity information exposed to the authenticated user.</summary>
 /// <param name="Email">The user's email address.</param>
 /// <param name="IsEmailConfirmed">Indicates whether the email address is confirmed.</param>
-public sealed record IdentityInfoResponse(string Email, bool IsEmailConfirmed);
+/// <param name="DisplayName">The user's display name.</param>
+/// <param name="PlayerId">The stable player identifier, when linked.</param>
+/// <param name="AvatarUrl">The user's avatar URL, when available.</param>
+/// <param name="FirstName">The user's first name.</param>
+/// <param name="SurName">The user's surname.</param>
+public sealed record IdentityInfoResponse(
+    string Email,
+    bool IsEmailConfirmed,
+    string? DisplayName = null,
+    string? PlayerId = null,
+    string? AvatarUrl = null,
+    string? FirstName = null,
+    string? SurName = null);
 
 /// <summary>Represents the current authenticator-based two-factor configuration.</summary>
 /// <param name="SharedKey">The authenticator shared key, when available.</param>
