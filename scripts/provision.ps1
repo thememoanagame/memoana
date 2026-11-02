@@ -87,7 +87,7 @@ function Set-EnvValue([string[]]$Lines, [string]$Key, [string]$Value) {
 }
 
 Write-Host 'MemoAna - provisionamento de credenciais Google Play Games' -ForegroundColor Green
-Write-Host 'A criação dos OAuth clients é concluída no Google Auth Platform. Este script orienta o processo, importa os JSONs e configura o .env.'
+Write-Host 'O script orienta a criação no Console, importa os JSONs e configura o .env.'
 
 $resolvedCredentials = [System.IO.Path]::GetFullPath($CredentialsDirectory)
 if ($resolvedCredentials.StartsWith($RepositoryRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -167,13 +167,17 @@ Write-Host ".env atualizado: $EnvironmentFile" -ForegroundColor Green
 Write-Host "JSON Web: $($web.File)"
 Write-Host "JSON Android: $($android.File)"
 Write-Host ''
-Write-Host 'Inventário dos arquivos locais de credenciais:' -ForegroundColor Cyan
+Write-Host 'Inventário local dos JSONs de credenciais:' -ForegroundColor Cyan
 Get-ChildItem -LiteralPath $CredentialsDirectory -File -Filter '*.json' |
     Select-Object Name, Length, LastWriteTime |
     Format-Table -AutoSize
 
+Write-Host 'O inventário local não comprova se um cliente está ativo no Google Cloud.'
+Write-Host 'Abrindo Google Auth Platform > Clients para conferir o inventário remoto e, se necessário, excluir clientes antigos.'
+if (-not $SkipBrowser) { Start-Process 'https://console.cloud.google.com/auth/clients' }
+
+Write-Host ''
 Write-Host 'IMPORTANTE:' -ForegroundColor Yellow
-Write-Host '- O inventário representa JSONs locais, não confirma o estado ativo dos OAuth clients no Google Cloud.'
 Write-Host '- A limpeza opcional remove somente cópias locais; não exclui credenciais remotas.'
-Write-Host '- Para listar, desativar ou excluir clientes ativos, use Google Auth Platform > Clients.'
+Write-Host '- Revogue/exclua clientes antigos diretamente na página Google Auth Platform > Clients.'
 Write-Host '- Proteja a pasta de credenciais e o .env. Nunca os versione nem compartilhe.'
