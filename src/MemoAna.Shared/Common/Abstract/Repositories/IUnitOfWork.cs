@@ -6,13 +6,8 @@ namespace MemoAna.Common.Abstract.Repositories;
 /// <summary>
 /// Coordinates persistence for a request.
 /// </summary>
-public interface IUnitOfWork<T> where T : DbContext
+public interface IUnitOfWork
 {
-    /// <summary>
-    /// The DbContext to retrieve 
-    /// </summary> 
-    T Context { get; set; }
-
     /// <summary>
     /// Persists tracked changes.
     /// </summary>
@@ -47,5 +42,16 @@ public interface IUnitOfWork<T> where T : DbContext
     /// The cancellation token.
     /// </param>
     Task RollbackTransactionAsync(CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Coordinates persistence for a request with a specific DbContext.
+/// </summary>
+public interface IUnitOfWork<T> : IUnitOfWork where T : DbContext
+{
+    /// <summary>
+    /// The DbContext to retrieve 
+    /// </summary> 
+    T Context { get; set; }
 }
 

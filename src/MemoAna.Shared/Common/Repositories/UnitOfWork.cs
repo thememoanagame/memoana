@@ -6,7 +6,7 @@ namespace MemoAna.Common.Repositories;
 /// <summary>
 /// Coordinates EF Core persistence transactions.
 /// </summary>
-public sealed class UnitOfWork<T> : IUnitOfWork<T>,
+public class UnitOfWork<T> : IUnitOfWork<T>,
     IAsyncDisposable
     where T : DbContext
 {

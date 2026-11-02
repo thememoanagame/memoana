@@ -11,16 +11,21 @@ namespace MemoAna.Common.Repositories;
 /// Provides EF Core persistence operations.
 /// </summary>
 /// <typeparam name="TEntity">The entity type.</typeparam>
-public sealed class Repository<TEntity, TContext> : IRepository<TEntity>
+public class Repository<TEntity, TContext> : IRepository<TEntity>
     where TEntity : EntityBase
     where TContext : DbContext
 {
     private readonly DbSet<TEntity> Set;
     private readonly IQueryable<TEntity> NoTrackingSet;
     private readonly IUnitOfWork<TContext> uow;
-    private readonly ILogger<Repository<TEntity, TContext>> logger;
+    private readonly ILogger logger;
 
     public Repository(ILogger<Repository<TEntity, TContext>> logger, IUnitOfWork<TContext> uow)
+        : this((ILogger)logger, uow)
+    {
+    }
+
+    protected Repository(ILogger logger, IUnitOfWork<TContext> uow)
     {
         (Set, NoTrackingSet, this.logger, this.uow) =
         (uow.Context.Set<TEntity>(), uow.Context.Set<TEntity>().AsNoTracking<TEntity>(), logger, uow);
